@@ -35,6 +35,12 @@ export default function NotificationsPage() {
     load();
   };
 
+  const deleteNotification = async (n) => {
+    await api.delete(`/notifications/${n.id}`).catch(() => {});
+    toast.success('Notification deleted.');
+    load();
+  };
+
   return (
     <div>
       <PageHeader
@@ -79,6 +85,7 @@ export default function NotificationsPage() {
                           <p className="text-sm text-base-content/70 mt-0.5">{n.message}</p>
                           <div className="text-xs opacity-50 mt-1">{new Date(n.createdAt).toLocaleString()}</div>
                         </div>
+                        <button className="btn btn-ghost btn-xs text-error" onClick={(e) => { e.stopPropagation(); deleteNotification(n); }}>Delete</button>
                       </div>
                     </button>
                   </li>
