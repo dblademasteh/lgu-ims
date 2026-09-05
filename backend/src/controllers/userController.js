@@ -152,11 +152,24 @@ async function dashboardStats(req, res) {
     date: { gte: effectiveStart, lte: effectiveEnd },
   };
 
-  const [totalItems, totalCategories, pendingRis, issuedThisMonth] = await Promise.all([
+  const [
+    totalItems,
+    totalCategories,
+    pendingRis,
+    issuedThisMonth,
+    accountableItems,
+    itemsWithExpiry,
+    itemsWithWarranty,
+    pendingPhysicalCounts,
+  ] = await Promise.all([
     prisma.item.count({ where: { isActive: true } }),
     prisma.category.count(),
     prisma.ris.count({ where: { status: 'PENDING', createdAt: { gte: effectiveStart, lte: effectiveEnd } } }),
     prisma.ledgerEntry.count({ where: issuanceWhere }),
+    prisma.item.count({ where: { isActive: true, isAccountable: true } }),
+    prisma.item.count({ where: { isActive: true, expiryDate: { not: null } } }),
+    prisma.item.count({ where: { isActive: true, warrantyExpiry: { not: null } } }),
+    prisma.physicalCount.count({ where: { status: 'SUBMITTED' } }),
   ]);
 
   const recentLedger = await prisma.ledgerEntry.findMany({
@@ -173,6 +186,10 @@ async function dashboardStats(req, res) {
       pendingRis,
       lowStockItems,
       issuedThisMonth,
+      accountableItems,
+      itemsWithExpiry,
+      itemsWithWarranty,
+      pendingPhysicalCounts,
     },
     lowStock,
     recentLedger,
