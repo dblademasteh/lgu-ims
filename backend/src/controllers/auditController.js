@@ -1,6 +1,7 @@
 const prisma = require('../prisma');
 const { paginate } = require('../utils/paginate');
 const { renderPdf, renderExcel, addTableStyle, pdfHeader } = require('../services/reportRenderer');
+const { verifyAuditChain } = require('../utils/audit');
 
 function buildAuditWhere(req) {
   const where = {};
@@ -92,4 +93,9 @@ async function exportAuditLogs(req, res) {
   }, `Audit_Log_${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
-module.exports = { listAuditLogs, exportAuditLogs };
+module.exports = { listAuditLogs, exportAuditLogs, verifyChain };
+
+async function verifyChain(req, res) {
+  const result = await verifyAuditChain();
+  res.json({ valid: result.valid, ...(result.valid ? { count: result.count } : { index: result.index, id: result.id, reason: result.reason }) });
+}

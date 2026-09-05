@@ -6,5 +6,6 @@ const router = Router();
 
 router.get('/', authorize('ADMIN', 'AUDITOR'), auditController.listAuditLogs);
 router.get('/export', authorize('ADMIN', 'AUDITOR'), auditController.exportAuditLogs);
+router.get('/verify', authorize('ADMIN', 'AUDITOR'), auditController.verifyChain);
 
 module.exports = router;

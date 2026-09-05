@@ -16,6 +16,16 @@ const config = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   bcryptRounds: Number(process.env.BCRYPT_ROUNDS) || 10,
   passwordExpiryDays: Number(process.env.PASSWORD_EXPIRY_DAYS) || 90,
+  auditChainSecret: (() => {
+    const secret = process.env.AUDIT_CHAIN_SECRET;
+    if (!secret) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('AUDIT_CHAIN_SECRET environment variable is required in production.');
+      }
+      console.warn('WARNING: AUDIT_CHAIN_SECRET is not set. Using insecure dev fallback.');
+    }
+    return secret || 'dev-audit-chain-secret-change-me';
+  })(),
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:5173')
     .split(',')
     .map((s) => s.trim())

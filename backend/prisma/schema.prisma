@@ -210,16 +210,18 @@ model NotificationPreference {
 }
 
 model AuditLog {
-  id         String   @id @default(uuid()) @db.Uuid
-  user       User?    @relation(fields: [userId], references: [id])
-  userId     String?  @db.Uuid
-  action     String
-  entityType String
-  entityId   String?
-  before     Json?
-  after      Json?
-  ip         String?
-  createdAt  DateTime @default(now())
+  id           String   @id @default(uuid()) @db.Uuid
+  user         User?    @relation(fields: [userId], references: [id])
+  userId       String?  @db.Uuid
+  action       String
+  entityType   String
+  entityId     String?
+  before       Json?
+  after        Json?
+  ip           String?
+  createdAt    DateTime @default(now())
+  chainHash    String   @default("")
+  previousHash String   @default("")
 
   @@index([entityType, entityId])
   @@index([action])
