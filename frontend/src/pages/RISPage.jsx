@@ -32,6 +32,8 @@ export default function RISPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [returnOpen, setReturnOpen] = useState(false);
+  const [approveOpen, setApproveOpen] = useState(false);
+  const [approvalItems, setApprovalItems] = useState([]);
 
   const load = () => {
     const q = new URLSearchParams({ page });
@@ -145,7 +147,10 @@ export default function RISPage() {
           canCancel={canCancel}
           canReturn={canReturn}
           onClose={() => setDetail(null)}
-          onApprove={() => act(detail.id, 'approve', {}, 'approved')}
+          onApprove={() => {
+            setApprovalItems(detail.items.map((it) => ({ id: it.id, approved: '' })));
+            setApproveOpen(true);
+          }}
           onReject={() => setConfirm({ id: detail.id, action: 'reject', label: 'rejected', kind: 'rem' })}
           onIssue={() => act(detail.id, 'issue', {}, 'issued')}
           onCancel={() => setConfirm({ id: detail.id, action: 'cancel', label: 'cancelled', kind: 'rem' })}
@@ -179,6 +184,55 @@ export default function RISPage() {
           onClose={() => setReturnOpen(false)}
           onReturn={(items) => act(detail.id, 'return', { items }, 'returned')}
         />
+      )}
+
+      {approveOpen && detail && (
+        <dialog className="modal modal-open">
+          <div className="modal-box max-w-3xl">
+            <h3 className="font-bold text-lg">Approve Requisition</h3>
+            <p className="text-sm text-base-content/60 mt-1">Set approved quantities per item. Leave blank to approve the full requested quantity.</p>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              const items = approvalItems.map((it) => ({ risItemId: it.id, quantityApproved: it.approved }));
+              await act(detail.id, 'approve', { items }, 'approved');
+              setApproveOpen(false);
+            }} className="mt-4">
+              <div className="overflow-x-auto">
+                <table className="table table-sm">
+                  <thead><tr><th>Item</th><th>Requested</th><th>Approved Qty</th></tr></thead>
+                  <tbody>
+                    {detail.items.map((it) => {
+                      const approval = approvalItems.find((a) => a.id === it.id);
+                      return (
+                        <tr key={it.id}>
+                          <td>{it.item?.name} <span className="text-xs opacity-60">{it.item?.sku}</span></td>
+                          <td className="font-mono">{Number(it.quantityRequested).toLocaleString()}</td>
+                          <td>
+                            <input type="number" className="input input-sm w-32" min="0" max={it.quantityRequested} step="0.01"
+                              value={approval?.approved ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value === '' ? '' : Number(e.target.value);
+                                setApprovalItems((prev) => {
+                                  const next = prev.filter((a) => a.id !== it.id);
+                                  if (val === '') return next;
+                                  return [...next, { id: it.id, approved: Math.min(val, it.quantityRequested) }];
+                                });
+                              }} />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="modal-action">
+                <button type="button" className="btn" onClick={() => setApproveOpen(false)}>Cancel</button>
+                <button type="submit" className="btn btn-success">Approve</button>
+              </div>
+            </form>
+          </div>
+          <form method="dialog" className="modal-backdrop"><button onClick={() => setApproveOpen(false)}>close</button></form>
+        </dialog>
       )}
     </div>
   );

@@ -306,65 +306,68 @@ async function importItems(req, res) {
     throw new ApiError(400, 'CSV must have columns: sku, name, category, unit (description, currentStock, unitCost, stockNumber, fundCluster optional).');
   }
 
-  const categoryCache = new Map();
-  const getCategory = async (name) => {
-    if (!name) throw new Error('category is required');
-    if (categoryCache.has(name)) return categoryCache.get(name);
-    let cat = await prisma.category.findUnique({ where: { name } });
-    if (!cat) cat = await prisma.category.create({ data: { name } });
-    categoryCache.set(name, cat);
-    return cat;
-  };
-
   let created = 0;
   let updated = 0;
   const errors = [];
-  for (let r = 1; r < rows.length; r += 1) {
-    const row = rows[r];
-    const sku = (row[iSku] || '').toUpperCase();
-    const name = row[iName];
-    const unit = row[iUnit];
-    if (!sku || !name || !unit) {
-      errors.push(`Row ${r + 1}: missing sku/name/unit — skipped.`);
-      continue;
-    }
-    try {
-      const category = await getCategory(row[iCategory]);
-      const existing = await prisma.item.findUnique({ where: { sku } });
-      const data = {
-        name,
-        description: iDescription >= 0 ? row[iDescription] || null : null,
-        categoryId: category.id,
-        unit,
-        reorderThreshold: iReorder >= 0 ? Number(row[iReorder]) || 0 : 0,
-        currentStock: iQty >= 0 ? Number(row[iQty]) || 0 : 0,
-        unitCost: iCost >= 0 ? Number(row[iCost]) || 0 : 0,
-        stockNumber: iStockNumber >= 0 ? row[iStockNumber] || null : null,
-        fundCluster: iFundCluster >= 0 ? row[iFundCluster] || null : null,
-      };
-      if (existing) {
-        await prisma.item.update({ where: { sku }, data: { ...data, sku } });
-        updated += 1;
-      } else {
-        const item = await prisma.item.create({ data: { ...data, sku, isActive: true } });
-        if (item.currentStock > 0) {
-          await prisma.ledgerEntry.create({
-            data: {
-              itemId: item.id,
-              referenceType: 'OPENING_BALANCE',
-              remarks: 'Imported opening balance',
-              inflow: item.currentStock,
-              runningBalance: item.currentStock,
-              createdById: req.user.id,
-            },
-          });
-        }
-        created += 1;
+
+  await prisma.$transaction(async (tx) => {
+    const categoryCache = new Map();
+    const getCategory = async (name) => {
+      if (!name) throw new Error('category is required');
+      if (categoryCache.has(name)) return categoryCache.get(name);
+      let cat = await tx.category.findUnique({ where: { name } });
+      if (!cat) cat = await tx.category.create({ data: { name } });
+      categoryCache.set(name, cat);
+      return cat;
+    };
+
+    for (let r = 1; r < rows.length; r += 1) {
+      const row = rows[r];
+      const sku = (row[iSku] || '').toUpperCase();
+      const name = row[iName];
+      const unit = row[iUnit];
+      if (!sku || !name || !unit) {
+        errors.push(`Row ${r + 1}: missing sku/name/unit — skipped.`);
+        continue;
       }
-    } catch (err) {
-      errors.push(`Row ${r + 1} (${sku}): ${err.message}`);
+      try {
+        const category = await getCategory(row[iCategory]);
+        const existing = await tx.item.findUnique({ where: { sku } });
+        const data = {
+          name,
+          description: iDescription >= 0 ? row[iDescription] || null : null,
+          categoryId: category.id,
+          unit,
+          reorderThreshold: iReorder >= 0 ? Number(row[iReorder]) || 0 : 0,
+          currentStock: iQty >= 0 ? Number(row[iQty]) || 0 : 0,
+          unitCost: iCost >= 0 ? Number(row[iCost]) || 0 : 0,
+          stockNumber: iStockNumber >= 0 ? row[iStockNumber] || null : null,
+          fundCluster: iFundCluster >= 0 ? row[iFundCluster] || null : null,
+        };
+        if (existing) {
+          await tx.item.update({ where: { sku }, data: { ...data, sku } });
+          updated += 1;
+        } else {
+          const item = await tx.item.create({ data: { ...data, sku, isActive: true } });
+          if (item.currentStock > 0) {
+            await tx.ledgerEntry.create({
+              data: {
+                itemId: item.id,
+                referenceType: 'OPENING_BALANCE',
+                remarks: 'Imported opening balance',
+                inflow: item.currentStock,
+                runningBalance: item.currentStock,
+                createdById: req.user.id,
+              },
+            });
+          }
+          created += 1;
+        }
+      } catch (err) {
+        errors.push(`Row ${r + 1} (${sku}): ${err.message}`);
+      }
     }
-  }
+  });
 
   await writeAudit(req, 'IMPORT', 'Item', null, null, { rows: rows.length - 1, created, updated, errors: errors.length });
   res.json({ data: { created, updated, errors }, message: `Import complete: ${created} created, ${updated} updated, ${errors.length} errors.` });
