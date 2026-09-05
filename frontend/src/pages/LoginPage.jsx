@@ -287,19 +287,21 @@ export default function LoginPage() {
           </form>
 
           <div className="divider mt-7 text-xs font-medium text-base-content/45">Demo accounts</div>
-          <div className="grid grid-cols-2 gap-2">
-            {DEMO_ROLES.map((r) => (
-              <button
-                key={r.u}
-                type="button"
-                onClick={() => prefill(r.u)}
-                className="btn btn-outline btn-sm justify-start gap-2 px-3"
-              >
-                <span className="font-mono text-xs">{r.u}</span>
-                <span className="ml-auto hidden truncate text-[11px] opacity-60 sm:block">{r.label}</span>
-              </button>
-            ))}
-          </div>
+          {import.meta.env.VITE_SHOW_DEMO_ACCOUNTS === 'true' && (
+            <div className="grid grid-cols-2 gap-2">
+              {DEMO_ROLES.map((r) => (
+                <button
+                  key={r.u}
+                  type="button"
+                  onClick={() => prefill(r.u)}
+                  className="btn btn-outline btn-sm justify-start gap-2 px-3"
+                >
+                  <span className="font-mono text-xs">{r.u}</span>
+                  <span className="ml-auto hidden truncate text-[11px] opacity-60 sm:block">{r.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-base-content/45">
             <ShieldCheck className="h-4 w-4" />

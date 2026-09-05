@@ -18,7 +18,8 @@ const bcrypt = require('bcryptjs');
 async function main() {
   console.log('[seed] Seeding database...');
 
-  const password = bcrypt.hashSync('Password123!', 10);
+  const defaultPassword = process.env.SEED_DEFAULT_PASSWORD || 'LguIms2026!';
+  const password = bcrypt.hashSync(defaultPassword, 10);
 
   const departments = [
     { name: 'General Services Office', code: 'GSO', headName: 'N/A – General Services Officer' },
@@ -100,7 +101,7 @@ async function main() {
     }
   }
 
-  console.log('[seed] Done. Seed users (password "Password123!"): admin, warehouse, custodian, auditor, cho.head, eo.head');
+  console.log('[seed] Done. Seed users created. Set SEED_DEFAULT_PASSWORD env var to customize default password.');
 }
 
 main()
