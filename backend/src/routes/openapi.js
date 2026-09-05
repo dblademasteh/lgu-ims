@@ -738,18 +738,31 @@
  *     responses:
  *       200: { description: File stream. }
  *
- * /reports/ledger-card/{itemId}:
- *   get:
- *     tags: [Reports]
- *     summary: Per-item ledger card PDF
- *     parameters:
- *       - in: path
- *         name: itemId
- *         required: true
- *         schema: { type: string, format: uuid }
- *     responses:
- *       200: { description: PDF stream. }
- */
+  * /reports/ledger-card/{itemId}:
+  *   get:
+  *     tags: [Reports]
+  *     summary: Per-item ledger card PDF
+  *     parameters:
+  *       - in: path
+  *         name: itemId
+  *         required: true
+  *         schema: { type: string, format: uuid }
+  *     responses:
+  *       200: { description: PDF stream. }
+  *
+  * /reports/par/{risId}:
+  *   get:
+  *     tags: [Reports]
+  *     summary: Property Acknowledgement Receipt (PAR) for a RIS
+  *     parameters:
+  *       - in: path
+  *         name: risId
+  *         required: true
+  *         schema: { type: string, format: uuid }
+  *     responses:
+  *       200: { description: PDF stream. }
+  *       400: { description: No accountable items in RIS. }
+  */
 
 /**
  * @openapi

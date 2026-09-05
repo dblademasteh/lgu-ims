@@ -99,6 +99,7 @@ model Item {
   unitCost         Float    @default(0)
   imageUrl         String?
   isActive         Boolean  @default(true)
+  isAccountable    Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

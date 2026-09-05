@@ -322,8 +322,9 @@ export default function ItemsPage() {
                       <td className="text-right"><Money value={i.unitCost} /></td>
                       <td className="font-mono text-xs">{i.stockNumber || '—'}</td>
                       <td className="font-mono text-xs">{i.fundCluster || '—'}</td>
-                      <td>{i.lowStock ? <Badge status="Low">Low</Badge> : <Badge status="OK">OK</Badge>}</td>
-                      <td>
+                       <td>{i.lowStock ? <Badge status="Low">Low</Badge> : <Badge status="OK">OK</Badge>}</td>
+                       <td>{i.isAccountable ? <Badge status="info">PAR</Badge> : <span className="text-xs opacity-40">—</span>}</td>
+                       <td>
                         <div className="flex justify-end gap-1">
                           {canManage && (
                             <button className="btn btn-ghost btn-xs" title="Upload image" onClick={() => triggerImageUpload(i)}>
@@ -417,7 +418,7 @@ function ItemFormModal({ open, onClose, item, categories, onSaved }) {
 
   const [form, setForm] = useState({
     sku: '', name: '', description: '', categoryId: '', unit: '',
-    reorderThreshold: 0, currentStock: 0, unitCost: 0, stockNumber: '', fundCluster: '',
+    reorderThreshold: 0, currentStock: 0, unitCost: 0, stockNumber: '', fundCluster: '', isAccountable: false,
   });
 
   useEffect(() => {
@@ -426,8 +427,8 @@ function ItemFormModal({ open, onClose, item, categories, onSaved }) {
         sku: item.sku, name: item.name, description: item.description || '',
         categoryId: item.categoryId, unit: item.unit,
         reorderThreshold: item.reorderThreshold, currentStock: item.currentStock, unitCost: item.unitCost,
-        stockNumber: item.stockNumber || '', fundCluster: item.fundCluster || '',
-      } : { sku: '', name: '', description: '', categoryId: categories[0]?.id || '', unit: '', reorderThreshold: 0, currentStock: 0, unitCost: 0, stockNumber: '', fundCluster: '' });
+        stockNumber: item.stockNumber || '', fundCluster: item.fundCluster || '', isAccountable: item.isAccountable || false,
+      } : { sku: '', name: '', description: '', categoryId: categories[0]?.id || '', unit: '', reorderThreshold: 0, currentStock: 0, unitCost: 0, stockNumber: '', fundCluster: '', isAccountable: false });
     }
   }, [open, item]);
 
@@ -502,6 +503,10 @@ function ItemFormModal({ open, onClose, item, categories, onSaved }) {
             <input className="input" value={form.fundCluster || ''}
               onChange={(e) => setForm({ ...form, fundCluster: e.target.value })} placeholder="e.g. 101, 104" />
           </fieldset>
+          <label className="fieldset sm:col-span-2 cursor-pointer">
+            <input type="checkbox" className="checkbox" checked={form.isAccountable} onChange={(e) => setForm({ ...form, isAccountable: e.target.checked })} />
+            <span className="fieldset-legend">Accountable item (PAR / PPE)</span>
+          </label>
           {!editing && (
             <fieldset className="fieldset sm:col-span-2">
               <legend className="fieldset-legend">Opening stock</legend>

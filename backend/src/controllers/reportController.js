@@ -332,4 +332,63 @@ async function ledgerCardReport(req, res) {
   }, `Ledger_Card_${item.sku}.pdf`);
 }
 
-module.exports = { rsmiReport, inventoryReport, movementsReport, ledgerCardReport };
+module.exports = { rsmiReport, inventoryReport, movementsReport, ledgerCardReport, parReport };
+
+async function parReport(req, res) {
+  const ris = await prisma.ris.findUnique({
+    where: { id: req.params.id },
+    include: { department: true, items: { where: { quantityIssued: { gt: 0 } }, include: { item: { include: { category: true } } } } },
+  });
+  if (!ris) throw new ApiError(404, 'RIS not found.');
+
+  const accountableItems = ris.items.filter((it) => it.item.isAccountable);
+  if (accountableItems.length === 0) {
+    throw new ApiError(400, 'No accountable items in this RIS. Mark items as accountable to generate PAR.');
+  }
+
+  const issuedAt = ris.issuedAt ? new Date(ris.issuedAt) : new Date();
+  const body = [
+    [{ text: 'PROPERTY ACKNOWLEDGEMENT RECEIPT', style: 'title' }, {}, {}, {}, {}, {}],
+    [{ text: `RIS: ${ris.risNumber}`, colSpan: 3 }, { text: `Date: ${issuedAt.toLocaleDateString()}`, colSpan: 3 }, {}, {}, {}, {}],
+    [{ text: `Department: ${ris.department.name}`, colSpan: 3 }, { text: `Requested by: ${ris.requestedBy?.fullName || ''}`, colSpan: 3 }, {}, {}, {}, {}],
+    [{ text: '', bold: true }, {}, {}, {}, {}, {}],
+    [{ text: 'Item', style: 'th' }, { text: 'Stock No.', style: 'th' }, { text: 'Description', style: 'th' }, { text: 'Unit', style: 'th' }, { text: 'Qty', style: 'th' }, { text: 'Unit Cost', style: 'th' }, { text: 'Total', style: 'th' }],
+    ...accountableItems.map((it) => {
+      const qty = it.quantityIssued;
+      const cost = it.unitCost || it.item.unitCost;
+      const total = qty * cost;
+      return [
+        it.item.name,
+        it.item.stockNumber || '',
+        it.item.description || '',
+        it.item.unit,
+        qty,
+        money(cost),
+        money(total),
+      ];
+    }),
+    [{ text: `TOTAL: ${money(accountableItems.reduce((s, it) => s + (it.quantityIssued * (it.unitCost || it.item.unitCost)), 0))}`, colSpan: 6, bold: true }, {}, {}, {}, {}, {}],
+    [{ text: '', bold: true }, {}, {}, {}, {}, {}],
+    [{ text: 'Received by:', bold: true }, {}, {}, {}, {}, {}],
+    [{ text: '', bold: true }, {}, {}, {}, {}, {}],
+    [{ text: 'Name & Signature', bold: true }, {}, { text: 'Date', bold: true }, {}, {}, {}],
+    [{ text: '', bold: true }, {}, {}, {}, {}, {}],
+    [{ text: 'Acknowledged by:', bold: true }, {}, {}, {}, {}, {}],
+    [{ text: '', bold: true }, {}, {}, {}, {}, {}],
+    [{ text: 'Property Custodian', bold: true }, {}, { text: 'Date', bold: true }, {}, {}, {}],
+  ];
+
+  renderPdf(res, {
+    ...pdfHeader('PROPERTY ACKNOWLEDGEMENT RECEIPT', `COA-compliant PAR for RIS ${ris.risNumber}`),
+    content: [
+      {
+        table: {
+          headerRows: 1,
+          widths: ['*', 'auto', '*', 'auto', 'auto', 'auto', 'auto'],
+          body,
+        },
+        layout: { fillColor: (rowIndex) => (rowIndex % 2 === 0 ? null : '#F3F4F6') },
+      },
+    ],
+  }, `PAR_${ris.risNumber}.pdf`);
+}

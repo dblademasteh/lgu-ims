@@ -114,16 +114,18 @@ async function dashboardStats(req, res) {
   const { from, to } = req.query;
   let start = null;
   let end = null;
-  if (from) start = new Date(from);
-  if (to) {
-    end = new Date(to);
-    end.setHours(23, 59, 59, 999);
+  if (from) {
+    const [y, m, d] = String(from).split('-').map(Number);
+    if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) start = new Date(y, m - 1, d);
   }
-  if (isNaN(start)) start = null;
-  if (isNaN(end)) end = null;
-
-  const monthStart = start || new Date(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`);
-  const monthEnd = end || new Date();
+  if (to) {
+    const [y, m, d] = String(to).split('-').map(Number);
+    if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
+      end = new Date(y, m - 1, d, 23, 59, 59, 999);
+    }
+  }
+  const effectiveStart = start || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const effectiveEnd = end || new Date();
 
   const lowStockRows = await prisma.$queryRaw`
     SELECT i."id", i."name", i."sku", i."currentStock", i."reorderThreshold", i."unit", c."id" AS "categoryId", c."name" AS "categoryName"
@@ -145,20 +147,20 @@ async function dashboardStats(req, res) {
   }));
   const lowStockItems = lowStock.length;
 
-  const whereClause = {
+  const issuanceWhere = {
     referenceType: 'ISSUANCE',
-    date: { gte: monthStart, lte: monthEnd },
+    date: { gte: effectiveStart, lte: effectiveEnd },
   };
 
   const [totalItems, totalCategories, pendingRis, issuedThisMonth] = await Promise.all([
     prisma.item.count({ where: { isActive: true } }),
     prisma.category.count(),
     prisma.ris.count({ where: { status: 'PENDING' } }),
-    prisma.ledgerEntry.count({ where: whereClause }),
+    prisma.ledgerEntry.count({ where: issuanceWhere }),
   ]);
 
   const recentLedger = await prisma.ledgerEntry.findMany({
-    where: (start || end) ? { date: { gte: monthStart, lte: monthEnd } } : undefined,
+    where: (start || end) ? { date: { gte: effectiveStart, lte: effectiveEnd } } : undefined,
     include: { item: { select: { id: true, name: true, sku: true, unit: true } } },
     orderBy: { date: 'desc' },
     take: 8,

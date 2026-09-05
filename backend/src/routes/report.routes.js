@@ -10,5 +10,6 @@ router.get('/rsmi', authorize(...VIEWERS), reportController.rsmiReport);
 router.get('/inventory', authorize(...VIEWERS), reportController.inventoryReport);
 router.get('/movements', authorize(...VIEWERS), reportController.movementsReport);
 router.get('/ledger-card/:itemId', authorize(...VIEWERS), reportController.ledgerCardReport);
+router.get('/par/:risId', authorize(...VIEWERS), reportController.parReport);
 
 module.exports = router;
