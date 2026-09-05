@@ -5,6 +5,7 @@ const config = require('./config');
 const routes = require('./routes');
 const swaggerSpec = require('./swagger');
 const { notFoundHandler, errorHandler } = require('./middleware/error');
+const { authLimiter, strictAuthLimiter } = require('./middleware/rateLimit');
 
 const app = express();
 
@@ -16,6 +17,10 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { customSiteTitle: 'LGU IMS API Docs' }));
+
+app.use('/api/v1/auth/login', strictAuthLimiter);
+app.use('/api/v1/auth/forgot-password', authLimiter);
+app.use('/api/v1/auth/reset-password', authLimiter);
 
 app.use('/api/v1', routes);
 

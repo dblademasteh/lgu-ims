@@ -23,6 +23,7 @@
     "dotenv": "^17.4.2",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.4.0",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^10.0.0",
     "pdfmake": "^0.3.11",
