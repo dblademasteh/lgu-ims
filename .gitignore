@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+*.log
+
+# Environment (never commit secrets)
+backend/.env
+
+# Build output
+frontend/dist/
+dist/
+
+# Prisma
+backend/prisma/*.db
+backend/prisma/migrations/dev.db
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Reports/temp
+*.tmp
+frontend/err*.txt
+frontend/findings.txt
+frontend/*.pid
+backend/p_test.js
+backend/*.pid
+
+# Agent / IDE config noise
+.agent/
+.agents/
+.claude/
+.codex/
+.gemini/
+.opencode/

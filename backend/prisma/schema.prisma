@@ -1,0 +1,240 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  WAREHOUSE_STAFF
+  PROPERTY_CUSTODIAN
+  AUDITOR
+  DEPARTMENT_HEAD
+}
+
+enum RisStatus {
+  PENDING
+  APPROVED
+  PARTIALLY_ISSUED
+  ISSUED
+  REJECTED
+  CANCELLED
+}
+
+enum LedgerReferenceType {
+  OPENING_BALANCE
+  RECEIPT
+  ISSUANCE
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  RETURN
+}
+
+model Department {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @unique
+  code      String    @unique
+  headName  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  users     User[]
+  ris       Ris[]
+}
+
+model Category {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items Item[]
+}
+
+model User {
+  id           String      @id @default(uuid()) @db.Uuid
+  username     String      @unique
+  email        String      @unique
+  password     String
+  fullName     String
+  role         Role        @default(WAREHOUSE_STAFF)
+  isActive     Boolean     @default(true)
+  externalId   String? // future SSO / HRIS integration
+  departmentId String?  @db.Uuid
+  department   Department? @relation(fields: [departmentId], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  requestedRis  Ris[]       @relation("RisRequestor")
+  approvedRis   Ris[]       @relation("RisApprover")
+  issuedRis     Ris[]       @relation("RisIssuer")
+  ledgerEntries LedgerEntry[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+  receivings    Receiving[]
+}
+
+model Item {
+  id               String   @id @default(uuid()) @db.Uuid
+  sku              String   @unique
+  stockNumber      String?
+  fundCluster      String?
+  name             String
+  description      String?
+  category         Category @relation(fields: [categoryId], references: [id])
+  categoryId       String   @db.Uuid
+  unit             String
+  reorderThreshold Float    @default(0)
+  currentStock     Float    @default(0)
+  unitCost         Float    @default(0)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  ledgerEntries LedgerEntry[]
+  risItems      RisItem[]
+  notifications Notification[]
+  receivingItems ReceivingItem[]
+}
+
+model LedgerEntry {
+  id             String               @id @default(uuid()) @db.Uuid
+  item           Item                 @relation(fields: [itemId], references: [id])
+  itemId         String               @db.Uuid
+  referenceType  LedgerReferenceType
+  referenceId    String?
+  date           DateTime             @default(now())
+  inflow         Float                @default(0)
+  outflow        Float                @default(0)
+  runningBalance Float                @default(0)
+  remarks        String?
+  createdBy      User?                @relation(fields: [createdById], references: [id])
+  createdById    String?              @db.Uuid
+  createdAt      DateTime             @default(now())
+
+  @@index([itemId, date])
+  @@index([referenceType])
+}
+
+model Ris {
+  id            String    @id @default(uuid()) @db.Uuid
+  risNumber     String    @unique
+  department    Department @relation(fields: [departmentId], references: [id])
+  departmentId  String    @db.Uuid
+  purpose       String
+  requestedBy   User      @relation("RisRequestor", fields: [requestedById], references: [id])
+  requestedById String    @db.Uuid
+  status        RisStatus @default(PENDING)
+  approvedBy    User?     @relation("RisApprover", fields: [approvedById], references: [id])
+  approvedById  String?   @db.Uuid
+  approvedAt    DateTime?
+  issuedBy      User?     @relation("RisIssuer", fields: [issuedById], references: [id])
+  issuedById    String?   @db.Uuid
+  issuedAt      DateTime?
+  remarks       String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  items RisItem[]
+
+  @@index([risNumber])
+  @@index([status])
+}
+
+model RisItem {
+  id                String @id @default(uuid()) @db.Uuid
+  ris               Ris    @relation(fields: [risId], references: [id], onDelete: Cascade)
+  risId             String @db.Uuid
+  item              Item   @relation(fields: [itemId], references: [id])
+  itemId            String @db.Uuid
+  quantityRequested Float
+  quantityApproved  Float  @default(0)
+  quantityIssued    Float  @default(0)
+  unitCost          Float  @default(0)
+
+  @@index([risId])
+  @@index([itemId])
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  user      User?     @relation(fields: [userId], references: [id])
+  userId    String?   @db.Uuid
+  type      String
+  title     String
+  message   String
+  isRead    Boolean   @default(false)
+  item      Item?     @relation(fields: [itemId], references: [id])
+  itemId    String?   @db.Uuid
+  createdAt DateTime  @default(now())
+
+  @@index([userId, isRead])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  user       User?    @relation(fields: [userId], references: [id])
+  userId     String?  @db.Uuid
+  action     String
+  entityType String
+  entityId   String?
+  before     Json?
+  after      Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([action])
+}
+
+model Supplier {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  contact   String?
+  phone     String?
+  email     String?
+  address   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  receivings Receiving[]
+}
+
+model Receiving {
+  id           String   @id @default(uuid()) @db.Uuid
+  receivingNo  String   @unique
+  supplier     Supplier @relation(fields: [supplierId], references: [id])
+  supplierId   String   @db.Uuid
+  receiptDate  DateTime @default(now())
+  poNumber     String?
+  drNumber     String?
+  remarks      String?
+  createdBy    User     @relation(fields: [createdById], references: [id])
+  createdById  String   @db.Uuid
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  items ReceivingItem[]
+
+  @@index([receivingNo])
+  @@index([supplierId])
+}
+
+model ReceivingItem {
+  id           String    @id @default(uuid()) @db.Uuid
+  receiving    Receiving @relation(fields: [receivingId], references: [id], onDelete: Cascade)
+  receivingId  String    @db.Uuid
+  item         Item      @relation(fields: [itemId], references: [id])
+  itemId       String    @db.Uuid
+  quantity     Float
+  unitCost     Float     @default(0)
+  remarks      String?
+
+  @@index([receivingId])
+  @@index([itemId])
+}

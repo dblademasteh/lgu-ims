@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: lguims-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lguims
+      POSTGRES_PASSWORD: lguims
+      POSTGRES_DB: lgu_ims
+    ports:
+      - "5433:5432"
+    volumes:
+      - lguims_pgdata:/var/lib/postgresql/data
+      - lguims_backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lguims -d lgu_ims"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    container_name: lguims-api
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://lguims:lguims@db:5432/lgu_ims?schema=public
+      CORS_ORIGINS: "*"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+    command: sh -c "npx prisma migrate deploy && node src/index.js"
+
+  web:
+    build: ./frontend
+    container_name: lguims-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+
+volumes:
+  lguims_pgdata:
+  lguims_backups:
