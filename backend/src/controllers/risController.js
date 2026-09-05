@@ -326,11 +326,49 @@ async function rejectRis(req, res) {
   res.json({ data: updated });
 }
 
+async function certifyRis(req, res) {
+  const ris = await prisma.ris.findUnique({ where: { id: req.params.id }, include: { items: true } });
+  if (!ris) throw new ApiError(404, 'RIS not found.');
+  if (ris.status !== 'APPROVED') {
+    throw new ApiError(400, `Only approved RIS can be certified (current: ${ris.status}).`);
+  }
+
+  const updated = await prisma.ris.update({
+    where: { id: ris.id },
+    data: {
+      status: 'CERTIFIED',
+      certifiedById: req.user.id,
+      certifiedAt: new Date(),
+    },
+    include: RIS_INCLUDE,
+  });
+
+  await writeAudit(req, 'CERTIFY', 'Ris', ris.id, { status: ris.status }, { status: 'CERTIFIED' });
+  await prisma.notification.create({
+    data: {
+      userId: ris.requestedById,
+      type: 'RIS',
+      title: 'Requisition certified',
+      message: `${ris.risNumber} has been certified and is ready for issuance.`,
+    },
+  });
+
+  const appUrl = (config.appUrl || '').replace(/\/$/, '');
+  const url = `${appUrl}/ris`;
+  const tpl = risStatusChange(ris.risNumber, 'CERTIFIED', url);
+  const requester = await prisma.user.findUnique({ where: { id: ris.requestedById } });
+  if (requester?.email) {
+    await sendMail({ to: requester.email, subject: tpl.subject, text: tpl.text, html: tpl.html }).catch(() => {});
+  }
+
+  res.json({ data: updated });
+}
+
 async function issueRis(req, res) {
   const ris = await prisma.ris.findUnique({ where: { id: req.params.id }, include: { items: true } });
   if (!ris) throw new ApiError(404, 'RIS not found.');
-  if (!['APPROVED', 'PARTIALLY_ISSUED'].includes(ris.status)) {
-    throw new ApiError(400, `Only approved or partially issued RIS can be issued (current: ${ris.status}).`);
+  if (!['CERTIFIED', 'PARTIALLY_ISSUED'].includes(ris.status)) {
+    throw new ApiError(400, `Only certified or partially issued RIS can be issued (current: ${ris.status}).`);
   }
 
   const overrides = (req.body.items || []).length > 0 ? req.body.items : null;
@@ -559,6 +597,7 @@ module.exports = {
   createRis,
   approveRis,
   rejectRis,
+  certifyRis,
   issueRis,
   cancelRis,
   returnRisItems,

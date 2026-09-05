@@ -9,9 +9,11 @@ const { notFoundHandler, errorHandler } = require('./middleware/error');
 const { authLimiter, strictAuthLimiter, writeLimiter } = require('./middleware/rateLimit');
 const { apiKeyAuth } = require('./middleware/apiKey');
 const { uploadDir } = require('./middleware/upload');
+const CsrfMiddleware = require('./middleware/csrf');
 
 const app = express();
 
+const csrf = CsrfMiddleware();
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -46,7 +48,8 @@ app.use('/api/v1/auth/forgot-password', authLimiter);
 app.use('/api/v1/auth/reset-password', authLimiter);
 
 app.use(apiKeyAuth);
-app.use('/api/v1', writeLimiter, routes);
+app.use(csrf.middleware[0]);
+app.use('/api/v1', writeLimiter, csrf.middleware[1], routes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -472,4 +472,55 @@ async function agingReport(req, res) {
   }, 'inventory-aging.pdf');
 }
 
-module.exports = { rsmiReport, inventoryReport, movementsReport, ledgerCardReport, parReport, agingReport };
+async function acknowledgmentSlipReport(req, res) {
+  const ris = await prisma.ris.findUnique({
+    where: { id: req.params.id },
+    include: { department: true, items: { where: { quantityIssued: { gt: 0 } }, include: { item: true } } },
+  });
+  if (!ris) throw new ApiError(404, 'RIS not found.');
+  if (!['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status)) {
+    throw new ApiError(400, 'Only issued RIS can generate acknowledgment slip.');
+  }
+
+  const issuedAt = ris.issuedAt ? new Date(ris.issuedAt) : new Date();
+  const totalValue = ris.items.reduce((sum, it) => sum + (it.quantityIssued * (it.unitCost || it.item.unitCost)), 0);
+
+  const body = [
+    [{ text: 'ACKNOWLEDGMENT SLIP', style: 'title' }, {}, {}, {}, {}, {}],
+    [{ text: `RIS: ${ris.risNumber}`, colSpan: 3 }, { text: `Date: ${issuedAt.toLocaleDateString()}`, colSpan: 3 }, {}, {}, {}, {}],
+    [{ text: `Department: ${ris.department.name}`, colSpan: 3 }, { text: `Requested by: ${ris.requestedBy?.fullName || ''}`, colSpan: 3 }, {}, {}, {}, {}],
+    [{ text: '', bold: true }, {}, {}, {}, {}, {}],
+    [{ text: 'Item', style: 'th' }, { text: 'Unit', style: 'th' }, { text: 'Qty Issued', style: 'th' }, { text: 'Unit Cost', style: 'th' }, { text: 'Total', style: 'th' }, {}, {}],
+    ...ris.items.map((it) => {
+      const qty = it.quantityIssued;
+      const cost = it.unitCost || it.item.unitCost;
+      const total = qty * cost;
+      return [it.item.name, it.item.unit, String(qty), money(cost), money(total), {}, {}];
+    }),
+    [{ text: `TOTAL VALUE: ${money(totalValue)}`, colSpan: 4, bold: true }, {}, {}, {}, {}, {}, {}],
+    [{ text: '', bold: true }, {}, {}, {}, {}, {}, {}],
+    [{ text: 'Received by:', bold: true }, {}, {}, {}, {}, {}, {}],
+    [{ text: '', bold: true }, {}, {}, {}, {}, {}, {}],
+    [{ text: 'Name & Signature', bold: true }, {}, { text: 'Date', bold: true }, {}, {}, {}, {}],
+    [{ text: '', bold: true }, {}, {}, {}, {}, {}, {}],
+    [{ text: 'Acknowledged by:', bold: true }, {}, {}, {}, {}, {}, {}],
+    [{ text: '', bold: true }, {}, {}, {}, {}, {}, {}],
+    [{ text: 'Property Custodian / Authorized Officer', bold: true }, {}, { text: 'Date', bold: true }, {}, {}, {}, {}],
+  ];
+
+  renderPdf(res, {
+    ...pdfHeader('ACKNOWLEDGMENT SLIP', `Acknowledgment of receipt for RIS ${ris.risNumber}`),
+    content: [
+      {
+        table: {
+          headerRows: 1,
+          widths: ['*', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto'],
+          body,
+        },
+        layout: { fillColor: (rowIndex) => (rowIndex % 2 === 0 ? null : '#F3F4F6') },
+      },
+    ],
+  }, `Acknowledgment_${ris.risNumber}.pdf`);
+}
+
+module.exports = { rsmiReport, inventoryReport, movementsReport, ledgerCardReport, parReport, agingReport, acknowledgmentSlipReport };

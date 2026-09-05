@@ -800,6 +800,19 @@
   *         schema: { type: string, enum: [pdf, xlsx], default: pdf }
   *     responses:
   *       200: { description: File stream. }
+  *
+  * /reports/acknowledgment/{risId}:
+  *   get:
+  *     tags: [Reports]
+  *     summary: Acknowledgment slip for issued RIS
+  *     parameters:
+  *       - in: path
+  *         name: risId
+  *         required: true
+  *         schema: { type: string, format: uuid }
+  *     responses:
+  *       200: { description: PDF stream. }
+  *       400: { description: RIS not issued. }
   */
 
 /**

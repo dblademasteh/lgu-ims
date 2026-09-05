@@ -3,11 +3,16 @@ import api, { openReport } from '../api/client';
 import useAuthStore, { useCan } from '../stores/authStore';
 import { useToast } from '../components/Toast';
 import PageHeader, { Badge, EmptyState, Money, Pagination, Spinner } from '../components/ui';
+const STATUS_FLOW = ['PENDING', 'APPROVED', 'CERTIFIED', 'ISSUED', 'PARTIALLY_ISSUED', 'REJECTED', 'CANCELLED'];
 
-const STATUS_FLOW = ['PENDING', 'APPROVED', 'ISSUED', 'REJECTED', 'CANCELLED', 'PARTIALLY_ISSUED'];
 const STATUS_BADGE = {
-  PENDING: 'warning', APPROVED: 'info', PARTIALLY_ISSUED: 'warning',
-  ISSUED: 'success', REJECTED: 'error', CANCELLED: 'neutral',
+  PENDING: 'warning',
+  APPROVED: 'info',
+  CERTIFIED: 'info',
+  PARTIALLY_ISSUED: 'warning',
+  ISSUED: 'success',
+  REJECTED: 'error',
+  CANCELLED: 'neutral',
 };
 
 function fmtDate(d) {
@@ -60,6 +65,7 @@ export default function RISPage() {
       toast.success(`RIS ${actLabel}.`);
       setDetail(null);
       setReturnOpen(false);
+      setApproveOpen(false);
       load();
     } catch (e) {
       toast.error(e.response?.data?.message || `Unable to ${action} RIS.`);
@@ -257,6 +263,12 @@ function RisDetail({ ris, user, canManage, canIssue, canCancel, canReturn, onClo
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2z" /></svg>
             Print RIS
           </button>
+          {['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status) && (
+            <button className="btn btn-outline btn-sm" onClick={() => openReport(`/reports/acknowledgment/${ris.id}`)}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m-6-8h6M5 21h14a1 1 0 001-1V4a1 1 0 00-1-1H5a1 1 0 00-1 1v16a1 1 0 001 1z" /></svg>
+              Acknowledgment Slip
+            </button>
+          )}
           {['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status) && ris.items.some((it) => it.item.isAccountable) && (
             <button className="btn btn-outline btn-sm" onClick={() => openReport(`/reports/par/${ris.id}`)}>
               <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m-6-8h6M5 21h14a1 1 0 001-1V4a1 1 0 00-1-1H5a1 1 0 00-1 1v16a1 1 0 001 1z" /></svg>
@@ -265,6 +277,7 @@ function RisDetail({ ris, user, canManage, canIssue, canCancel, canReturn, onClo
           )}
           {canOperate(ris, user.role, 'approve') && <button className="btn btn-success btn-sm" onClick={onApprove}>Approve</button>}
           {canOperate(ris, user.role, 'reject') && <button className="btn btn-error btn-sm btn-outline" onClick={onReject}>Reject</button>}
+          {canOperate(ris, user.role, 'certify') && <button className="btn btn-info btn-sm" onClick={() => act(ris.id, 'certify', {}, 'certified')}>Certify</button>}
           {canOperate(ris, user.role, 'issue') && <button className="btn btn-primary btn-sm" onClick={onIssue}>Issue items</button>}
           {canReturn && ['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status) && (
             <button className="btn btn-outline btn-sm" onClick={onReturn}>Return items</button>
@@ -421,11 +434,14 @@ function canOperate(ris, role, op) {
   if (op === 'reject') {
     return ['ADMIN', 'PROPERTY_CUSTODIAN', 'WAREHOUSE_STAFF'].includes(role) && ['PENDING', 'APPROVED'].includes(ris.status);
   }
+  if (op === 'certify') {
+    return ['ADMIN', 'DEPARTMENT_HEAD'].includes(role) && ris.status === 'APPROVED';
+  }
   if (op === 'issue') {
-    return ['ADMIN', 'WAREHOUSE_STAFF'].includes(role) && ['APPROVED', 'PARTIALLY_ISSUED'].includes(ris.status);
+    return ['ADMIN', 'WAREHOUSE_STAFF'].includes(role) && ['CERTIFIED', 'PARTIALLY_ISSUED'].includes(ris.status);
   }
   if (op === 'cancel') {
-    return role === 'ADMIN' && ['PENDING', 'APPROVED', 'ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status);
+    return role === 'ADMIN' && ['PENDING', 'APPROVED', 'CERTIFIED', 'ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status);
   }
   return false;
 }

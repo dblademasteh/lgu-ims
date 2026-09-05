@@ -11,6 +11,7 @@ router.post('/', authorize('ADMIN', 'WAREHOUSE_STAFF', 'PROPERTY_CUSTODIAN', 'DE
 router.get('/:id', authorize('ADMIN', 'WAREHOUSE_STAFF', 'PROPERTY_CUSTODIAN', 'AUDITOR', 'DEPARTMENT_HEAD'), risController.getRis);
 router.patch('/:id/approve', authorize(...MANAGE_ROLES), risController.approveRis);
 router.patch('/:id/reject', authorize(...MANAGE_ROLES), risController.rejectRis);
+router.patch('/:id/certify', authorize('ADMIN', 'DEPARTMENT_HEAD'), risController.certifyRis);
 router.post('/:id/issue', authorize('ADMIN', 'WAREHOUSE_STAFF'), risController.issueRis);
 router.post('/:id/return', authorize('ADMIN', 'WAREHOUSE_STAFF', 'PROPERTY_CUSTODIAN'), risController.returnRisItems);
 router.patch('/:id/cancel', authorize('ADMIN'), risController.cancelRis);

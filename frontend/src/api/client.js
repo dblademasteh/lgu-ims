@@ -4,6 +4,9 @@ import useAuthStore from '../stores/authStore';
 const api = axios.create({
   baseURL: '/api/v1',
   timeout: 30000,
+  withCredentials: true,
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-XSRF-TOKEN',
 });
 
 let isRefreshing = false;
