@@ -27,6 +27,7 @@ async function apiKeyAuth(req, res, next) {
   });
 
   req.user = record.createdBy;
+  req.authMethod = 'api-key';
   next();
 }
 

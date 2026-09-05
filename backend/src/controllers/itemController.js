@@ -182,6 +182,9 @@ async function adjustStock(req, res) {
     throw new ApiError(400, 'quantity must be a positive number.');
   }
   if (!reason) throw new ApiError(400, 'reason is required for audit purposes.');
+  if (operation === 'OUT' && !referenceId) {
+    throw new ApiError(400, 'referenceId is required for stock-out adjustments. Link to a RIS, receiving, or document ID.');
+  }
 
   let type;
   if (operation === 'IN') {

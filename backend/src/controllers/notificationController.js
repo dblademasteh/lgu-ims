@@ -44,4 +44,26 @@ async function markAllRead(req, res) {
   res.json({ message: 'All notifications marked as read.' });
 }
 
-module.exports = { listNotifications, unreadCount, markRead, markAllRead };
+async function deleteNotification(req, res) {
+  const notification = await prisma.notification.findFirst({
+    where: { id: req.params.id, userId: req.user.id },
+  });
+  if (!notification) {
+    const any = await prisma.notification.findUnique({ where: { id: req.params.id } });
+    if (!any) throw new (require('../utils/ApiError'))(404, 'Notification not found.');
+    throw new (require('../utils/ApiError'))(403, 'This notification belongs to another user.');
+  }
+  await prisma.notification.delete({ where: { id: req.params.id } });
+  res.json({ message: 'Notification deleted.' });
+}
+
+async function cleanupOldNotifications(req, res) {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 90);
+  const result = await prisma.notification.deleteMany({
+    where: { createdAt: { lt: cutoff }, isRead: true },
+  });
+  res.json({ message: `Cleaned up ${result.count} old notifications.` });
+}
+
+module.exports = { listNotifications, unreadCount, markRead, markAllRead, deleteNotification, cleanupOldNotifications };

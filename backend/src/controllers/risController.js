@@ -169,10 +169,13 @@ async function createRis(req, res) {
 }
 
 async function approveRis(req, res) {
-  const ris = await prisma.ris.findUnique({ where: { id: req.params.id }, include: { items: true } });
+  const ris = await prisma.ris.findUnique({ where: { id: req.params.id }, include: { items: true, department: true } });
   if (!ris) throw new ApiError(404, 'RIS not found.');
   if (!['PENDING', 'REJECTED'].includes(ris.status)) {
     throw new ApiError(400, `Only pending or rejected RIS can be approved (current: ${ris.status}).`);
+  }
+  if (req.user.id === ris.requestedById) {
+    throw new ApiError(400, 'You cannot approve your own requisition.');
   }
 
   const approvedItems = (req.body.items || []).length > 0 ? req.body.items : null;
@@ -192,8 +195,17 @@ async function approveRis(req, res) {
 
     for (const line of ris.items) {
       const override = approvedItems ? approvedItems.find((i) => i.itemId === line.itemId || i.risItemId === line.id) : null;
-      const qtyApproved = override ? Number(override.quantityApproved) : line.quantityRequested;
-      await tx.risItem.update({ where: { id: line.id }, data: { quantityApproved: qtyApproved } });
+      let qtyApproved = override ? Number(override.quantityApproved) : line.quantityRequested;
+      if (qtyApproved > line.quantityRequested) {
+        throw new ApiError(400, `Approved quantity cannot exceed requested (${line.quantityRequested}).`);
+      }
+      await tx.risItem.update({
+        where: { id: line.id },
+        data: {
+          quantityApproved: qtyApproved,
+          unitCost: round2(line.unitCost || line.item.unitCost),
+        },
+      });
     }
 
     return tx.ris.findUnique({ where: { id: ris.id }, include: RIS_INCLUDE });
