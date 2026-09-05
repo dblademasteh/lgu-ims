@@ -11,5 +11,6 @@ router.get('/inventory', authorize(...VIEWERS), reportController.inventoryReport
 router.get('/movements', authorize(...VIEWERS), reportController.movementsReport);
 router.get('/ledger-card/:itemId', authorize(...VIEWERS), reportController.ledgerCardReport);
 router.get('/par/:risId', authorize(...VIEWERS), reportController.parReport);
+router.get('/aging', authorize(...VIEWERS), reportController.agingReport);
 
 module.exports = router;

@@ -392,3 +392,84 @@ async function parReport(req, res) {
     ],
   }, `PAR_${ris.risNumber}.pdf`);
 }
+
+async function agingReport(req, res) {
+  const { format = 'pdf' } = req.query;
+
+  const items = await prisma.item.findMany({
+    where: { isActive: true },
+    include: {
+      category: true,
+      ledgerEntries: {
+        orderBy: { date: 'desc' },
+        take: 1,
+      },
+    },
+  });
+
+  const now = new Date();
+  const buckets = [
+    { label: '0-30 days', min: 0, max: 30 },
+    { label: '31-90 days', min: 31, max: 90 },
+    { label: '91-180 days', min: 91, max: 180 },
+    { label: '181-365 days', min: 181, max: 365 },
+    { label: '> 365 days', min: 366, max: Infinity },
+  ];
+
+  const rows = items.map((item) => {
+    const lastMove = item.ledgerEntries[0]?.date || item.createdAt;
+    const age = Math.floor((now - new Date(lastMove)) / (1000 * 60 * 60 * 24));
+    const bucket = buckets.find((b) => age >= b.min && age <= b.max) || { label: '> 365 days' };
+    return {
+      sku: item.sku,
+      name: item.name,
+      category: item.category?.name || '—',
+      stock: item.currentStock,
+      lastMove: new Date(lastMove).toLocaleDateString(),
+      age,
+      bucket: bucket.label,
+    };
+  });
+
+  if (format === 'excel') {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Inventory Aging');
+    sheet.columns = [
+      { header: 'SKU', key: 'sku', width: 20 },
+      { header: 'Item', key: 'name', width: 40 },
+      { header: 'Category', key: 'category', width: 20 },
+      { header: 'Stock', key: 'stock', width: 12 },
+      { header: 'Last Movement', key: 'lastMove', width: 16 },
+      { header: 'Age (days)', key: 'age', width: 12 },
+      { header: 'Aging Bucket', key: 'bucket', width: 18 },
+    ];
+    sheet.getRow(1).font = { bold: true };
+    rows.forEach((r) => sheet.addRow(r));
+    renderExcel(res, workbook, 'inventory-aging.xlsx');
+    return;
+  }
+
+  const body = [
+    [{ text: 'INVENTORY AGING REPORT', style: 'title' }, {}, {}, {}, {}, {}, {}],
+    [{ text: `Generated: ${now.toLocaleString()}`, colSpan: 7 }, {}, {}, {}, {}, {}, {}],
+    [{ text: '', bold: true }, {}, {}, {}, {}, {}, {}],
+    [{ text: 'SKU', style: 'th' }, { text: 'Item', style: 'th' }, { text: 'Category', style: 'th' }, { text: 'Stock', style: 'th' }, { text: 'Last Movement', style: 'th' }, { text: 'Age (days)', style: 'th' }, { text: 'Aging Bucket', style: 'th' }],
+    ...rows.map((r) => [r.sku, r.name, r.category, String(r.stock), r.lastMove, String(r.age), r.bucket]),
+  ];
+
+  renderPdf(res, {
+    ...pdfHeader('INVENTORY AGING REPORT', 'Slow-moving and obsolete inventory analysis'),
+    content: [
+      {
+        table: {
+          headerRows: 1,
+          widths: ['*', '*', '*', 'auto', 'auto', 'auto', 'auto'],
+          body,
+        },
+        layout: { fillColor: (rowIndex) => (rowIndex % 2 === 0 ? null : '#F3F4F6') },
+      },
+    ],
+  }, 'inventory-aging.pdf');
+}
+
+module.exports = { rsmiReport, inventoryReport, movementsReport, ledgerCardReport, parReport, agingReport };

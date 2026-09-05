@@ -789,6 +789,17 @@
   *     responses:
   *       200: { description: PDF stream. }
   *       400: { description: No accountable items in RIS. }
+  *
+  * /reports/aging:
+  *   get:
+  *     tags: [Reports]
+  *     summary: Inventory aging report
+  *     parameters:
+  *       - in: query
+  *         name: format
+  *         schema: { type: string, enum: [pdf, xlsx], default: pdf }
+  *     responses:
+  *       200: { description: File stream. }
   */
 
 /**
