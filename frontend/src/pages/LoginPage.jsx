@@ -30,6 +30,9 @@ export default function LoginPage() {
   const [forgotUser, setForgotUser] = useState('');
   const [forgotBusy, setForgotBusy] = useState(false);
   const [forgotMsg, setForgotMsg] = useState('');
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [tempToken, setTempToken] = useState('');
+  const [code, setCode] = useState('');
   const navigate = useNavigate();
   const setSession = useAuthStore((s) => s.setSession);
   const toast = useToast();
@@ -41,11 +44,33 @@ export default function LoginPage() {
     setError('');
     try {
       const res = await api.post('/auth/login', { username, password });
+      if (res.data.requires2FA) {
+        setRequires2FA(true);
+        setTempToken(res.data.tempToken);
+        return;
+      }
       setSession(res.data);
       toast.success(`Welcome back, ${res.data.user.fullName}.`);
       navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to sign in. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submit2FA = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api.post('/auth/2fa/login', { tempToken, code });
+      setSession(res.data);
+      toast.success(`Welcome back, ${res.data.user.fullName}.`);
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to verify code. Please try again.');
     } finally {
       setBusy(false);
     }
@@ -139,11 +164,12 @@ export default function LoginPage() {
                   type="text"
                   required
                   autoComplete="username"
-                  autoFocus
+                  autoFocus={!requires2FA}
                   placeholder="e.g. admin"
                   className="h-12 w-full bg-transparent text-base"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  disabled={requires2FA}
                 />
               </span>
             </label>
@@ -161,33 +187,62 @@ export default function LoginPage() {
                   className="h-12 w-full bg-transparent text-base"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={requires2FA}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((s) => !s)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                   className="btn btn-ghost btn-circle btn-sm opacity-60 hover:opacity-100"
+                  disabled={requires2FA}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </span>
             </label>
 
-            <button type="submit" className="btn btn-primary h-12 mt-1" disabled={busy}>
-              {busy ? (
-                <>
-                  <span className="loading loading-spinner loading-sm" />
-                  Signing in…
-                </>
-              ) : (
-                <>
-                  <LogIn className="h-5 w-5" />
-                  Sign in
-                </>
-              )}
-            </button>
+            {!requires2FA ? (
+              <button type="submit" className="btn btn-primary h-12 mt-1" disabled={busy}>
+                {busy ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm" />
+                    Signing in…
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="h-5 w-5" />
+                    Sign in
+                  </>
+                )}
+              </button>
+            ) : (
+              <form onSubmit={submit2FA} className="flex flex-col gap-4">
+                <label htmlFor="lgu-2fa-code" className="block">
+                  <span className="mb-2 block font-mono text-[11px] uppercase tracking-[0.12em] text-base-content/60">Authenticator code</span>
+                  <span className="input flex h-12 items-center gap-3 py-0 transition-[border-color,box-shadow] duration-200 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/25">
+                    <ShieldCheck className="h-4 w-4 shrink-0 opacity-50" />
+                    <input
+                      id="lgu-2fa-code"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={6}
+                      required
+                      autoFocus
+                      placeholder="000000"
+                      className="h-12 w-full bg-transparent text-base tracking-widest"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                    />
+                  </span>
+                </label>
+                <button type="submit" className="btn btn-primary h-12" disabled={busy}>
+                  {busy ? <><span className="loading loading-spinner loading-sm" /> Verifying…</> : 'Verify'}
+                </button>
+              </form>
+            )}
             <div className="text-right">
-              <button type="button" className="link link-primary text-xs" onClick={() => setForgotOpen(true)}>Forgot password?</button>
+              <button type="button" className="link link-primary text-xs" onClick={() => setForgotOpen(true)} disabled={requires2FA}>Forgot password?</button>
             </div>
           </form>
 

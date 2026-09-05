@@ -6,6 +6,7 @@ const { signToken, publicUser } = require('../middleware/auth');
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const { sendMail, sendPasswordResetEmail } = require('../services/mailer');
+const { authenticator } = require('otplib');
 
 async function login(req, res) {
   const { username, password } = req.body;
@@ -27,6 +28,11 @@ async function login(req, res) {
   }
 
   await writeAudit(req, 'LOGIN', 'User', user.id, null, { username: user.username });
+
+  if (user.twoFactorEnabled) {
+    const tempToken = jwt.sign({ sub: user.id, type: '2fa_pending' }, config.jwtSecret, { expiresIn: '5m' });
+    return res.json({ requires2FA: true, tempToken, user: publicUser(user) });
+  }
 
   res.json({
     token: signToken(user),
@@ -106,4 +112,74 @@ async function resetPassword(req, res) {
   res.json({ message: 'Password has been reset.' });
 }
 
-module.exports = { login, me, changePassword, logout, forgotPassword, resetPassword };
+async function twoFactorSetup(req, res) {
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user) throw new ApiError(404, 'User not found.');
+
+  const secret = authenticator.generateSecret();
+  const otpauth = authenticator.keyuri(user.username, 'LGU IMS', secret);
+  const dataUrl = await QRCode.toDataURL(otpauth, { margin: 1, width: 320 });
+
+  res.json({ secret, otpauth, dataUrl });
+}
+
+async function twoFactorEnable(req, res) {
+  const { code } = req.body;
+  if (!code) throw new ApiError(400, 'Verification code is required.');
+
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user || !user.twoFactorSecret) throw new ApiError(400, '2FA setup not initiated.');
+
+  const ok = authenticator.verify({ token: code, secret: user.twoFactorSecret });
+  if (!ok) throw new ApiError(400, 'Invalid verification code.');
+
+  await prisma.user.update({ where: { id: user.id }, data: { twoFactorEnabled: true } });
+  await writeAudit(req, '2FA_ENABLE', 'User', user.id, null, { username: user.username });
+
+  res.json({ message: 'Two-factor authentication enabled.' });
+}
+
+async function twoFactorDisable(req, res) {
+  const { code } = req.body;
+  if (!code) throw new ApiError(400, 'Verification code is required.');
+
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user || !user.twoFactorEnabled) throw new ApiError(400, '2FA is not enabled.');
+
+  const ok = authenticator.verify({ token: code, secret: user.twoFactorSecret });
+  if (!ok) throw new ApiError(400, 'Invalid verification code.');
+
+  await prisma.user.update({ where: { id: user.id }, data: { twoFactorEnabled: false, twoFactorSecret: null } });
+  await writeAudit(req, '2FA_DISABLE', 'User', user.id, null, { username: user.username });
+
+  res.json({ message: 'Two-factor authentication disabled.' });
+}
+
+async function twoFactorLogin(req, res) {
+  const { tempToken, code } = req.body;
+  if (!tempToken || !code) throw new ApiError(400, 'Temporary token and code are required.');
+
+  let payload;
+  try {
+    payload = jwt.verify(tempToken, config.jwtSecret);
+  } catch {
+    throw new ApiError(401, 'Invalid or expired session token.');
+  }
+  if (payload.type !== '2fa_pending') throw new ApiError(401, 'Invalid session token.');
+
+  const user = await prisma.user.findUnique({ where: { id: payload.sub }, include: { department: true } });
+  if (!user || !user.isActive) throw new ApiError(401, 'Account is inactive or no longer exists.');
+  if (!user.twoFactorEnabled) throw new ApiError(400, '2FA is not enabled for this account.');
+
+  const ok = authenticator.verify({ token: code, secret: user.twoFactorSecret });
+  if (!ok) throw new ApiError(401, 'Invalid verification code.');
+
+  await writeAudit(req, 'LOGIN', 'User', user.id, null, { username: user.username, twoFactor: true });
+
+  res.json({
+    token: signToken(user),
+    user: publicUser(user),
+  });
+}
+
+module.exports = { login, me, changePassword, logout, forgotPassword, resetPassword, twoFactorSetup, twoFactorEnable, twoFactorDisable, twoFactorLogin };

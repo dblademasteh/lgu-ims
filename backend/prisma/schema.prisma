@@ -62,7 +62,9 @@ model User {
   password     String
   fullName     String
   role         Role        @default(WAREHOUSE_STAFF)
-  isActive     Boolean     @default(true)
+  isActive     Boolean  @default(true)
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret   String?
   externalId   String? // future SSO / HRIS integration
   departmentId String?  @db.Uuid
   department   Department? @relation(fields: [departmentId], references: [id])
@@ -76,6 +78,7 @@ model User {
   notifications Notification[]
   auditLogs     AuditLog[]
   receivings    Receiving[]
+  apiKeys       ApiKey[]
 }
 
 model Item {
@@ -91,6 +94,7 @@ model Item {
   reorderThreshold Float    @default(0)
   currentStock     Float    @default(0)
   unitCost         Float    @default(0)
+  imageUrl         String?
   isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -189,6 +193,20 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([action])
+}
+
+model ApiKey {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  keyPrefix   String
+  keyHash     String
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdById String   @db.Uuid
+
+  @@index([keyPrefix])
 }
 
 model Supplier {

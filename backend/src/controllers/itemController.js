@@ -4,6 +4,9 @@ const ApiError = require('../utils/ApiError');
 const { paginate } = require('../utils/paginate');
 const { writeAudit } = require('../utils/audit');
 const { notifyLowStock } = require('../services/notificationService');
+const { uploadDir } = require('../middleware/upload');
+const path = require('path');
+const fs = require('fs');
 
 async function listItems(req, res) {
   const { page, limit, offset } = paginate(req.query);
@@ -353,4 +356,30 @@ async function importItems(req, res) {
   res.json({ data: { created, updated, errors }, message: `Import complete: ${created} created, ${updated} updated, ${errors.length} errors.` });
 }
 
-module.exports = { listItems, lookupBySku, getItem, createItem, updateItem, archiveItem, adjustStock, itemQR, exportItems, importItems };
+async function uploadItemImage(req, res) {
+  const { id } = req.params;
+  const item = await prisma.item.findUnique({ where: { id } });
+  if (!item) throw new ApiError(404, 'Item not found.');
+
+  if (!req.file) throw new ApiError(400, 'Image file is required.');
+
+  if (item.imageUrl) {
+    const oldPath = path.join(uploadDir, path.basename(item.imageUrl));
+    if (fs.existsSync(oldPath)) {
+      try { fs.unlinkSync(oldPath); } catch (_err) { /* ignore cleanup errors */ }
+    }
+  }
+
+  const publicUrl = `/uploads/items/${req.file.filename}`;
+  const updated = await prisma.item.update({
+    where: { id },
+    data: { imageUrl: publicUrl },
+    include: { category: true },
+  });
+
+  await writeAudit(req, 'UPDATE', 'Item', item.id, { imageUrl: item.imageUrl }, { imageUrl: publicUrl });
+
+  res.json({ data: { ...updated, lowStock: updated.currentStock <= updated.reorderThreshold } });
+}
+
+module.exports = { listItems, lookupBySku, getItem, createItem, updateItem, archiveItem, adjustStock, itemQR, exportItems, importItems, uploadItemImage };

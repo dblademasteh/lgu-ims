@@ -33,6 +33,10 @@ export default function ItemsPage() {
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [qrs, setQrs] = useState(null);
   const [busyCsv, setBusyCsv] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const imageInputRef = useRef(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const loadCategories = () => {
     api.get('/categories').then((r) => setCategories(r.data.data)).catch(() => {});
@@ -116,6 +120,66 @@ export default function ItemsPage() {
     }
   };
 
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((i) => i.id)));
+    }
+  };
+
+  const bulkArchive = async () => {
+    if (!window.confirm(`Archive ${selectedIds.size} selected item(s)?`)) return;
+    setBusyCsv(true);
+    try {
+      await Promise.all([...selectedIds].map((id) => api.delete(`/items/${id}`)));
+      toast.success(`${selectedIds.size} item(s) archived.`);
+      setSelectedIds(new Set());
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to archive some items.');
+    } finally {
+      setBusyCsv(false);
+    }
+  };
+
+  const triggerImageUpload = (item) => {
+    setSelected(item);
+    setImageFile(null);
+    setImagePreview('');
+    imageInputRef.current?.click();
+  };
+
+  const onImageSelected = (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !selected) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const uploadImage = async () => {
+    if (!imageFile || !selected) return;
+    const form = new FormData();
+    form.append('image', imageFile);
+    try {
+      await api.post(`/items/${selected.id}/image`, form);
+      toast.success('Image uploaded.');
+      setImageFile(null);
+      setImagePreview('');
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to upload image.');
+    }
+  };
+
   return (
     <div>
       <PageHeader
@@ -153,9 +217,10 @@ export default function ItemsPage() {
               </>
             )}
             <button className="btn btn-ghost" onClick={() => setScanOpen(true)}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 0 0114 0z" /></svg>
               Scan code
             </button>
+            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={onImageSelected} />
           </>
         }
       />
@@ -211,6 +276,12 @@ export default function ItemsPage() {
               <table className="table table-sm">
                 <thead>
                   <tr>
+                    <th>
+                      {canManage && (
+                        <input type="checkbox" className="checkbox checkbox-sm" checked={selectedIds.size === filtered.length && filtered.length > 0} onChange={toggleSelectAll} />
+                      )}
+                    </th>
+                    <th>Image</th>
                     <th>SKU</th>
                     <th>Item / Description</th>
                     <th>Category</th>
@@ -227,6 +298,18 @@ export default function ItemsPage() {
                 <tbody>
                   {filtered.map((i) => (
                     <tr key={i.id} className="hover">
+                      <td>
+                        {canManage && (
+                          <input type="checkbox" className="checkbox checkbox-sm" checked={selectedIds.has(i.id)} onChange={() => toggleSelect(i.id)} />
+                        )}
+                      </td>
+                      <td>
+                        {i.imageUrl ? (
+                          <img src={i.imageUrl} alt={i.name} className="w-10 h-10 object-cover rounded" />
+                        ) : (
+                          <span className="text-xs opacity-40">—</span>
+                        )}
+                      </td>
                       <td className="font-mono text-xs">{i.sku}</td>
                       <td>
                         <div className="font-medium">{i.name}</div>
@@ -242,6 +325,11 @@ export default function ItemsPage() {
                       <td>{i.lowStock ? <Badge status="Low">Low</Badge> : <Badge status="OK">OK</Badge>}</td>
                       <td>
                         <div className="flex justify-end gap-1">
+                          {canManage && (
+                            <button className="btn btn-ghost btn-xs" title="Upload image" onClick={() => triggerImageUpload(i)}>
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.5-4.5a2 2 0 012.8 0L16 16m-2-2l1.6-1.6a2 2 0 012.8 0L20 12m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z" /></svg>
+                            </button>
+                          )}
                           <button className="btn btn-ghost btn-xs" title="QR code" onClick={() => showQR(i)}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M18 10h-2V7m-7-3H4m0 0h4m-4 0v4m12 0v4M4 20h4m-4-4v4" /></svg>
                           </button>
@@ -266,6 +354,15 @@ export default function ItemsPage() {
                   ))}
                 </tbody>
               </table>
+              {selectedIds.size > 0 && (
+                <div className="flex items-center justify-between mt-3 p-2 bg-base-200 rounded">
+                  <span className="text-sm">{selectedIds.size} selected</span>
+                  <button className="btn btn-error btn-sm" disabled={busyCsv} onClick={bulkArchive}>
+                    {busyCsv && <span className="loading loading-spinner loading-xs" />}
+                    Archive selected
+                  </button>
+                </div>
+              )}
               <Pagination meta={data?.meta} onPage={setPage} />
             </div>
           )}
@@ -292,6 +389,21 @@ export default function ItemsPage() {
       )}
 
       {qrs && <QRModal qr={qrs} onClose={() => setQrs(null)} />}
+
+      {imagePreview && (
+        <dialog className={`modal ${imagePreview ? 'modal-open' : ''}`}>
+          <div className="modal-box max-w-sm">
+            <h3 className="font-bold text-lg">Upload image</h3>
+            <p className="text-sm text-base-content/60 mt-1">{selected?.name}</p>
+            <img src={imagePreview} alt="Preview" className="w-full max-h-64 object-contain mt-3 rounded" />
+            <div className="modal-action">
+              <button className="btn" onClick={() => { setImagePreview(''); setImageFile(null); }}>Cancel</button>
+              <button className="btn btn-primary" onClick={uploadImage}>Upload</button>
+            </div>
+          </div>
+          <form method="dialog" className="modal-backdrop"><button onClick={() => { setImagePreview(''); setImageFile(null); }}>close</button></form>
+        </dialog>
+      )}
 
       {scanOpen && <ScanModal onScan={onScan} onClose={() => setScanOpen(false)} />}
     </div>

@@ -24,12 +24,21 @@ function StatCard({ icon, label, value, accent }) {
 export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
 
-  useEffect(() => {
-    api.get('/users/stats/dashboard')
+  const load = () => {
+    const q = new URLSearchParams();
+    if (from) q.set('from', from);
+    if (to) q.set('to', to);
+    api.get(`/users/stats/dashboard?${q}`)
       .then((r) => setData(r.data))
       .catch((e) => setError(e.response?.data?.message || 'Unable to load dashboard.'));
-  }, []);
+  };
+
+  useEffect(() => {
+    load();
+  }, [from, to]);
 
   if (error) {
     return <div role="alert" className="alert alert-error"><span>{error}</span></div>;
@@ -40,8 +49,20 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Dashboard</h1>
-      <p className="mt-1 text-sm text-base-content/60">Overview of stock, requisitions and alerts.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="mt-1 text-sm text-base-content/60">Overview of stock, requisitions and alerts.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="date" className="input input-sm" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <span className="text-sm opacity-60">to</span>
+          <input type="date" className="input input-sm" value={to} onChange={(e) => setTo(e.target.value)} />
+          {(from || to) && (
+            <button className="btn btn-ghost btn-sm" onClick={() => { setFrom(''); setTo(''); }}>Clear</button>
+          )}
+        </div>
+      </div>
 
       <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         <StatCard icon="M20 13V7a2 2 0 00-2-2H4a2 2 0 00-2 2v6m0 4h20M4 17a1 1 0 011 1v2h14v-2a1 1 0 011-1" label="Active Items" value={stats.totalItems} accent="bg-primary/10 text-primary" />

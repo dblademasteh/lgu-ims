@@ -98,7 +98,19 @@ async function updateUser(req, res) {
 }
 
 async function dashboardStats(req, res) {
-  const monthStart = new Date(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`);
+  const { from, to } = req.query;
+  let start = null;
+  let end = null;
+  if (from) start = new Date(from);
+  if (to) {
+    end = new Date(to);
+    end.setHours(23, 59, 59, 999);
+  }
+  if (isNaN(start)) start = null;
+  if (isNaN(end)) end = null;
+
+  const monthStart = start || new Date(`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`);
+  const monthEnd = end || new Date();
 
   const lowStockRows = await prisma.$queryRaw`
     SELECT i."id", i."name", i."sku", i."currentStock", i."reorderThreshold", i."unit", c."id" AS "categoryId", c."name" AS "categoryName"
@@ -120,23 +132,26 @@ async function dashboardStats(req, res) {
   }));
   const lowStockItems = lowStock.length;
 
+  const whereClause = {
+    referenceType: 'ISSUANCE',
+    date: { gte: monthStart, lte: monthEnd },
+  };
+
   const [totalItems, totalCategories, pendingRis, issuedThisMonth] = await Promise.all([
     prisma.item.count({ where: { isActive: true } }),
     prisma.category.count(),
     prisma.ris.count({ where: { status: 'PENDING' } }),
-    prisma.ledgerEntry.count({
-      where: {
-        referenceType: 'ISSUANCE',
-        date: { gte: monthStart },
-      },
-    }),
+    prisma.ledgerEntry.count({ where: whereClause }),
   ]);
 
-  const recentLedger = await prisma.ledgerEntry.findMany({
+  const recentLedgerWhere = {
     include: { item: { select: { id: true, name: true, sku: true, unit: true } } },
     orderBy: { date: 'desc' },
     take: 8,
-  });
+    where: (start || end) ? { date: { gte: monthStart, lte: monthEnd } } : undefined,
+  };
+
+  const recentLedger = await prisma.ledgerEntry.findMany(recentLedgerWhere);
 
   res.json({
     stats: {

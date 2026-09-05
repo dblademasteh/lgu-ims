@@ -210,8 +210,199 @@ export default function SettingsPage() {
       <div role="tablist" className="tabs tabs-box w-fit mb-6">
         <button role="tab" className={`tab ${tab === 'categories' ? 'tab-active' : ''}`} onClick={() => setTab('categories')}>Categories</button>
         <button role="tab" className={`tab ${tab === 'departments' ? 'tab-active' : ''}`} onClick={() => setTab('departments')}>Departments</button>
+        <button role="tab" className={`tab ${tab === 'security' ? 'tab-active' : ''}`} onClick={() => setTab('security')}>Security</button>
       </div>
-      {tab === 'categories' ? <CategoryTab /> : <DepartmentTab />}
+      {tab === 'categories' ? <CategoryTab /> : tab === 'departments' ? <DepartmentTab /> : <SecurityTab />}
+    </div>
+  );
+}
+
+function SecurityTab() {
+  const toast = useToast();
+  const [twoFaEnabled, setTwoFaEnabled] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [secret, setSecret] = useState('');
+  const [qr, setQr] = useState('');
+  const [verifyCode, setVerifyCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [keys, setKeys] = useState([]);
+  const [keyName, setKeyName] = useState('');
+  const [keyExpiry, setKeyExpiry] = useState('');
+  const [newKey, setNewKey] = useState(null);
+
+  const loadProfile = async () => {
+    try {
+      const res = await api.get('/users/me');
+      setTwoFaEnabled(res.data.user.twoFactorEnabled || false);
+    } catch (e) { /* ignore */ }
+  };
+
+  const loadKeys = async () => {
+    try {
+      const res = await api.get('/api-keys');
+      setKeys(res.data.data);
+    } catch (e) { /* ignore */ }
+  };
+
+  useEffect(() => {
+    loadProfile();
+    loadKeys();
+  }, []);
+
+  const startSetup = async () => {
+    setBusy(true);
+    try {
+      const res = await api.post('/auth/2fa/setup');
+      setSecret(res.data.secret);
+      setQr(res.data.dataUrl);
+      setSetupOpen(true);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to start 2FA setup.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const enable2FA = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api.post('/auth/2fa/enable', { code: verifyCode });
+      setTwoFaEnabled(true);
+      setSetupOpen(false);
+      setVerifyCode('');
+      toast.success('Two-factor authentication enabled.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Invalid code.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const disable2FA = async () => {
+    if (!window.confirm('Disable two-factor authentication?')) return;
+    setBusy(true);
+    try {
+      await api.post('/auth/2fa/disable', { code: prompt('Enter current 2FA code to disable:') || '' });
+      setTwoFaEnabled(false);
+      toast.success('Two-factor authentication disabled.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to disable 2FA.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const createKey = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setNewKey(null);
+    try {
+      const res = await api.post('/api-keys', { name: keyName, expiresInDays: keyExpiry ? Number(keyExpiry) : undefined });
+      setNewKey(res.data.data);
+      setKeyName('');
+      setKeyExpiry('');
+      loadKeys();
+      toast.success('API key created.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to create API key.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const revokeKey = async (id) => {
+    if (!window.confirm('Revoke this API key? This cannot be undone.')) return;
+    try {
+      await api.delete(`/api-keys/${id}`);
+      loadKeys();
+      toast.success('API key revoked.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to revoke API key.');
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="card bg-base-100 shadow-sm">
+        <div className="card-body">
+          <h2 className="card-title text-base">Two-factor authentication</h2>
+          <p className="text-sm text-base-content/60 mt-1">Use an authenticator app to secure your account.</p>
+          {twoFaEnabled ? (
+            <div className="mt-4">
+              <span className="badge badge-success">Enabled</span>
+              <button className="btn btn-error btn-sm mt-3" disabled={busy} onClick={disable2FA}>Disable 2FA</button>
+            </div>
+          ) : (
+            <button className="btn btn-primary btn-sm mt-3" disabled={busy} onClick={startSetup}>Enable 2FA</button>
+          )}
+        </div>
+      </div>
+      <div className="card bg-base-100 shadow-sm">
+        <div className="card-body">
+          <h2 className="card-title text-base">API keys</h2>
+          <p className="text-sm text-base-content/60 mt-1">Create keys for programmatic access to the API.</p>
+          <form onSubmit={createKey} className="mt-4 flex flex-col gap-3">
+            <input className="input input-sm" placeholder="Key name" required value={keyName} onChange={(e) => setKeyName(e.target.value)} />
+            <input className="input input-sm" type="number" placeholder="Expires in days (optional)" value={keyExpiry} onChange={(e) => setKeyExpiry(e.target.value)} />
+            <button className="btn btn-primary btn-sm" disabled={busy} type="submit">Generate key</button>
+          </form>
+          {newKey && (
+            <div className="alert alert-success mt-3 text-xs">
+              <div>
+                <div className="font-semibold">Save this key now</div>
+                <div className="font-mono break-all">{newKey.key}</div>
+                <div className="opacity-70 mt-1">It will not be shown again.</div>
+              </div>
+            </div>
+          )}
+          <div className="mt-4">
+            {keys.length === 0 ? <EmptyState message="No API keys yet." /> : (
+              <div className="overflow-x-auto">
+                <table className="table table-sm">
+                  <thead><tr><th>Name</th><th>Prefix</th><th>Expires</th><th className="text-right">Actions</th></tr></thead>
+                  <tbody>
+                    {keys.map((k) => (
+                      <tr key={k.id}>
+                        <td>{k.name}</td>
+                        <td className="font-mono text-xs">{k.keyPrefix}...</td>
+                        <td className="text-xs">{k.expiresAt ? new Date(k.expiresAt).toLocaleDateString() : 'Never'}</td>
+                        <td className="text-right">
+                          <button className="btn btn-ghost btn-xs text-error" onClick={() => revokeKey(k.id)}>Revoke</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      {setupOpen && (
+        <dialog className="modal modal-open">
+          <div className="modal-box max-w-md">
+            <h3 className="font-bold text-lg">Set up two-factor authentication</h3>
+            <p className="text-sm text-base-content/60 mt-1">Scan this QR code with your authenticator app.</p>
+            {qr && <img src={qr} alt="2FA QR" className="w-48 h-48 mx-auto mt-4 bg-white p-2 rounded" />}
+            <div className="mt-3 text-center">
+              <div className="text-xs text-base-content/60">Or enter this secret manually:</div>
+              <div className="font-mono text-sm mt-1">{secret}</div>
+            </div>
+            <form onSubmit={enable2FA} className="mt-4 flex flex-col gap-3">
+              <label className="block">
+                <span className="mb-1 block font-mono text-[11px] uppercase tracking-[0.12em] text-base-content/60">Verification code</span>
+                <input className="input" required maxLength={6} inputMode="numeric" value={verifyCode} onChange={(e) => setVerifyCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} placeholder="000000" />
+              </label>
+              <div className="modal-action">
+                <button type="button" className="btn" onClick={() => setSetupOpen(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={busy}>Enable 2FA</button>
+              </div>
+            </form>
+          </div>
+          <form method="dialog" className="modal-backdrop"><button onClick={() => setSetupOpen(false)}>close</button></form>
+        </dialog>
+      )}
     </div>
   );
 }

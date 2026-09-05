@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const { authorize } = require('../middleware/auth');
+const { upload } = require('../middleware/upload');
 const itemController = require('../controllers/itemController');
 
 const router = Router();
@@ -14,5 +15,6 @@ router.post('/', authorize('ADMIN', 'WAREHOUSE_STAFF'), itemController.createIte
 router.patch('/:id', authorize('ADMIN', 'WAREHOUSE_STAFF'), itemController.updateItem);
 router.delete('/:id', authorize('ADMIN', 'WAREHOUSE_STAFF'), itemController.archiveItem);
 router.post('/:id/adjust', authorize('ADMIN', 'WAREHOUSE_STAFF', 'PROPERTY_CUSTODIAN'), itemController.adjustStock);
+router.post('/:id/image', authorize('ADMIN', 'WAREHOUSE_STAFF'), upload.single('image'), itemController.uploadItemImage);
 
 module.exports = router;
