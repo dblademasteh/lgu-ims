@@ -356,10 +356,10 @@ function RisDetail({ ris, user, canManage, canIssue, canCancel, canReturn, onClo
 
 function canOperate(ris, role, op) {
   if (op === 'approve') {
-    return ['ADMIN', 'PROPERTY_CUSTODIAN'].includes(role) && ['PENDING', 'REJECTED'].includes(ris.status);
+    return ['ADMIN', 'PROPERTY_CUSTODIAN', 'WAREHOUSE_STAFF'].includes(role) && ['PENDING', 'REJECTED'].includes(ris.status);
   }
   if (op === 'reject') {
-    return ['ADMIN', 'PROPERTY_CUSTODIAN'].includes(role) && ['PENDING', 'APPROVED'].includes(ris.status);
+    return ['ADMIN', 'PROPERTY_CUSTODIAN', 'WAREHOUSE_STAFF'].includes(role) && ['PENDING', 'APPROVED'].includes(ris.status);
   }
   if (op === 'issue') {
     return ['ADMIN', 'WAREHOUSE_STAFF'].includes(role) && ['APPROVED', 'PARTIALLY_ISSUED'].includes(ris.status);
