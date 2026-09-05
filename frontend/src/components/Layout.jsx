@@ -30,6 +30,7 @@ const MENU = [
   { to: '/receiving', label: 'Receiving / Purchases', icon: Landmark, group: 'ops', index: '01b' },
   { to: '/purchase-orders', label: 'Purchase Orders', icon: FileText, group: 'ops', index: '01c' },
   { to: '/suppliers', label: 'Suppliers', icon: Users, group: 'ops', index: '01d' },
+  { to: '/physical-counts', label: 'Physical Count', icon: ClipboardList, group: 'ops', index: '01e' },
   { to: '/ris', label: 'Requisitions (RIS)', icon: ClipboardList, group: 'ops', index: '02' },
   { to: '/ledger', label: 'Ledger Cards', icon: BookOpen, group: 'ops', index: '03' },
   { to: '/reports', label: 'Reports', icon: BarChart3, group: 'oversight', index: null },
@@ -46,11 +47,11 @@ const NAV_GROUPS = [
 ];
 
 const ROLE_MENU = {
-  ADMIN: ['dashboard', 'items', 'receiving', 'purchase-orders', 'suppliers', 'ris', 'ledger', 'reports', 'notifications', 'audit', 'users', 'settings'].map(find),
-  WAREHOUSE_STAFF: ['dashboard', 'items', 'receiving', 'purchase-orders', 'suppliers', 'ris', 'ledger', 'reports', 'notifications', 'settings'].map(find),
-  PROPERTY_CUSTODIAN: ['dashboard', 'items', 'ris', 'purchase-orders', 'ledger', 'reports', 'notifications'].map(find),
-  AUDITOR: ['dashboard', 'items', 'ris', 'purchase-orders', 'ledger', 'reports', 'notifications', 'audit'].map(find),
-  DEPARTMENT_HEAD: ['dashboard', 'items', 'ris', 'purchase-orders', 'notifications'].map(find),
+  ADMIN: ['dashboard', 'items', 'receiving', 'purchase-orders', 'suppliers', 'physical-counts', 'ris', 'ledger', 'reports', 'notifications', 'audit', 'users', 'settings'].map(find),
+  WAREHOUSE_STAFF: ['dashboard', 'items', 'receiving', 'purchase-orders', 'suppliers', 'physical-counts', 'ris', 'ledger', 'reports', 'notifications', 'settings'].map(find),
+  PROPERTY_CUSTODIAN: ['dashboard', 'items', 'ris', 'purchase-orders', 'physical-counts', 'ledger', 'reports', 'notifications'].map(find),
+  AUDITOR: ['dashboard', 'items', 'ris', 'purchase-orders', 'physical-counts', 'ledger', 'reports', 'notifications', 'audit'].map(find),
+  DEPARTMENT_HEAD: ['dashboard', 'items', 'ris', 'purchase-orders', 'physical-counts', 'notifications'].map(find),
 };
 
 function find(key) {

@@ -45,6 +45,7 @@ model Department {
   ris       Ris[]
   purchaseOrders PurchaseOrder[]
   budgets   Budget[]
+  physicalCounts PhysicalCount[]
 }
 
 model Category {
@@ -87,6 +88,7 @@ model User {
   apiKeys       ApiKey[]
   purchaseOrders PurchaseOrder[]
   refreshTokens RefreshToken[]
+  physicalCounts PhysicalCount[]
 }
 
 model Item {
@@ -116,6 +118,7 @@ model Item {
   notifications Notification[]
   receivingItems ReceivingItem[]
   purchaseOrderItems PurchaseOrderItem[]
+  physicalCountItems PhysicalCountItem[]
 }
 
 model LedgerEntry {
@@ -335,4 +338,37 @@ model Budget {
   updatedAt    DateTime  @updatedAt
 
   @@unique([departmentId, year])
+}
+
+model PhysicalCount {
+  id           String    @id @default(uuid()) @db.Uuid
+  departmentId String    @db.Uuid
+  department   Department @relation(fields: [departmentId], references: [id])
+  countDate    DateTime  @default(now())
+  status       String    @default("DRAFT")
+  remarks      String?
+  createdBy    User      @relation(fields: [createdById], references: [id])
+  createdById  String    @db.Uuid
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  items        PhysicalCountItem[]
+
+  @@index([departmentId])
+  @@index([countDate])
+}
+
+model PhysicalCountItem {
+  id             String    @id @default(uuid()) @db.Uuid
+  physicalCount  PhysicalCount @relation(fields: [physicalCountId], references: [id], onDelete: Cascade)
+  physicalCountId String   @db.Uuid
+  itemId         String    @db.Uuid
+  item           Item      @relation(fields: [itemId], references: [id])
+  systemQuantity Float
+  countedQuantity Float
+  variance       Float
+  remarks        String?
+
+  @@index([physicalCountId])
+  @@index([itemId])
 }
