@@ -279,7 +279,7 @@ async function ledgerCardReport(req, res) {
   };
 
   const body = entries.map((e) => [
-    e.date instanceof Date ? e.date.toLocaleDateString() : String(e.date).slice(0, 10),
+    e.date instanceof Date ? e.date.toISOString().slice(0, 10) : String(e.date).slice(0, 10),
     e.referenceId ? (e.remarks ? e.remarks.split(' — ')[0] || e.remarks : e.referenceId) : typeCols[e.referenceType],
     typeCols[e.referenceType],
     e.inflow,
@@ -287,6 +287,32 @@ async function ledgerCardReport(req, res) {
     e.runningBalance,
     e.remarks || '',
   ]);
+
+  if (req.query.format === 'excel') {
+    const wb = new ExcelJS.Workbook();
+    wb.created = new Date();
+    const ws = wb.addWorksheet('Ledger Card');
+    addTableStyle(ws, [
+      { header: 'Date', key: 'date', width: 16 },
+      { header: 'Reference', key: 'ref', width: 28 },
+      { header: 'Transaction', key: 'type', width: 16 },
+      { header: 'In', key: 'in', width: 12 },
+      { header: 'Out', key: 'out', width: 12 },
+      { header: 'Balance', key: 'balance', width: 12 },
+      { header: 'Remarks', key: 'remarks', width: 40 },
+    ], entries.map((e, idx) => ({
+      date: e.date instanceof Date ? e.date.toISOString().slice(0, 10) : String(e.date).slice(0, 10),
+      ref: e.referenceId ? (e.remarks ? e.remarks.split(' — ')[0] || e.remarks : e.referenceId) : typeCols[e.referenceType],
+      type: typeCols[e.referenceType] || e.referenceType,
+      in: e.inflow,
+      out: e.outflow,
+      balance: e.runningBalance,
+      remarks: e.remarks || '',
+    })));
+    ws.addRow({ remarks: `Opening balance: ${item.currentStock} ${item.unit}`, in: '', out: '', balance: '' });
+    ws.getRow(ws.rowCount).font = { bold: true };
+    return renderExcel(res, wb, `Ledger_Card_${item.sku}.xlsx`);
+  }
 
   renderPdf(res, {
     ...pdfHeader('SUPPLY LEDGER CARD', `${item.name} (${item.sku})\nCategory: ${item.category.name}  |  Unit: ${item.unit}  |  Reorder Level: ${item.reorderThreshold}`),

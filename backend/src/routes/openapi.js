@@ -108,6 +108,42 @@
  *     responses:
  *       200: { description: Signed out. }
  *       401: { $ref: '#/components/responses/Unauthorized' }
+ *
+ * /auth/forgot-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Request a password reset (always returns 200 to avoid user enumeration)
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [username]
+ *             properties:
+ *               username: { type: string, description: 'Username or email address.' }
+ *     responses:
+ *       200: { description: If an account matches, a reset link has been sent.' }
+ *
+ * /auth/reset-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Reset password using a one-time token
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, newPassword]
+ *             properties:
+ *               token: { type: string, description: 'One-time reset token.' }
+ *               newPassword: { type: string, format: password, minLength: 8 }
+ *     responses:
+ *       200: { description: Password has been reset.' }
+ *       400: { description: Invalid or expired token.' }
  */
 
 /**
@@ -571,6 +607,33 @@
  *         schema: { type: string, format: date-time }
  *     responses:
  *       200: { description: Paginated audit logs. }
+ *
+ * /audit-logs/export:
+ *   get:
+ *     tags: [Audit]
+ *     summary: Export audit logs as PDF or Excel
+ *     parameters:
+ *       - in: query
+ *         name: action
+ *         schema: { type: string }
+ *       - in: query
+ *         name: entityType
+ *         schema: { type: string }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: from
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: to
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: format
+ *         schema: { type: string, enum: [pdf, xlsx] }
+ *     responses:
+ *       200: { description: File stream. }
+ *       403: { $ref: '#/components/responses/Forbidden' }
  */
 
 /**

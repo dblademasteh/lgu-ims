@@ -3,6 +3,9 @@ const prisma = require('../prisma');
 const ApiError = require('../utils/ApiError');
 const { writeAudit } = require('../utils/audit');
 const { signToken, publicUser } = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
+const config = require('../config');
+const { sendMail } = require('../services/mailer');
 
 async function login(req, res) {
   const { username, password } = req.body;
@@ -59,4 +62,48 @@ async function logout(req, res) {
   res.json({ message: 'Signed out.' });
 }
 
-module.exports = { login, me, changePassword, logout };
+async function forgotPassword(req, res) {
+  const { username } = req.body;
+  if (!username) throw new ApiError(400, 'Username or email is required.');
+
+  const user = await prisma.user.findFirst({
+    where: { OR: [{ username }, { email: username }] },
+  });
+
+  const resetToken = user
+    ? jwt.sign({ sub: user.id, type: 'reset' }, config.jwtSecret, { expiresIn: '1h' })
+    : jwt.sign({ type: 'reset', dummy: true }, config.jwtSecret, { expiresIn: '1h' });
+
+  const resetUrl = `${req.protocol}://${req.get('host')}/api/v1/auth/reset-password?token=${resetToken}`;
+
+  if (user) {
+    const message = `A password reset was requested for your account.\n\nIf you made this request, open this link within 1 hour:\n${resetUrl}\n\nIf you did not request this, you can safely ignore this message.`;
+    sendMail(user.email, 'LGU IMS — Password Reset', message).catch(() => {});
+  }
+
+  res.json({ message: 'If an account matches, a reset link has been sent.' });
+}
+
+async function resetPassword(req, res) {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword) throw new ApiError(400, 'Token and new password are required.');
+  if (newPassword.length < 8) throw new ApiError(400, 'New password must be at least 8 characters.');
+
+  let payload;
+  try {
+    payload = jwt.verify(token, config.jwtSecret);
+  } catch {
+    throw new ApiError(400, 'Invalid or expired reset token.');
+  }
+  if (payload.type !== 'reset' || !payload.sub) throw new ApiError(400, 'Invalid reset token.');
+
+  const user = await prisma.user.findUnique({ where: { id: payload.sub } });
+  if (!user) throw new ApiError(404, 'User not found.');
+
+  await prisma.user.update({ where: { id: user.id }, data: { password: await bcrypt.hash(newPassword, 10) } });
+  await writeAudit(req, 'PASSWORD_RESET', 'User', user.id, null, { username: user.username });
+
+  res.json({ message: 'Password has been reset.' });
+}
+
+module.exports = { login, me, changePassword, logout, forgotPassword, resetPassword };

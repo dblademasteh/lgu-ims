@@ -140,6 +140,10 @@ export default function ReportsPage() {
               if (!ledgerItemId) return toast.error('Select an item first.');
               run(`/reports/ledger-card/${ledgerItemId}`);
             }}>Print / PDF</button>
+            <button className="btn btn-outline flex-1" onClick={() => {
+              if (!ledgerItemId) return toast.error('Select an item first.');
+              run(`/reports/ledger-card/${ledgerItemId}?format=excel`, true);
+            }}>Excel</button>
           </div>
         </ReportCard>
       </div>

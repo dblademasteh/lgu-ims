@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../api/client';
+import api, { openReport } from '../api/client';
 import { useToast } from '../components/Toast';
 import PageHeader, { EmptyState, Pagination, Spinner } from '../components/ui';
 
@@ -35,7 +35,26 @@ export default function AuditLogPage() {
 
   return (
     <div>
-      <PageHeader title="Audit Trail" subtitle="Full log of create, update, delete and workflow actions — with before / after values." />
+      <PageHeader
+        title="Audit Trail"
+        subtitle="Full log of create, update, delete and workflow actions — with before / after values."
+        actions={
+          <div className="flex gap-2">
+            <button className="btn btn-outline btn-sm" onClick={() => {
+              const q = new URLSearchParams({ format: 'pdf' });
+              if (action) q.set('action', action);
+              if (search) q.set('entityType', search);
+              openReport(`/audit-logs/export?${q}`);
+            }}>PDF</button>
+            <button className="btn btn-outline btn-sm" onClick={() => {
+              const q = new URLSearchParams({ format: 'xlsx' });
+              if (action) q.set('action', action);
+              if (search) q.set('entityType', search);
+              openReport(`/audit-logs/export?${q}`, true);
+            }}>Excel</button>
+          </div>
+        }
+      />
 
       <div className="card bg-base-100 shadow-sm">
         <div className="card-body">

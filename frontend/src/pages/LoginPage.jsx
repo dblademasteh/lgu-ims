@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Landmark, User, Lock, Eye, EyeOff, LogIn, CircleAlert, ShieldCheck } from 'lucide-react';
+import { Landmark, User, Lock, Eye, EyeOff, LogIn, CircleAlert, ShieldCheck, KeyRound } from 'lucide-react';
 import api from '../api/client';
 import useAuthStore from '../stores/authStore';
 import { useToast } from '../components/Toast';
@@ -26,6 +26,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotUser, setForgotUser] = useState('');
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotMsg, setForgotMsg] = useState('');
   const navigate = useNavigate();
   const setSession = useAuthStore((s) => s.setSession);
   const toast = useToast();
@@ -51,6 +55,21 @@ export default function LoginPage() {
     setUsername(u);
     setPassword('Password123!');
     setError('');
+  };
+
+  const submitForgot = async (e) => {
+    e.preventDefault();
+    setForgotBusy(true);
+    setForgotMsg('');
+    try {
+      await api.post('/auth/forgot-password', { username: forgotUser });
+      setForgotMsg('If an account matches, a reset link has been sent.');
+      setForgotUser('');
+    } catch (err) {
+      setForgotMsg(err.response?.data?.message || 'Unable to process request.');
+    } finally {
+      setForgotBusy(false);
+    }
   };
 
   return (
@@ -167,6 +186,9 @@ export default function LoginPage() {
                 </>
               )}
             </button>
+            <div className="text-right">
+              <button type="button" className="link link-primary text-xs" onClick={() => setForgotOpen(true)}>Forgot password?</button>
+            </div>
           </form>
 
           <div className="divider mt-7 text-xs font-medium text-base-content/45">Demo accounts</div>
@@ -191,6 +213,32 @@ export default function LoginPage() {
         </section>
         </div>
       </div>
+
+      {forgotOpen && (
+        <dialog className="modal modal-open">
+          <div className="modal-box max-w-md">
+            <h3 className="font-bold text-lg">Reset password</h3>
+            <p className="text-sm text-base-content/60 mt-1">Enter your username or email and we will send a reset link if the account exists.</p>
+            <form onSubmit={submitForgot} className="mt-4 flex flex-col gap-4">
+              <label className="block">
+                <span className="mb-2 block font-mono text-[11px] uppercase tracking-[0.12em] text-base-content/60">Username or email</span>
+                <span className="input flex h-12 items-center gap-3 py-0">
+                  <User className="h-4 w-4 shrink-0 opacity-50" />
+                  <input className="h-12 w-full bg-transparent" required value={forgotUser} onChange={(e) => setForgotUser(e.target.value)} placeholder="e.g. admin" />
+                </span>
+              </label>
+              {forgotMsg && <div className="alert alert-info py-2 text-sm"><span>{forgotMsg}</span></div>}
+              <div className="modal-action">
+                <button type="button" className="btn" onClick={() => { setForgotOpen(false); setForgotMsg(''); }}>Close</button>
+                <button type="submit" className="btn btn-primary" disabled={forgotBusy}>
+                  {forgotBusy ? <><span className="loading loading-spinner loading-sm" /> Sending…</> : 'Send reset link'}
+                </button>
+              </div>
+            </form>
+          </div>
+          <form method="dialog" className="modal-backdrop"><button onClick={() => setForgotOpen(false)}>close</button></form>
+        </dialog>
+      )}
     </main>
   );
 }
