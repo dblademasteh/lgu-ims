@@ -114,36 +114,45 @@ async function createRis(req, res) {
   const department = await prisma.department.findUnique({ where: { id: deptId } });
   if (!department) throw new ApiError(400, 'Department not found.');
 
-  const risNumber = await generateRisNumber();
+  let ris;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const risNumber = await generateRisNumber();
+    try {
+      ris = await prisma.$transaction(async (tx) => {
+        const doc = await tx.ris.create({
+          data: {
+            risNumber,
+            departmentId: deptId,
+            purpose,
+            requestedById: req.user.id,
+            remarks,
+            items: {
+              create: items.map((it) => ({
+                itemId: it.itemId,
+                quantityRequested: Number(it.quantityRequested) || 0,
+                unitCost: round2(it.unitCost) || 0,
+                remarks: it.remarks,
+              })),
+            },
+          },
+          include: RIS_INCLUDE,
+        });
 
-  const ris = await prisma.$transaction(async (tx) => {
-    const doc = await tx.ris.create({
-      data: {
-        risNumber,
-        departmentId: deptId,
-        purpose,
-        requestedById: req.user.id,
-        remarks,
-        items: {
-          create: items.map((it) => ({
-            itemId: it.itemId,
-            quantityRequested: Number(it.quantityRequested) || 0,
-            unitCost: round2(it.unitCost) || 0,
-            remarks: it.remarks,
-          })),
-        },
-      },
-      include: RIS_INCLUDE,
-    });
-
-    for (const it of items) {
-      await tx.item.update({
-        where: { id: it.itemId },
-        data: { unitCost: round2(it.unitCost) || undefined },
+        for (const it of items) {
+          await tx.item.update({
+            where: { id: it.itemId },
+            data: { unitCost: round2(it.unitCost) || undefined },
+          });
+        }
+        return doc;
       });
+      break;
+    } catch (e) {
+      if (e.code === 'P2002' && e.meta?.target?.includes('risNumber')) continue;
+      throw e;
     }
-    return doc;
-  });
+  }
+  if (!ris) throw new ApiError(500, 'Failed to generate unique RIS number after multiple attempts.');
 
   await writeAudit(req, 'CREATE', 'Ris', ris.id, null, { risNumber, purpose });
 

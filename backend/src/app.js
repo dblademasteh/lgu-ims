@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const swaggerUi = require('swagger-ui-express');
 const config = require('./config');
 const routes = require('./routes');
@@ -11,6 +12,7 @@ const { uploadDir } = require('./middleware/upload');
 
 const app = express();
 
+app.use(helmet());
 app.use(cors({ origin: config.corsOrigins.includes('*') ? true : config.corsOrigins, credentials: true }));
 app.use(express.json({ limit: '2mb' }));
 app.use('/uploads', express.static(uploadDir));

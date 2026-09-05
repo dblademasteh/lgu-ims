@@ -546,12 +546,61 @@
  *     parameters:
  *       - $ref: '#/components/parameters/IdParam'
  *     responses:
- *       200: { description: Receiving. }
- */
+  *       200: { description: Receiving. }
+  */
 
-/**
- * @openapi
- * /notifications:
+ /**
+  * @openapi
+  * /purchase-orders:
+  *   get:
+  *     tags: [PurchaseOrders]
+  *     summary: List purchase orders
+  *     responses:
+  *       200: { description: Paginated purchase orders. }
+  *   post:
+  *     tags: [PurchaseOrders]
+  *     summary: Create a purchase order
+  *     responses:
+  *       201: { description: Created. }
+  *
+  * /purchase-orders/{id}:
+  *   get:
+  *     tags: [PurchaseOrders]
+  *     summary: Get a purchase order
+  *     parameters:
+  *       - $ref: '#/components/parameters/IdParam'
+  *     responses:
+  *       200: { description: PurchaseOrder. }
+  *   patch:
+  *     tags: [PurchaseOrders]
+  *     summary: Update a pending purchase order
+  *     parameters:
+  *       - $ref: '#/components/parameters/IdParam'
+  *     responses:
+  *       200: { description: Updated. }
+  *
+  * /purchase-orders/{id}/approve:
+  *   patch:
+  *     tags: [PurchaseOrders]
+  *     summary: Approve a pending purchase order
+  *     parameters:
+  *       - $ref: '#/components/parameters/IdParam'
+  *     responses:
+  *       200: { description: Approved. }
+  *
+  * /purchase-orders/{id}/cancel:
+  *   patch:
+  *     tags: [PurchaseOrders]
+  *     summary: Cancel a pending or approved purchase order
+  *     parameters:
+  *       - $ref: '#/components/parameters/IdParam'
+  *     responses:
+  *       200: { description: Cancelled. }
+  */
+
+ /**
+  * @openapi
+  * /notifications:
  *   get:
  *     tags: [Notifications]
  *     summary: List the current user's notifications

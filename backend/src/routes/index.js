@@ -12,6 +12,7 @@ const reportRoutes = require('./report.routes');
 const notificationRoutes = require('./notification.routes');
 const auditRoutes = require('./audit.routes');
 const receivingRoutes = require('./receiving.routes');
+const purchaseOrderRoutes = require('./purchaseOrder.routes');
 const apiKeyRoutes = require('./apiKey.routes');
 
 const router = Router();
@@ -30,6 +31,7 @@ router.use('/reports', reportRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/audit-logs', auditRoutes);
 router.use('/inventory', receivingRoutes);
+router.use('/purchase-orders', purchaseOrderRoutes);
 router.use('/api-keys', apiKeyRoutes);
 
 router.get('/roles', (req, res) => {

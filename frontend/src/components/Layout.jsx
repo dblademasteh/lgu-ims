@@ -17,6 +17,7 @@ import {
   Check,
   Menu,
   KeyRound,
+  FileText,
 } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import { useThemeStore, THEMES } from '../stores/themeStore';
@@ -27,7 +28,8 @@ const MENU = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'ops', index: null },
   { to: '/items', label: 'Items & Stock', icon: Package, group: 'ops', index: '01' },
   { to: '/receiving', label: 'Receiving / Purchases', icon: Landmark, group: 'ops', index: '01b' },
-  { to: '/suppliers', label: 'Suppliers', icon: Users, group: 'ops', index: '01c' },
+  { to: '/purchase-orders', label: 'Purchase Orders', icon: FileText, group: 'ops', index: '01c' },
+  { to: '/suppliers', label: 'Suppliers', icon: Users, group: 'ops', index: '01d' },
   { to: '/ris', label: 'Requisitions (RIS)', icon: ClipboardList, group: 'ops', index: '02' },
   { to: '/ledger', label: 'Ledger Cards', icon: BookOpen, group: 'ops', index: '03' },
   { to: '/reports', label: 'Reports', icon: BarChart3, group: 'oversight', index: null },
@@ -44,11 +46,11 @@ const NAV_GROUPS = [
 ];
 
 const ROLE_MENU = {
-  ADMIN: ['dashboard', 'items', 'receiving', 'suppliers', 'ris', 'ledger', 'reports', 'notifications', 'audit', 'users', 'settings'].map(find),
-  WAREHOUSE_STAFF: ['dashboard', 'items', 'receiving', 'suppliers', 'ris', 'ledger', 'reports', 'notifications', 'settings'].map(find),
-  PROPERTY_CUSTODIAN: ['dashboard', 'items', 'ris', 'ledger', 'reports', 'notifications'].map(find),
-  AUDITOR: ['dashboard', 'items', 'ris', 'ledger', 'reports', 'notifications', 'audit'].map(find),
-  DEPARTMENT_HEAD: ['dashboard', 'items', 'ris', 'notifications'].map(find),
+  ADMIN: ['dashboard', 'items', 'receiving', 'purchase-orders', 'suppliers', 'ris', 'ledger', 'reports', 'notifications', 'audit', 'users', 'settings'].map(find),
+  WAREHOUSE_STAFF: ['dashboard', 'items', 'receiving', 'purchase-orders', 'suppliers', 'ris', 'ledger', 'reports', 'notifications', 'settings'].map(find),
+  PROPERTY_CUSTODIAN: ['dashboard', 'items', 'ris', 'purchase-orders', 'ledger', 'reports', 'notifications'].map(find),
+  AUDITOR: ['dashboard', 'items', 'ris', 'purchase-orders', 'ledger', 'reports', 'notifications', 'audit'].map(find),
+  DEPARTMENT_HEAD: ['dashboard', 'items', 'ris', 'purchase-orders', 'notifications'].map(find),
 };
 
 function find(key) {

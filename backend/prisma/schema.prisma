@@ -43,6 +43,7 @@ model Department {
 
   users     User[]
   ris       Ris[]
+  purchaseOrders PurchaseOrder[]
 }
 
 model Category {
@@ -80,6 +81,7 @@ model User {
   auditLogs     AuditLog[]
   receivings    Receiving[]
   apiKeys       ApiKey[]
+  purchaseOrders PurchaseOrder[]
 }
 
 model Item {
@@ -104,6 +106,7 @@ model Item {
   risItems      RisItem[]
   notifications Notification[]
   receivingItems ReceivingItem[]
+  purchaseOrderItems PurchaseOrderItem[]
 }
 
 model LedgerEntry {
@@ -222,6 +225,7 @@ model Supplier {
   updatedAt DateTime @updatedAt
 
   receivings Receiving[]
+  purchaseOrders PurchaseOrder[]
 }
 
 model Receiving {
@@ -237,6 +241,9 @@ model Receiving {
   createdById  String   @db.Uuid
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  purchaseOrderId String? @db.Uuid
 
   items ReceivingItem[]
 
@@ -255,5 +262,43 @@ model ReceivingItem {
   remarks      String?
 
   @@index([receivingId])
+  @@index([itemId])
+}
+
+model PurchaseOrder {
+  id            String    @id @default(uuid()) @db.Uuid
+  poNumber      String    @unique
+  departmentId  String    @db.Uuid
+  department    Department @relation(fields: [departmentId], references: [id])
+  supplierId    String    @db.Uuid
+  supplier      Supplier @relation(fields: [supplierId], references: [id])
+  date          DateTime @default(now())
+  status        String @default("PENDING")
+  totalAmount   Float @default(0)
+  remarks       String?
+  createdBy     User @relation(fields: [createdById], references: [id])
+  createdById   String @db.Uuid
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items         PurchaseOrderItem[]
+  receivings    Receiving[]
+
+  @@index([poNumber])
+  @@index([departmentId])
+  @@index([supplierId])
+}
+
+model PurchaseOrderItem {
+  id              String    @id @default(uuid()) @db.Uuid
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  purchaseOrderId String @db.Uuid
+  itemId          String @db.Uuid
+  item            Item @relation(fields: [itemId], references: [id])
+  quantity        Float
+  unitCost        Float @default(0)
+  receivedQuantity Float @default(0)
+
+  @@index([purchaseOrderId])
   @@index([itemId])
 }

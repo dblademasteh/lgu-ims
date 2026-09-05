@@ -64,6 +64,11 @@ async function createReceiving(req, res) {
   const supplier = await prisma.supplier.findUnique({ where: { id: supplierId } });
   if (!supplier) throw new ApiError(404, 'Supplier not found.');
 
+  const existing = await prisma.receiving.findFirst({ where: { receivingNo } });
+  if (existing) {
+    throw new ApiError(409, `Receiving number "${receivingNo}" already exists.`);
+  }
+
   const receiving = await prisma.$transaction(async (tx) => {
   const doc = await tx.receiving.create({
     data: {
@@ -130,6 +135,7 @@ async function updateReceiving(req, res) {
   const updated = await prisma.$transaction(async (tx) => {
     await tx.ledgerEntry.deleteMany({ where: { referenceType: 'RECEIPT', referenceId: existing.id } });
     for (const ri of existing.items) {
+      await tx.$queryRaw`SELECT "id" FROM "Item" WHERE "id" = ${ri.itemId} FOR UPDATE`;
       const item = await tx.item.findUnique({ where: { id: ri.itemId } });
       if (!item) continue;
       const reversed = item.currentStock - ri.quantity;
@@ -151,6 +157,7 @@ async function updateReceiving(req, res) {
     });
 
     for (const ri of doc.items) {
+      await tx.$queryRaw`SELECT "id" FROM "Item" WHERE "id" = ${ri.itemId} FOR UPDATE`;
       const item = await tx.item.findUnique({ where: { id: ri.itemId } });
       if (!item) continue;
       const newBalance = item.currentStock + ri.quantity;

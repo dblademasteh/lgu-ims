@@ -3,7 +3,16 @@ require('dotenv').config();
 const config = {
   port: Number(process.env.PORT) || 4000,
   env: process.env.NODE_ENV || 'development',
-  jwtSecret: process.env.JWT_SECRET || 'dev-secret-change-me',
+  jwtSecret: (() => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('JWT_SECRET environment variable is required in production.');
+      }
+      console.warn('WARNING: JWT_SECRET is not set. Using insecure dev fallback. Set JWT_SECRET before deploying.');
+    }
+    return secret || 'dev-secret-change-me';
+  })(),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   bcryptRounds: Number(process.env.BCRYPT_ROUNDS) || 10,
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:5173')
