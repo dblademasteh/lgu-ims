@@ -362,10 +362,10 @@ function canOperate(ris, role, op) {
     return ['ADMIN', 'PROPERTY_CUSTODIAN'].includes(role) && ['PENDING', 'APPROVED'].includes(ris.status);
   }
   if (op === 'issue') {
-    return ['ADMIN', 'WAREHOUSE_STAFF'].includes(role) && ris.status === 'APPROVED';
+    return ['ADMIN', 'WAREHOUSE_STAFF'].includes(role) && ['APPROVED', 'PARTIALLY_ISSUED'].includes(ris.status);
   }
   if (op === 'cancel') {
-    return role === 'ADMIN' && ['PENDING', 'APPROVED'].includes(ris.status);
+    return role === 'ADMIN' && ['PENDING', 'APPROVED', 'ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status);
   }
   return false;
 }

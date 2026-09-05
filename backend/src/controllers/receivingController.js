@@ -100,4 +100,114 @@ async function getReceiving(req, res) {
   res.json({ data: rec });
 }
 
-module.exports = { listSuppliers, createSupplier, listReceivings, createReceiving, getReceiving };
+async function updateReceiving(req, res) {
+  const existing = await prisma.receiving.findUnique({ where: { id: req.params.id }, include: { items: { include: { item: true } } } });
+  if (!existing) throw new ApiError(404, 'Receiving not found.');
+
+  const { supplierId, receivingNo, receiptDate, poNumber, drNumber, remarks, items } = req.body;
+  if (!supplierId || !receivingNo || !Array.isArray(items) || items.length === 0) {
+    throw new ApiError(400, 'supplierId, receivingNo and items are required.');
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.ledgerEntry.deleteMany({ where: { referenceType: 'RECEIPT', referenceId: existing.id } });
+    for (const ri of existing.items) {
+      const item = await tx.item.findUnique({ where: { id: ri.itemId } });
+      if (!item) continue;
+      const reversed = item.currentStock - ri.quantity;
+      await tx.item.update({ where: { id: item.id }, data: { currentStock: reversed } });
+    }
+
+    const doc = await tx.receiving.update({
+      where: { id: existing.id },
+      data: {
+        supplierId,
+        receivingNo,
+        receiptDate: receiptDate ? new Date(receiptDate) : existing.receiptDate,
+        poNumber: poNumber ?? existing.poNumber,
+        drNumber: drNumber ?? existing.drNumber,
+        remarks: remarks ?? existing.remarks,
+        items: { deleteMany: {}, create: items.map((i) => ({ itemId: i.itemId, quantity: Number(i.quantity), unitCost: Number(i.unitCost) || 0, remarks: i.remarks })) },
+      },
+      include: { supplier: true, items: { include: { item: true } } },
+    });
+
+    for (const ri of doc.items) {
+      const item = await tx.item.findUnique({ where: { id: ri.itemId } });
+      if (!item) continue;
+      const newBalance = item.currentStock + ri.quantity;
+      await tx.item.update({ where: { id: item.id }, data: { currentStock: newBalance, unitCost: ri.unitCost ? Number(ri.unitCost) : item.unitCost } });
+      await tx.ledgerEntry.create({
+        data: {
+          itemId: item.id,
+          referenceType: 'RECEIPT',
+          referenceId: doc.id,
+          date: doc.receiptDate,
+          inflow: ri.quantity,
+          runningBalance: newBalance,
+          remarks: `Receiving ${doc.receivingNo}` + (poNumber ? ` PO ${poNumber}` : ''),
+          createdById: req.user.id,
+        },
+      });
+    }
+
+    return doc;
+  });
+
+  await writeAudit(req, 'UPDATE', 'Receiving', existing.id, { receivingNo: existing.receivingNo }, { receivingNo: updated.receivingNo });
+  res.json({ data: updated, message: 'Receiving updated and stock adjusted.' });
+}
+
+async function deleteReceiving(req, res) {
+  const existing = await prisma.receiving.findUnique({ where: { id: req.params.id }, include: { items: { include: { item: true } } } });
+  if (!existing) throw new ApiError(404, 'Receiving not found.');
+
+  await prisma.$transaction(async (tx) => {
+    for (const ri of existing.items) {
+      const item = await tx.item.findUnique({ where: { id: ri.itemId } });
+      if (!item) continue;
+      const reversed = item.currentStock - ri.quantity;
+      await tx.item.update({ where: { id: item.id }, data: { currentStock: reversed } });
+      await tx.ledgerEntry.create({
+        data: {
+          itemId: item.id,
+          referenceType: 'ADJUSTMENT_OUT',
+          referenceId: existing.id,
+          date: new Date(),
+          outflow: ri.quantity,
+          runningBalance: reversed,
+          remarks: `Receiving ${existing.receivingNo} deleted — reversed`,
+          createdById: req.user.id,
+        },
+      });
+    }
+    await tx.receiving.delete({ where: { id: existing.id } });
+  });
+
+  await writeAudit(req, 'DELETE', 'Receiving', existing.id, { receivingNo: existing.receivingNo }, null);
+  res.json({ message: 'Receiving deleted and stock reversed.' });
+}
+
+async function getSupplier(req, res) {
+  const supplier = await prisma.supplier.findUnique({ where: { id: req.params.id } });
+  if (!supplier) throw new ApiError(404, 'Supplier not found.');
+  res.json({ data: supplier });
+}
+
+async function updateSupplier(req, res) {
+  const { name, contact, phone, email, address } = req.body;
+  const supplier = await prisma.supplier.update({
+    where: { id: req.params.id },
+    data: { name, contact, phone, email, address },
+  });
+  await writeAudit(req, 'UPDATE', 'Supplier', supplier.id, { name: supplier.name }, { name });
+  res.json({ data: supplier });
+}
+
+async function deactivateSupplier(req, res) {
+  const supplier = await prisma.supplier.update({ where: { id: req.params.id }, data: { isActive: false } });
+  await writeAudit(req, 'DELETE', 'Supplier', supplier.id, { name: supplier.name, isActive: true }, { isActive: false });
+  res.json({ data: supplier, message: 'Supplier deactivated.' });
+}
+
+module.exports = { listSuppliers, createSupplier, listReceivings, createReceiving, getReceiving, updateReceiving, deleteReceiving, getSupplier, updateSupplier, deactivateSupplier };

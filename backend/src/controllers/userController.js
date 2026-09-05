@@ -144,14 +144,12 @@ async function dashboardStats(req, res) {
     prisma.ledgerEntry.count({ where: whereClause }),
   ]);
 
-  const recentLedgerWhere = {
+  const recentLedger = await prisma.ledgerEntry.findMany({
+    where: (start || end) ? { date: { gte: monthStart, lte: monthEnd } } : undefined,
     include: { item: { select: { id: true, name: true, sku: true, unit: true } } },
     orderBy: { date: 'desc' },
     take: 8,
-    where: (start || end) ? { date: { gte: monthStart, lte: monthEnd } } : undefined,
-  };
-
-  const recentLedger = await prisma.ledgerEntry.findMany(recentLedgerWhere);
+  });
 
   res.json({
     stats: {
