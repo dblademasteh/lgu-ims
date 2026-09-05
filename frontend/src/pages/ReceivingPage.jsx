@@ -16,6 +16,7 @@ export default function ReceivingPage() {
   const [supplierOpen, setSupplierOpen] = useState(false);
   const [supplierForm, setSupplierForm] = useState({ name: '', contact: '', phone: '', email: '', address: '' });
   const [form, setForm] = useState({ supplierId: '', receivingNo: '', receiptDate: new Date().toISOString().slice(0,10), poNumber: '', drNumber: '', remarks: '', lines: [{ itemId: '', quantity: 1, unitCost: 0, remarks: '' }] });
+  const [printRec, setPrintRec] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -35,6 +36,12 @@ export default function ReceivingPage() {
     }
   };
   useEffect(() => { load(); }, [page]);
+
+  useEffect(() => {
+    if (printRec) {
+      window.print();
+    }
+  }, [printRec]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -92,7 +99,7 @@ export default function ReceivingPage() {
                     <td>{new Date(r.receiptDate).toLocaleDateString()}</td>
                     <td>{r.poNumber || '—'}</td>
                     <td>{r.items?.length || 0}</td>
-                    <td className="text-right"><button className="btn btn-ghost btn-xs" onClick={() => window.print()}>Print</button></td>
+                    <td className="text-right"><button className="btn btn-ghost btn-xs" onClick={async () => { const res = await api.get(`/inventory/receivings/${r.id}`); setPrintRec(res.data.data); }}>Print</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -181,6 +188,75 @@ export default function ReceivingPage() {
           </div>
           <form method="dialog" className="modal-backdrop"><button onClick={() => setSupplierOpen(false)}>close</button></form>
         </dialog>
+      )}
+
+      {printRec && (
+        <div className="print-area">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <div className="text-lg font-bold uppercase tracking-wide">Receiving / Purchase Record</div>
+              <div className="text-sm text-base-content/60">Property &amp; Supply Office · On-premises</div>
+            </div>
+            <div className="text-right text-sm">
+              <div className="font-mono text-xs uppercase tracking-wider opacity-70">Receiving No.</div>
+              <div className="font-bold font-mono">{printRec.receivingNo}</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+            <div><span className="opacity-60">Supplier:</span> <span className="font-semibold">{printRec.supplier?.name}</span></div>
+            <div><span className="opacity-60">Date:</span> {new Date(printRec.receiptDate).toLocaleDateString()}</div>
+            <div><span className="opacity-60">PO No.:</span> {printRec.poNumber || '—'}</div>
+            <div><span className="opacity-60">DR No.:</span> {printRec.drNumber || '—'}</div>
+          </div>
+
+          {printRec.remarks && <p className="text-sm mb-4"><span className="opacity-60">Remarks:</span> {printRec.remarks}</p>}
+
+          <table className="table table-sm mb-6">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Item</th>
+                <th>SKU</th>
+                <th className="text-right">Qty</th>
+                <th className="text-right">Unit Cost</th>
+                <th className="text-right">Amount</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              {printRec.items?.map((ri, idx) => (
+                <tr key={ri.id}>
+                  <td>{idx + 1}</td>
+                  <td>{ri.item?.name}</td>
+                  <td className="font-mono text-xs">{ri.item?.sku}</td>
+                  <td className="text-right">{Number(ri.quantity).toLocaleString()}</td>
+                  <td className="text-right">₱{Number(ri.unitCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                  <td className="text-right">₱{(Number(ri.quantity) * Number(ri.unitCost || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                  <td className="text-xs opacity-70">{ri.remarks || ''}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th colSpan="5" className="text-right">Total</th>
+                <th className="text-right">
+                  ₱{printRec.items?.reduce((s, ri) => s + Number(ri.quantity) * Number(ri.unitCost || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </th>
+                <th />
+              </tr>
+            </tfoot>
+          </table>
+
+          <div className="grid grid-cols-2 gap-8 mt-8">
+            <div className="border-t border-base-300 pt-2 text-xs text-center opacity-70">Received by / Warehouse Staff</div>
+            <div className="border-t border-base-300 pt-2 text-xs text-center opacity-70">Noted by / Property Custodian</div>
+          </div>
+
+          <div className="mt-8 text-center">
+            <button className="btn btn-primary no-print" onClick={() => setPrintRec(null)}>Close</button>
+          </div>
+        </div>
       )}
     </div>
   );
