@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const prisma = require('../prisma');
 const ApiError = require('../utils/ApiError');
 const { writeAudit } = require('../utils/audit');
+const { sanitizeString } = require('../utils/sanitize');
 
 async function listApiKeys(req, res) {
   const keys = await prisma.apiKey.findMany({
@@ -12,13 +13,20 @@ async function listApiKeys(req, res) {
 }
 
 async function createApiKey(req, res) {
-  const { name, expiresInDays } = req.body;
+  const body = { ...req.body };
+  if (body.name !== undefined) body.name = sanitizeString(body.name);
+  const { name, expiresInDays } = body;
   if (!name) throw new ApiError(400, 'Name is required.');
+
+  const days = expiresInDays ? Number(expiresInDays) : undefined;
+  if (days !== undefined && (!Number.isFinite(days) || days <= 0)) {
+    throw new ApiError(400, 'expiresInDays must be a positive number.');
+  }
 
   const raw = crypto.randomBytes(32).toString('hex');
   const hash = crypto.createHash('sha256').update(raw).digest('hex');
   const prefix = raw.slice(0, 8);
-  const expiresAt = expiresInDays ? new Date(Date.now() + Number(expiresInDays) * 86400000) : null;
+  const expiresAt = days ? new Date(Date.now() + days * 86400000) : null;
 
   const key = await prisma.apiKey.create({
     data: {
