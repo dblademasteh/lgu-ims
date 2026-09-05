@@ -21,7 +21,7 @@ const ROLE_STYLE = {
   DEPARTMENT_HEAD: 'bg-warning/15 text-warning',
 };
 
-const emptyForm = { username: '', email: '', password: '', fullName: '', role: 'WAREHOUSE_STAFF', departmentId: '' };
+const emptyForm = { username: '', email: '', password: '', fullName: '', role: 'WAREHOUSE_STAFF', departmentId: '', isActive: true };
 
 export default function UsersPage() {
   const toast = useToast();
@@ -29,16 +29,20 @@ export default function UsersPage() {
   const [departments, setDepartments] = useState([]);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [editing, setEditing] = useState(null);
   const [open, setOpen] = useState(false);
 
   const load = () => {
     const q = new URLSearchParams({ page });
     if (search) q.set('search', search);
+    if (roleFilter) q.set('role', roleFilter);
+    if (statusFilter) q.set('isActive', statusFilter);
     api.get(`/users?${q}`).then((r) => setData(r.data)).catch((e) => toast.error(e.response?.data?.message || 'Unable to load users.'));
   };
 
-  useEffect(load, [page]);
+  useEffect(load, [page, roleFilter, statusFilter]);
   useEffect(() => { api.get('/departments').then((r) => setDepartments(r.data.data)).catch(() => {}); }, []);
 
   return (
@@ -56,10 +60,21 @@ export default function UsersPage() {
 
       <div className="card bg-base-100 shadow-sm">
         <div className="card-body">
-          <label className="input max-w-xs mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            <input type="search" className="flex-1" placeholder="Search users..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
-          </label>
+          <div className="flex flex-col md:flex-row gap-3 mb-4">
+            <label className="input flex-1 md:max-w-xs">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 0 0114 0z" /></svg>
+              <input type="search" className="flex-1" placeholder="Search users..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+            </label>
+            <select className="select md:w-48" value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}>
+              <option value="">All roles</option>
+              {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+            </select>
+            <select className="select md:w-40" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
+              <option value="">All statuses</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          </div>
 
           {!data ? (
             <Spinner label="Loading users..." />
@@ -126,7 +141,7 @@ function UserFormModal({ user, departments, roles, onClose, onSaved }) {
     if (user) {
       setForm({
         username: user.username, email: user.email, password: '',
-        fullName: user.fullName, role: user.role, departmentId: user.departmentId || '',
+        fullName: user.fullName, role: user.role, departmentId: user.departmentId || '', isActive: user.isActive,
       });
     }
   }, [user]);
@@ -136,7 +151,7 @@ function UserFormModal({ user, departments, roles, onClose, onSaved }) {
     setBusy(true);
     try {
       if (editing) {
-        const payload = { fullName: form.fullName, email: form.email, role: form.role, departmentId: form.departmentId || null };
+        const payload = { fullName: form.fullName, email: form.email, role: form.role, departmentId: form.departmentId || null, isActive: form.isActive };
         if (passwordReset) payload.password = passwordReset;
         await api.patch(`/users/${user.id}`, payload);
         toast.success('User updated.');
@@ -194,6 +209,15 @@ function UserFormModal({ user, departments, roles, onClose, onSaved }) {
             <fieldset className="fieldset sm:col-span-2">
               <legend className="fieldset-legend">Reset password (optional)</legend>
               <input className="input" type="password" value={passwordReset} onChange={(e) => setPasswordReset(e.target.value)} placeholder="Leave blank to keep current password" />
+            </fieldset>
+          )}
+          {editing && (
+            <fieldset className="fieldset sm:col-span-2">
+              <legend className="fieldset-legend">Account status</legend>
+              <label className="label cursor-pointer justify-start gap-3">
+                <input type="checkbox" className="toggle toggle-primary" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
+                <span>{form.isActive ? 'Active' : 'Inactive'}</span>
+              </label>
             </fieldset>
           )}
           <div className="modal-action col-span-full">

@@ -16,7 +16,7 @@ async function createSupplier(req, res) {
 }
 
 async function listReceivings(req, res) {
-  const { page = 1, limit = 20, search } = req.query;
+  const { page = 1, limit = 20, search, from, to, supplierId } = req.query;
   const where = {};
   if (search) {
     where.OR = [
@@ -24,6 +24,12 @@ async function listReceivings(req, res) {
       { poNumber: { contains: search, mode: 'insensitive' } },
       { supplier: { name: { contains: search, mode: 'insensitive' } } },
     ];
+  }
+  if (supplierId) where.supplierId = supplierId;
+  if (from || to) {
+    where.receiptDate = {};
+    if (from) where.receiptDate.gte = new Date(from);
+    if (to) where.receiptDate.lte = new Date(to);
   }
   const [items, total] = await Promise.all([
     prisma.receiving.findMany({

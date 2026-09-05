@@ -13,6 +13,7 @@ import AuditLogPage from './pages/AuditLogPage';
 import UsersPage from './pages/UsersPage';
 import SettingsPage from './pages/SettingsPage';
 import ReceivingPage from './pages/ReceivingPage';
+import SuppliersPage from './pages/SuppliersPage';
 
 function NotFound() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="items" element={<ItemsPage />} />
         <Route path="receiving" element={<ProtectedRoute roles={['ADMIN', 'WAREHOUSE_STAFF']}><ReceivingPage /></ProtectedRoute>} />
+        <Route path="suppliers" element={<ProtectedRoute roles={['ADMIN', 'WAREHOUSE_STAFF']}><SuppliersPage /></ProtectedRoute>} />
         <Route path="ris" element={<RISPage />} />
         <Route path="ledger" element={<LedgerPage />} />
         <Route path="reports" element={<ProtectedRoute roles={['ADMIN', 'WAREHOUSE_STAFF', 'PROPERTY_CUSTODIAN', 'AUDITOR']}><ReportsPage /></ProtectedRoute>} />

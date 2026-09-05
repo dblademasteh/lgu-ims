@@ -17,14 +17,21 @@ export default function ReceivingPage() {
   const [supplierForm, setSupplierForm] = useState({ name: '', contact: '', phone: '', email: '', address: '' });
   const [form, setForm] = useState({ supplierId: '', receivingNo: '', receiptDate: new Date().toISOString().slice(0,10), poNumber: '', drNumber: '', remarks: '', lines: [{ itemId: '', quantity: 1, unitCost: 0, remarks: '' }] });
   const [printRec, setPrintRec] = useState(null);
+  const [editRec, setEditRec] = useState(null);
+  const [search, setSearch] = useState('');
+  const [deleteId, setDeleteId] = useState(null);
+  const [detailRec, setDetailRec] = useState(null);
+  const [editingId, setEditingId] = useState(null);
 
   const load = async () => {
     setLoading(true);
     try {
+      const q = new URLSearchParams({ page: String(page), limit: '20' });
+      if (search) q.set('search', search);
       const [sup, itm, rec] = await Promise.all([
         api.get('/inventory/suppliers'),
         api.get('/items?limit=200&isActive=true'),
-        api.get(`/inventory/receivings?page=${page}&limit=20`),
+        api.get(`/inventory/receivings?${q}`),
       ]);
       setSuppliers(sup.data.data);
       setItems(itm.data.data);
@@ -35,7 +42,7 @@ export default function ReceivingPage() {
       setLoading(false);
     }
   };
-  useEffect(() => { load(); }, [page]);
+  useEffect(() => { load(); }, [page, search]);
 
   useEffect(() => {
     if (printRec) {
@@ -78,41 +85,102 @@ export default function ReceivingPage() {
     }
   };
 
+  const openEdit = async (r) => {
+    const res = await api.get(`/inventory/receivings/${r.id}`);
+    const rec = res.data.data;
+    setEditRec(rec);
+    setForm({
+      supplierId: rec.supplierId,
+      receivingNo: rec.receivingNo,
+      receiptDate: new Date(rec.receiptDate).toISOString().slice(0,10),
+      poNumber: rec.poNumber || '',
+      drNumber: rec.drNumber || '',
+      remarks: rec.remarks || '',
+      lines: rec.items.map(ri => ({ itemId: ri.itemId, quantity: Number(ri.quantity), unitCost: Number(ri.unitCost) || 0, remarks: ri.remarks || '' })),
+    });
+  };
+
+  const submitEdit = async (e) => {
+    e.preventDefault();
+    if (!editRec) return;
+    try {
+      await api.patch(`/inventory/receivings/${editRec.id}`, {
+        supplierId: form.supplierId,
+        receivingNo: form.receivingNo,
+        receiptDate: form.receiptDate,
+        poNumber: form.poNumber,
+        drNumber: form.drNumber,
+        remarks: form.remarks,
+        items: form.lines.filter(l => l.itemId).map(l => ({ itemId: l.itemId, quantity: Number(l.quantity), unitCost: Number(l.unitCost) || 0, remarks: l.remarks })),
+      });
+      toast.success('Receiving updated.');
+      setEditRec(null);
+      setOpen(false);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to update receiving.');
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await api.delete(`/inventory/receivings/${deleteId}`);
+      toast.success('Receiving deleted and stock reversed.');
+      setDeleteId(null);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to delete receiving.');
+    }
+  };
+
   return (
     <div>
       <PageHeader title="Receiving / Purchases" subtitle="Record stock receipts from suppliers" actions={
         <>
           {canManage && <button className="btn btn-outline" onClick={() => setSupplierOpen(true)}>Add Supplier</button>}
-          {canManage && <button className="btn btn-primary" onClick={() => setOpen(true)}>New Receiving</button>}
+          {canManage && <button className="btn btn-primary" onClick={() => { setEditRec(null); setForm({ supplierId: '', receivingNo: '', receiptDate: new Date().toISOString().slice(0,10), poNumber: '', drNumber: '', remarks: '', lines: [{ itemId: '', quantity: 1, unitCost: 0, remarks: '' }] }); setOpen(true); }}>New Receiving</button>}
         </>
       } />
-      {loading ? <Spinner /> : (
-        <div className="card bg-base-100 shadow-sm">
-          <div className="card-body overflow-x-auto">
-            <table className="table table-sm">
-              <thead><tr><th>Receiving No.</th><th>Supplier</th><th>Date</th><th>PO No.</th><th>Items</th><th></th></tr></thead>
-              <tbody>
-                {receivings.data?.map(r => (
-                  <tr key={r.id}>
-                    <td className="font-mono">{r.receivingNo}</td>
-                    <td>{r.supplier?.name}</td>
-                    <td>{new Date(r.receiptDate).toLocaleDateString()}</td>
-                    <td>{r.poNumber || '—'}</td>
-                    <td>{r.items?.length || 0}</td>
-                    <td className="text-right"><button className="btn btn-ghost btn-xs" onClick={async () => { const res = await api.get(`/inventory/receivings/${r.id}`); setPrintRec(res.data.data); }}>Print</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <Pagination meta={{ page, limit: 20, total: receivings.meta?.total || 0, totalPages: receivings.meta?.totalPages || receivings.meta?.pages || 1 }} onPage={setPage} />
+      <div className="card bg-base-100 shadow-sm">
+        <div className="card-body">
+          <div className="flex flex-col md:flex-row gap-3 mb-4">
+            <label className="input flex-1 md:max-w-xs">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 0 0114 0z" /></svg>
+              <input type="search" className="flex-1" placeholder="Search receiving no, PO, supplier..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+            </label>
           </div>
+          {loading ? <Spinner /> : (
+            <div className="overflow-x-auto">
+              <table className="table table-sm">
+                <thead><tr><th>Receiving No.</th><th>Supplier</th><th>Date</th><th>PO No.</th><th>Items</th><th className="text-right">Actions</th></tr></thead>
+                <tbody>
+                  {receivings.data?.map(r => (
+                    <tr key={r.id} className="hover">
+                      <td className="font-mono">{r.receivingNo}</td>
+                      <td>{r.supplier?.name}</td>
+                      <td>{new Date(r.receiptDate).toLocaleDateString()}</td>
+                      <td>{r.poNumber || '—'}</td>
+                      <td>{r.items?.length || 0}</td>
+                      <td className="text-right">
+                        <button className="btn btn-ghost btn-xs" onClick={async () => { const res = await api.get(`/inventory/receivings/${r.id}`); setDetailRec(res.data.data); }}>View</button>
+                        <button className="btn btn-ghost btn-xs" onClick={async () => { const res = await api.get(`/inventory/receivings/${r.id}`); setPrintRec(res.data.data); }}>Print</button>
+                        {canManage && <button className="btn btn-ghost btn-xs text-error" onClick={() => { if (window.confirm(`Delete receiving ${r.receivingNo}? This will reverse stock.`)) { setDeleteId(r.id); } }}>Delete</button>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <Pagination meta={{ page, limit: 20, total: receivings.meta?.total || 0, totalPages: receivings.meta?.totalPages || receivings.meta?.pages || 1 }} onPage={setPage} />
+            </div>
+          )}
         </div>
-      )}
+      </div>
       {open && (
         <dialog className="modal modal-open">
           <div className="modal-box max-w-3xl">
-            <h3 className="font-bold text-lg">New Receiving</h3>
-            <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            <h3 className="font-bold text-lg">{editRec ? 'Edit Receiving' : 'New Receiving'}</h3>
+            <form onSubmit={editRec ? submitEdit : submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
               <fieldset className="fieldset"><legend className="fieldset-legend">Supplier *</legend>
                 <select className="select" required value={form.supplierId} onChange={e => setForm({...form, supplierId: e.target.value})}>
                   <option value="">Select...</option>
@@ -257,6 +325,58 @@ export default function ReceivingPage() {
             <button className="btn btn-primary no-print" onClick={() => setPrintRec(null)}>Close</button>
           </div>
         </div>
+      )}
+
+      {detailRec && (
+        <dialog className="modal modal-open">
+          <div className="modal-box max-w-3xl">
+            <div className="flex items-start justify-between">
+              <h3 className="font-bold text-lg">Receiving Detail</h3>
+              <button className="btn btn-ghost btn-sm" onClick={() => setDetailRec(null)}>✕</button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm mt-4">
+              <div><span className="opacity-60">Receiving No.:</span> <span className="font-mono font-semibold">{detailRec.receivingNo}</span></div>
+              <div><span className="opacity-60">Supplier:</span> {detailRec.supplier?.name}</div>
+              <div><span className="opacity-60">Date:</span> {new Date(detailRec.receiptDate).toLocaleDateString()}</div>
+              <div><span className="opacity-60">PO No.:</span> {detailRec.poNumber || '—'}</div>
+              <div><span className="opacity-60">DR No.:</span> {detailRec.drNumber || '—'}</div>
+              <div><span className="opacity-60">Remarks:</span> {detailRec.remarks || '—'}</div>
+            </div>
+            <div className="mt-4">
+              <table className="table table-sm">
+                <thead><tr><th>Item</th><th>SKU</th><th className="text-right">Qty</th><th className="text-right">Unit Cost</th></tr></thead>
+                <tbody>
+                  {detailRec.items?.map(ri => (
+                    <tr key={ri.id}>
+                      <td>{ri.item?.name}</td>
+                      <td className="font-mono text-xs">{ri.item?.sku}</td>
+                      <td className="text-right">{Number(ri.quantity).toLocaleString()}</td>
+                      <td className="text-right">₱{Number(ri.unitCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="modal-action">
+              <button className="btn" onClick={() => setDetailRec(null)}>Close</button>
+            </div>
+          </div>
+          <form method="dialog" className="modal-backdrop"><button onClick={() => setDetailRec(null)}>close</button></form>
+        </dialog>
+      )}
+
+      {deleteId && (
+        <dialog className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg">Delete receiving</h3>
+            <p className="text-sm text-base-content/60 mt-1">This will reverse all stock movements. This cannot be undone.</p>
+            <div className="modal-action">
+              <button className="btn" onClick={() => setDeleteId(null)}>Cancel</button>
+               <button className="btn btn-error" onClick={confirmDelete}>Delete</button>
+            </div>
+          </div>
+          <form method="dialog" className="modal-backdrop"><button onClick={() => setDeleteId(null)}>close</button></form>
+        </dialog>
       )}
     </div>
   );

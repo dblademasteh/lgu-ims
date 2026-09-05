@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
+  Landmark,
   ClipboardList,
   BookOpen,
   BarChart3,
@@ -11,7 +12,6 @@ import {
   Users,
   Settings,
   LogOut,
-  Landmark,
   Sun,
   Moon,
   Check,
@@ -27,6 +27,7 @@ const MENU = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'ops', index: null },
   { to: '/items', label: 'Items & Stock', icon: Package, group: 'ops', index: '01' },
   { to: '/receiving', label: 'Receiving / Purchases', icon: Landmark, group: 'ops', index: '01b' },
+  { to: '/suppliers', label: 'Suppliers', icon: Users, group: 'ops', index: '01c' },
   { to: '/ris', label: 'Requisitions (RIS)', icon: ClipboardList, group: 'ops', index: '02' },
   { to: '/ledger', label: 'Ledger Cards', icon: BookOpen, group: 'ops', index: '03' },
   { to: '/reports', label: 'Reports', icon: BarChart3, group: 'oversight', index: null },
@@ -43,8 +44,8 @@ const NAV_GROUPS = [
 ];
 
 const ROLE_MENU = {
-  ADMIN: MENU,
-  WAREHOUSE_STAFF: ['dashboard', 'items', 'receiving', 'ris', 'ledger', 'reports', 'notifications', 'settings'].map(find),
+  ADMIN: ['dashboard', 'items', 'receiving', 'suppliers', 'ris', 'ledger', 'reports', 'notifications', 'audit', 'users', 'settings'].map(find),
+  WAREHOUSE_STAFF: ['dashboard', 'items', 'receiving', 'suppliers', 'ris', 'ledger', 'reports', 'notifications', 'settings'].map(find),
   PROPERTY_CUSTODIAN: ['dashboard', 'items', 'ris', 'ledger', 'reports', 'notifications'].map(find),
   AUDITOR: ['dashboard', 'items', 'ris', 'ledger', 'reports', 'notifications', 'audit'].map(find),
   DEPARTMENT_HEAD: ['dashboard', 'items', 'ris', 'notifications'].map(find),
