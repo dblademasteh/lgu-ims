@@ -336,7 +336,7 @@
  *     parameters:
  *       - $ref: '#/components/parameters/IdParam'
  *     responses:
- *       200: { description: { sku, name, dataUrl }. }
+ *       200: { description: '{ sku, name, dataUrl }.' }
  *
  * /items/{id}/adjust:
  *   post:
@@ -563,7 +563,7 @@
  *     tags: [Notifications]
  *     summary: Unread count for the current user
  *     responses:
- *       200: { description: { count }. }
+ *       200: { description: '{ count }.' }
  *
  * /notifications/{id}/read:
  *   patch:
@@ -580,7 +580,7 @@
  *     tags: [Notifications]
  *     summary: Mark all notifications as read
  *     responses:
- *       200: { description: { updated }. }
+ *       200: { description: '{ updated }.' }
  */
 
 /**
