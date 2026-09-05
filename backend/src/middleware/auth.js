@@ -64,6 +64,7 @@ function publicUser(user) {
     department: user.department ? { id: user.department.id, name: user.department.name, code: user.department.code } : null,
     externalId: user.externalId,
     isActive: user.isActive,
+    lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,
   };
 }

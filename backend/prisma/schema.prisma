@@ -67,6 +67,9 @@ model User {
   twoFactorEnabled Boolean @default(false)
   twoFactorSecret   String?
   passwordChangedAt DateTime?
+  lastLoginAt  DateTime?
+  failedLoginAttempts Int @default(0)
+  lockedUntil  DateTime?
   externalId   String? // future SSO / HRIS integration
   departmentId String?  @db.Uuid
   department   Department? @relation(fields: [departmentId], references: [id])

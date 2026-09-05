@@ -29,13 +29,31 @@ async function login(req, res) {
     include: { department: true },
   });
 
+  if (!user) {
+    await writeAudit(req, 'LOGIN_FAILED', 'User', null, null, { username });
+    throw new ApiError(401, 'Invalid username or password.');
+  }
+
+  if (user.lockedUntil && new Date() < new Date(user.lockedUntil)) {
+    const remaining = Math.ceil((new Date(user.lockedUntil) - new Date()) / 60000);
+    throw new ApiError(403, `Account is locked due to too many failed attempts. Try again in ${remaining} minutes.`);
+  }
+
   const valid = user && (await bcrypt.compare(password, user.password));
   if (!valid) {
+    const attempts = (user.failedLoginAttempts || 0) + 1;
+    const lockUntil = attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
+    await prisma.user.update({ where: { id: user.id }, data: { failedLoginAttempts: attempts, lockedUntil: lockUntil } });
+    await writeAudit(req, 'LOGIN_FAILED', 'User', user.id, null, { username: user.username, attempts });
     throw new ApiError(401, 'Invalid username or password.');
   }
   if (!user.isActive) {
     throw new ApiError(403, 'This account has been deactivated. Contact the administrator.');
   }
+
+  await prisma.user.update({ where: { id: user.id }, data: { failedLoginAttempts: 0, lockedUntil: null } });
+  await writeAudit(req, 'LOGIN', 'User', user.id, null, { username: user.username });
+  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
   if (user.passwordChangedAt) {
     const ageMs = Date.now() - new Date(user.passwordChangedAt).getTime();
@@ -45,8 +63,6 @@ async function login(req, res) {
       return res.json({ requiresPasswordChange: true, tempToken, user: publicUser(user) });
     }
   }
-
-  await writeAudit(req, 'LOGIN', 'User', user.id, null, { username: user.username });
 
   if (user.twoFactorEnabled) {
     const tempToken = jwt.sign({ sub: user.id, type: '2fa_pending' }, config.jwtSecret, { expiresIn: '5m' });
