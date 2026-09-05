@@ -187,6 +187,21 @@ async function approveRis(req, res) {
     throw new ApiError(400, 'You cannot approve your own requisition.');
   }
 
+  const currentYear = new Date().getFullYear();
+  const budget = await prisma.budget.findFirst({
+    where: { departmentId: ris.departmentId, year: currentYear },
+  });
+  if (budget) {
+    const totalCost = ris.items.reduce((sum, line) => {
+      const qty = approvedItems ? (approvedItems.find((i) => i.itemId === line.itemId || i.risItemId === line.id)?.quantityApproved || line.quantityRequested) : line.quantityRequested;
+      return sum + qty * (line.unitCost || line.item.unitCost);
+    }, 0);
+    const remaining = budget.amount - budget.spent;
+    if (totalCost > remaining) {
+      throw new ApiError(400, `Insufficient budget. Requested: ₱${totalCost.toFixed(2)}, Remaining: ₱${remaining.toFixed(2)}.`);
+    }
+  }
+
   const approvedItems = (req.body.items || []).length > 0 ? req.body.items : null;
   const remarks = sanitizeString(req.body.remarks);
 
@@ -217,6 +232,17 @@ async function approveRis(req, res) {
       });
     }
 
+    if (budget) {
+      const totalCost = ris.items.reduce((sum, line) => {
+        const qty = approvedItems ? (approvedItems.find((i) => i.itemId === line.itemId || i.risItemId === line.id)?.quantityApproved || line.quantityRequested) : line.quantityRequested;
+        return sum + qty * (line.unitCost || line.item.unitCost);
+      }, 0);
+      await tx.budget.update({
+        where: { id: budget.id },
+        data: { spent: { increment: totalCost } },
+      });
+    }
+
     return tx.ris.findUnique({ where: { id: ris.id }, include: RIS_INCLUDE });
   });
 
@@ -243,22 +269,40 @@ async function approveRis(req, res) {
 }
 
 async function rejectRis(req, res) {
-  const ris = await prisma.ris.findUnique({ where: { id: req.params.id } });
+  const ris = await prisma.ris.findUnique({ where: { id: req.params.id }, include: { items: true } });
   if (!ris) throw new ApiError(404, 'RIS not found.');
   if (!['PENDING', 'APPROVED'].includes(ris.status)) {
     throw new ApiError(400, `Only pending or approved RIS can be rejected (current: ${ris.status}).`);
   }
   const reason = sanitizeString(req.body.remarks) || 'Rejected by approving officer.';
 
-  const updated = await prisma.ris.update({
-    where: { id: ris.id },
-    data: {
-      status: 'REJECTED',
-      approvedById: req.user.id,
-      approvedAt: new Date(),
-      remarks: reason,
-    },
-    include: RIS_INCLUDE,
+  const updated = await prisma.$transaction(async (tx) => {
+    const doc = await tx.ris.update({
+      where: { id: ris.id },
+      data: {
+        status: 'REJECTED',
+        approvedById: req.user.id,
+        approvedAt: new Date(),
+        remarks: reason,
+      },
+      include: RIS_INCLUDE,
+    });
+
+    if (ris.status === 'APPROVED') {
+      const currentYear = new Date().getFullYear();
+      const budget = await tx.budget.findFirst({
+        where: { departmentId: ris.departmentId, year: currentYear },
+      });
+      if (budget) {
+        const totalCost = ris.items.reduce((sum, line) => sum + line.quantityApproved * (line.unitCost || line.item.unitCost), 0);
+        await tx.budget.update({
+          where: { id: budget.id },
+          data: { spent: { decrement: totalCost } },
+        });
+      }
+    }
+
+    return doc;
   });
 
   await writeAudit(req, 'REJECT', 'Ris', ris.id, { status: ris.status }, { status: 'REJECTED' });
@@ -415,11 +459,27 @@ async function cancelRis(req, res) {
       }
     }
 
-    return tx.ris.update({
+    const doc = await tx.ris.update({
       where: { id: ris.id },
       data: { status: 'CANCELLED', remarks },
       include: RIS_INCLUDE,
     });
+
+    if (ris.status === 'APPROVED') {
+      const currentYear = new Date().getFullYear();
+      const budget = await tx.budget.findFirst({
+        where: { departmentId: ris.departmentId, year: currentYear },
+      });
+      if (budget) {
+        const totalCost = ris.items.reduce((sum, line) => sum + line.quantityApproved * (line.unitCost || line.item.unitCost), 0);
+        await tx.budget.update({
+          where: { id: budget.id },
+          data: { spent: { decrement: totalCost } },
+        });
+      }
+    }
+
+    return doc;
   });
 
   await writeAudit(req, 'CANCEL', 'Ris', ris.id, { status: ris.status }, { status: 'CANCELLED', restored: ['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status) });

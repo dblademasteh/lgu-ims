@@ -74,6 +74,26 @@ async function createReceiving(req, res) {
     po = await prisma.purchaseOrder.findUnique({ where: { id: purchaseOrderId }, include: { items: true } });
     if (!po) throw new ApiError(404, 'Purchase Order not found.');
     if (po.status === 'CANCELLED') throw new ApiError(400, 'Cannot receive against a cancelled purchase order.');
+
+    const poItems = new Map(po.items.map((pi) => [pi.itemId, pi]));
+    const mismatches = [];
+    for (const ri of items) {
+      const poItem = poItems.get(ri.itemId);
+      if (!poItem) {
+        mismatches.push(`Item ${ri.itemId} is not in PO ${po.poNumber}.`);
+        continue;
+      }
+      if (Number(ri.quantity) > poItem.quantity) {
+        mismatches.push(`Quantity for ${ri.itemId} exceeds PO quantity (${ri.quantity} > ${poItem.quantity}).`);
+      }
+      const costDiff = Math.abs(Number(ri.unitCost || 0) - poItem.unitCost);
+      if (costDiff > 0.01 && poItem.unitCost > 0) {
+        mismatches.push(`Unit cost for ${ri.itemId} does not match PO (${ri.unitCost} vs ${poItem.unitCost}).`);
+      }
+    }
+    if (mismatches.length > 0) {
+      throw new ApiError(400, `Receiving does not match PO:\n${mismatches.join('\n')}`);
+    }
   }
 
   const receiving = await prisma.$transaction(async (tx) => {
@@ -167,6 +187,33 @@ async function updateReceiving(req, res) {
     const duplicate = await prisma.receiving.findFirst({ where: { receivingNo, NOT: { id: existing.id } } });
     if (duplicate) {
       throw new ApiError(409, `Receiving number "${receivingNo}" already exists.`);
+    }
+  }
+
+  const poId = req.body.purchaseOrderId || existing.purchaseOrderId;
+  if (poId) {
+    const po = await prisma.purchaseOrder.findUnique({ where: { id: poId }, include: { items: true } });
+    if (!po) throw new ApiError(404, 'Purchase Order not found.');
+    if (po.status === 'CANCELLED') throw new ApiError(400, 'Cannot receive against a cancelled purchase order.');
+
+    const poItems = new Map(po.items.map((pi) => [pi.itemId, pi]));
+    const mismatches = [];
+    for (const ri of items) {
+      const poItem = poItems.get(ri.itemId);
+      if (!poItem) {
+        mismatches.push(`Item ${ri.itemId} is not in PO ${po.poNumber}.`);
+        continue;
+      }
+      if (Number(ri.quantity) > poItem.quantity) {
+        mismatches.push(`Quantity for ${ri.itemId} exceeds PO quantity (${ri.quantity} > ${poItem.quantity}).`);
+      }
+      const costDiff = Math.abs(Number(ri.unitCost || 0) - poItem.unitCost);
+      if (costDiff > 0.01 && poItem.unitCost > 0) {
+        mismatches.push(`Unit cost for ${ri.itemId} does not match PO (${ri.unitCost} vs ${poItem.unitCost}).`);
+      }
+    }
+    if (mismatches.length > 0) {
+      throw new ApiError(400, `Receiving does not match PO:\n${mismatches.join('\n')}`);
     }
   }
 

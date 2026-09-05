@@ -19,6 +19,18 @@ function sanitizeBody(body, fields = []) {
 }
 
 async function issueRefreshToken(userId) {
+  const MAX_SESSIONS = 5;
+  const existing = await prisma.refreshToken.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'asc' },
+  });
+  if (existing.length >= MAX_SESSIONS) {
+    const toDelete = existing.slice(0, existing.length - MAX_SESSIONS + 1);
+    await prisma.refreshToken.deleteMany({
+      where: { id: { in: toDelete.map((t) => t.id) } },
+    });
+  }
+
   const raw = crypto.randomBytes(40).toString('hex');
   const hash = crypto.createHash('sha256').update(raw).digest('hex');
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
