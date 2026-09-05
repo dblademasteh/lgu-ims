@@ -89,6 +89,7 @@ model User {
   purchaseOrders PurchaseOrder[]
   refreshTokens RefreshToken[]
   physicalCounts PhysicalCount[]
+  notificationPreferences NotificationPreference[]
 }
 
 model Item {
@@ -193,6 +194,17 @@ model Notification {
   createdAt DateTime  @default(now())
 
   @@index([userId, isRead])
+}
+
+model NotificationPreference {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id])
+  type      String
+  email     Boolean  @default(true)
+  inApp     Boolean  @default(true)
+
+  @@unique([userId, type])
 }
 
 model AuditLog {

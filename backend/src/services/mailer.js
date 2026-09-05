@@ -57,4 +57,12 @@ async function sendRisStatusEmail(ris, recipient) {
   await sendMail({ to: recipient.email, subject: tpl.subject, text: tpl.text, html: tpl.html });
 }
 
-module.exports = { sendMail, sendLowStockEmail, sendPasswordResetEmail, sendRisCreatedEmail, sendRisStatusEmail };
+async function sendNotificationDigest(user, notifications) {
+  if (!user.email || notifications.length === 0) return;
+  const lines = notifications.map((n) => `- [${n.type}] ${n.title}: ${n.message}`).join('\n');
+  const subject = `Daily notification digest (${notifications.length})`;
+  const text = `Hello ${user.fullName},\n\nYou have ${notifications.length} unread notifications:\n\n${lines}\n\nPlease sign in to the system to review.`;
+  await sendMail({ to: user.email, subject, text });
+}
+
+module.exports = { sendMail, sendLowStockEmail, sendPasswordResetEmail, sendRisCreatedEmail, sendRisStatusEmail, sendNotificationDigest };
