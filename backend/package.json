@@ -11,7 +11,9 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "node prisma/seed.js",
     "db:push": "prisma db push",
-    "seed": "node prisma/seed.js"
+    "seed": "node prisma/seed.js",
+    "backup": "sh ../scripts/backup.sh",
+    "restore": "sh ../scripts/restore.sh"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

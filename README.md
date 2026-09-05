@@ -118,18 +118,39 @@ docker compose up -d --build
 
 ## Backups (non-negotiable)
 
-The compose stack mounts `/backups` inside the db container. Example hourly backup on the
-host using cron:
-
-```cron
-0 2 * * *  docker exec lguims-db pg_dump -U lguims -d lgu_ims -Fc | gzip > /mnt/backup-drive/lgu_ims_$(date +\%F_\%H\%M).dump.gz && find /mnt/backup-drive -name 'lgu_ims_*.gz' -mtime +30 -delete
-```
-
-Restore example:
+The repo includes cross-platform backup/restore scripts under `scripts/`.
 
 ```bash
-docker exec -i lguims-db pg_restore -U lguims -d lgu_ims --clean --if-exists < backup.dump
+# POSIX (Git Bash / WSL / Linux)
+sh scripts/backup.sh
+BACKUP_DIR=/mnt/backup-drive sh scripts/backup.sh   # override destination
+
+# Restore
+sh scripts/restore.sh backups/lgu_ims_2026-09-05_0200.dump.gz
+
+# Windows PowerShell
+powershell -ExecutionPolicy Bypass -File scripts/backup.ps1
+powershell -ExecutionPolicy Bypass -File scripts/restore.ps1 -InputFile backups\lgu_ims_2026-09-05_0200.dump.gz
 ```
+
+Environment variables accepted by both scripts:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `COMPOSE_FILE` | `docker-compose.yml` | Compose file path |
+| `CONTAINER` | `lguims-db` | DB container name |
+| `DB_USER` | `lguims` | PostgreSQL user |
+| `DB_NAME` | `lgu_ims` | Database name |
+| `BACKUP_DIR` | `backups/` | Host-side backup directory |
+| `RETENTION_DAYS` | `30` | Delete backups older than this |
+
+Hourly cron example (Linux/WSL):
+
+```cron
+0 2 * * *  cd /opt/lgu-ims && sh scripts/backup.sh
+```
+
+The compose stack also mounts a `/backups` volume inside the db container for in-container retention.
 
 ## Email Alerts (Optional)
 
