@@ -65,9 +65,36 @@
  *               properties:
  *                 token: { type: string }
  *                 user:  { $ref: '#/components/schemas/User' }
- *       401: { $ref: '#/components/responses/Unauthorized' }
- *
- * /auth/me:
+  *       401: { $ref: '#/components/responses/Unauthorized' }
+  *
+  * /auth/refresh-token:
+  *   post:
+  *     tags: [Auth]
+  *     summary: Refresh access token
+  *     security: []
+  *     requestBody:
+  *       required: true
+  *       content:
+  *         application/json:
+  *           schema:
+  *             type: object
+  *             required: [refreshToken]
+  *             properties:
+  *               refreshToken: { type: string }
+  *     responses:
+  *       200:
+  *         description: New JWT + refresh token pair.
+  *         content:
+  *           application/json:
+  *             schema:
+  *               type: object
+  *               properties:
+  *                 token: { type: string }
+  *                 refreshToken: { type: string }
+  *                 user:  { $ref: '#/components/schemas/User' }
+  *       401: { $ref: '#/components/responses/Unauthorized' }
+  *
+  * /auth/me:
  *   get:
  *     tags: [Auth]
  *     summary: Current user

@@ -90,7 +90,10 @@ export default function Layout() {
   }, [location.pathname]);
 
   const handleLogout = async () => {
-    try { await api.post('/auth/logout'); } catch { /* best-effort */ }
+    try {
+      const refreshToken = localStorage.getItem('lgu_refresh_token');
+      await api.post('/auth/logout', { refreshToken });
+    } catch { /* best-effort */ }
     logout();
     navigate('/login', { replace: true });
   };

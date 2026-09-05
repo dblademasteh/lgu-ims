@@ -14,5 +14,6 @@ router.post('/2fa/setup', authenticate, authController.twoFactorSetup);
 router.post('/2fa/enable', authenticate, authController.twoFactorEnable);
 router.post('/2fa/disable', authenticate, authController.twoFactorDisable);
 router.post('/2fa/login', authController.twoFactorLogin);
+router.post('/refresh-token', authController.refreshToken);
 
 module.exports = router;

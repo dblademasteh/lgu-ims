@@ -8,6 +8,7 @@ const config = require('../config');
 const { sendMail, sendPasswordResetEmail } = require('../services/mailer');
 const { authenticator } = require('otplib');
 const { sanitizeString } = require('../utils/sanitize');
+const crypto = require('crypto');
 
 function sanitizeBody(body, fields = []) {
   const out = { ...body };
@@ -15,6 +16,20 @@ function sanitizeBody(body, fields = []) {
     if (out[f] !== undefined) out[f] = sanitizeString(out[f]);
   }
   return out;
+}
+
+async function issueRefreshToken(userId) {
+  const raw = crypto.randomBytes(40).toString('hex');
+  const hash = crypto.createHash('sha256').update(raw).digest('hex');
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  await prisma.refreshToken.create({
+    data: {
+      userId,
+      token: hash,
+      expiresAt,
+    },
+  });
+  return raw;
 }
 
 async function login(req, res) {
@@ -71,6 +86,7 @@ async function login(req, res) {
 
   res.json({
     token: signToken(user),
+    refreshToken: await issueRefreshToken(user.id),
     user: publicUser(user),
   });
 }
@@ -219,8 +235,49 @@ async function twoFactorLogin(req, res) {
 
   res.json({
     token: signToken(user),
+    refreshToken: await issueRefreshToken(user.id),
     user: publicUser(user),
   });
 }
 
-module.exports = { login, me, changePassword, logout, forgotPassword, resetPassword, twoFactorSetup, twoFactorEnable, twoFactorDisable, twoFactorLogin };
+async function refreshToken(req, res) {
+  const { refreshToken } = req.body;
+  if (!refreshToken) throw new ApiError(400, 'refreshToken is required.');
+
+  const hash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+  const stored = await prisma.refreshToken.findUnique({
+    where: { token: hash },
+    include: { user: { include: { department: true } } },
+  });
+
+  if (!stored || stored.expiresAt < new Date()) {
+    await prisma.refreshToken.deleteMany({ where: { token: hash } });
+    throw new ApiError(401, 'Invalid or expired refresh token.');
+  }
+
+  const user = stored.user;
+  if (!user || !user.isActive) {
+    throw new ApiError(401, 'Account is inactive or no longer exists.');
+  }
+
+  await prisma.refreshToken.delete({ where: { id: stored.id } });
+  const newRefreshToken = await issueRefreshToken(user.id);
+
+  res.json({
+    token: signToken(user),
+    refreshToken: newRefreshToken,
+    user: publicUser(user),
+  });
+}
+
+async function logout(req, res) {
+  const { refreshToken } = req.body;
+  if (refreshToken) {
+    const hash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    await prisma.refreshToken.deleteMany({ where: { token: hash } }).catch(() => {});
+  }
+  await writeAudit(req, 'LOGOUT', 'User', req.user.id, null, { username: req.user.username });
+  res.json({ message: 'Signed out.' });
+}
+
+module.exports = { login, me, changePassword, logout, forgotPassword, resetPassword, twoFactorSetup, twoFactorEnable, twoFactorDisable, twoFactorLogin, refreshToken };
