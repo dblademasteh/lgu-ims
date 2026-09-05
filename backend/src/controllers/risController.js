@@ -352,6 +352,70 @@ async function cancelRis(req, res) {
   res.json({ data: updated });
 }
 
+async function returnRisItems(req, res) {
+  const ris = await prisma.ris.findUnique({ where: { id: req.params.id }, include: { items: { include: { item: true } } } });
+  if (!ris) throw new ApiError(404, 'RIS not found.');
+  if (!['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status)) {
+    throw new ApiError(400, `Only issued RIS can receive returns (current: ${ris.status}).`);
+  }
+
+  const returns = (req.body.items || []).filter((it) => it.itemId || it.risItemId);
+  if (returns.length === 0) throw new ApiError(400, 'At least one return item is required.');
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const lines = await tx.risItem.findMany({ where: { risId: ris.id }, include: { item: true } });
+
+    for (const ret of returns) {
+      const line = lines.find((l) => l.itemId === ret.itemId || l.id === ret.risItemId);
+      if (!line) throw new ApiError(404, `Item not found in RIS: ${ret.itemId || ret.risItemId}`);
+      const qty = Number(ret.quantity);
+      if (!Number.isFinite(qty) || qty <= 0) throw new ApiError(400, 'Return quantity must be positive.');
+      if (qty > line.quantityIssued) throw new ApiError(400, `Cannot return more than issued (${line.quantityIssued}).`);
+
+      const newStock = line.item.currentStock + qty;
+      const newIssued = line.quantityIssued - qty;
+
+      await tx.item.update({ where: { id: line.itemId }, data: { currentStock: newStock } });
+      await tx.ledgerEntry.create({
+        data: {
+          itemId: line.itemId,
+          referenceType: 'RETURN',
+          referenceId: ris.id,
+          date: new Date(),
+          inflow: qty,
+          runningBalance: newStock,
+          remarks: `${ris.risNumber} — returned to stock`,
+          createdById: req.user.id,
+        },
+      });
+      await tx.risItem.update({ where: { id: line.id }, data: { quantityIssued: newIssued } });
+    }
+
+    const stillIssued = await tx.risItem.findMany({ where: { risId: ris.id } });
+    const anyRemaining = stillIssued.some((l) => l.quantityIssued > 0);
+    const newStatus = anyRemaining ? 'PARTIALLY_ISSUED' : 'ISSUED';
+
+    return tx.ris.update({
+      where: { id: ris.id },
+      data: { status: newStatus },
+      include: RIS_INCLUDE,
+    });
+  });
+
+  await writeAudit(req, 'RETURN', 'Ris', ris.id, { status: ris.status }, { status: updated.status, returns: returns.length });
+
+  await prisma.notification.create({
+    data: {
+      userId: ris.requestedBy.id,
+      type: 'RIS',
+      title: 'Items returned to stock',
+      message: `${ris.risNumber} — returned items have been restocked.`,
+    },
+  });
+
+  res.json({ data: updated });
+}
+
 module.exports = {
   listRis,
   getRis,
@@ -360,5 +424,6 @@ module.exports = {
   rejectRis,
   issueRis,
   cancelRis,
+  returnRisItems,
   MANAGE_ROLES,
 };

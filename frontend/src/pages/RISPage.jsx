@@ -22,6 +22,7 @@ export default function RISPage() {
   const canManage = useCan('ADMIN', 'PROPERTY_CUSTODIAN', 'WAREHOUSE_STAFF');
   const canIssue = useCan('ADMIN', 'WAREHOUSE_STAFF');
   const canCancel = useCan('ADMIN');
+  const canReturn = useCan('ADMIN', 'WAREHOUSE_STAFF', 'PROPERTY_CUSTODIAN');
 
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
@@ -30,6 +31,7 @@ export default function RISPage() {
   const [detail, setDetail] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [confirm, setConfirm] = useState(null);
+  const [returnOpen, setReturnOpen] = useState(false);
 
   const load = () => {
     const q = new URLSearchParams({ page });
@@ -52,9 +54,10 @@ export default function RISPage() {
   const act = async (id, action, body = {}, actLabel) => {
     setConfirm(null);
     try {
-      await api[action === 'issue' ? 'post' : 'patch'](`/ris/${id}/${action}`, body);
+      await api[action === 'issue' || action === 'return' ? 'post' : 'patch'](`/ris/${id}/${action}`, body);
       toast.success(`RIS ${actLabel}.`);
       setDetail(null);
+      setReturnOpen(false);
       load();
     } catch (e) {
       toast.error(e.response?.data?.message || `Unable to ${action} RIS.`);
@@ -140,11 +143,13 @@ export default function RISPage() {
           canManage={canManage}
           canIssue={canIssue}
           canCancel={canCancel}
+          canReturn={canReturn}
           onClose={() => setDetail(null)}
           onApprove={() => act(detail.id, 'approve', {}, 'approved')}
           onReject={() => setConfirm({ id: detail.id, action: 'reject', label: 'rejected', kind: 'rem' })}
           onIssue={() => act(detail.id, 'issue', {}, 'issued')}
           onCancel={() => setConfirm({ id: detail.id, action: 'cancel', label: 'cancelled', kind: 'rem' })}
+          onReturn={() => setReturnOpen(true)}
         />
       )}
 
@@ -167,11 +172,19 @@ export default function RISPage() {
           }}
         />
       )}
+
+      {returnOpen && detail && (
+        <ReturnModal
+          ris={detail}
+          onClose={() => setReturnOpen(false)}
+          onReturn={(items) => act(detail.id, 'return', { items }, 'returned')}
+        />
+      )}
     </div>
   );
 }
 
-function RisDetail({ ris, user, canManage, canIssue, canCancel, onClose, onApprove, onReject, onIssue, onCancel }) {
+function RisDetail({ ris, user, canManage, canIssue, canCancel, canReturn, onClose, onApprove, onReject, onIssue, onCancel, onReturn }) {
   const canAct = canManage || canIssue || canCancel;
 
   return (
@@ -193,6 +206,9 @@ function RisDetail({ ris, user, canManage, canIssue, canCancel, onClose, onAppro
           {canOperate(ris, user.role, 'approve') && <button className="btn btn-success btn-sm" onClick={onApprove}>Approve</button>}
           {canOperate(ris, user.role, 'reject') && <button className="btn btn-error btn-sm btn-outline" onClick={onReject}>Reject</button>}
           {canOperate(ris, user.role, 'issue') && <button className="btn btn-primary btn-sm" onClick={onIssue}>Issue items</button>}
+          {canReturn && ['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status) && (
+            <button className="btn btn-outline btn-sm" onClick={onReturn}>Return items</button>
+          )}
           {canOperate(ris, user.role, 'cancel') && <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel RIS</button>}
         </div>
 
@@ -521,6 +537,100 @@ function ConfirmModal({ message, placeholder, onClose, onConfirm }) {
           </div>
         </form>
       </div>
+    </dialog>
+  );
+}
+
+function ReturnModal({ ris, onClose, onReturn }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const [items, setItems] = useState(
+    ris.items.map((it) => ({
+      risItemId: it.id,
+      itemId: it.itemId,
+      quantity: it.quantityIssued > 0 ? it.quantityIssued : 0,
+      max: it.quantityIssued || 0,
+      name: it.item.name,
+      sku: it.item.sku,
+      unit: it.item.unit,
+    }))
+  );
+
+  const submit = async (e) => {
+    e.preventDefault();
+    const payload = items
+      .filter((it) => Number(it.quantity) > 0)
+      .map((it) => ({ risItemId: it.risItemId, itemId: it.itemId, quantity: Number(it.quantity) }));
+    if (payload.length === 0) {
+      toast.error('Enter a quantity for at least one item.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await onReturn(payload);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to return items.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const setQty = (idx, value) => {
+    const next = [...items];
+    next[idx].quantity = Math.min(Number(value) || 0, next[idx].max);
+    setItems(next);
+  };
+
+  return (
+    <dialog className="modal modal-open">
+      <div className="modal-box max-w-3xl">
+        <h3 className="font-bold text-lg">Return items to stock</h3>
+        <p className="text-sm text-base-content/60 mt-1">{ris.risNumber} — enter quantities to return.</p>
+        <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
+          <div className="overflow-x-auto">
+            <table className="table table-sm">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th className="text-right">Issued</th>
+                  <th className="text-right">Return qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((it, idx) => (
+                  <tr key={it.risItemId}>
+                    <td>
+                      <div className="font-medium">{it.name}</div>
+                      <div className="text-xs opacity-60 font-mono">{it.sku} · {it.unit}</div>
+                    </td>
+                    <td className="text-right">{it.max}</td>
+                    <td className="text-right">
+                      <input
+                        className="input input-sm w-24 text-right"
+                        type="number"
+                        min="0"
+                        max={it.max}
+                        step="any"
+                        value={it.quantity || ''}
+                        onChange={(e) => setQty(idx, e.target.value)}
+                        disabled={it.max <= 0}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="modal-action">
+            <button type="button" className="btn" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>
+              {busy && <span className="loading loading-spinner loading-xs" />}
+              Return to stock
+            </button>
+          </div>
+        </form>
+      </div>
+      <form method="dialog" className="modal-backdrop"><button onClick={onClose}>close</button></form>
     </dialog>
   );
 }
