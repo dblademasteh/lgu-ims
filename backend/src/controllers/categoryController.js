@@ -1,6 +1,15 @@
 const prisma = require('../prisma');
 const ApiError = require('../utils/ApiError');
 const { writeAudit } = require('../utils/audit');
+const { sanitizeString } = require('../utils/sanitize');
+
+function sanitizeBody(body, fields = []) {
+  const out = { ...body };
+  for (const f of fields) {
+    if (out[f] !== undefined) out[f] = sanitizeString(out[f]);
+  }
+  return out;
+}
 
 async function listCategories(req, res) {
   const categories = await prisma.category.findMany({
@@ -11,7 +20,8 @@ async function listCategories(req, res) {
 }
 
 async function createCategory(req, res) {
-  const { name, description } = req.body;
+  const body = sanitizeBody(req.body, ['name', 'description']);
+  const { name, description } = body;
   if (!name) throw new ApiError(400, 'Category name is required.');
   const category = await prisma.category.create({ data: { name, description } });
   await writeAudit(req, 'CREATE', 'Category', category.id, null, { name });
@@ -22,7 +32,8 @@ async function updateCategory(req, res) {
   const { id } = req.params;
   const existing = await prisma.category.findUnique({ where: { id } });
   if (!existing) throw new ApiError(404, 'Category not found.');
-  const { name, description } = req.body;
+  const body = sanitizeBody(req.body, ['name', 'description']);
+  const { name, description } = body;
   const category = await prisma.category.update({
     where: { id },
     data: { name: name ?? existing.name, description: description ?? existing.description },
