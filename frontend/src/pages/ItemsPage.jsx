@@ -292,6 +292,8 @@ export default function ItemsPage() {
                     <th>Stock No.</th>
                     <th>Fund</th>
                     <th>Status</th>
+                    <th>Expiry</th>
+                    <th>Warranty</th>
                     <th className="text-right">Actions</th>
                   </tr>
                 </thead>
@@ -322,9 +324,11 @@ export default function ItemsPage() {
                       <td className="text-right"><Money value={i.unitCost} /></td>
                       <td className="font-mono text-xs">{i.stockNumber || '—'}</td>
                       <td className="font-mono text-xs">{i.fundCluster || '—'}</td>
-                       <td>{i.lowStock ? <Badge status="Low">Low</Badge> : <Badge status="OK">OK</Badge>}</td>
-                       <td>{i.isAccountable ? <Badge status="info">PAR</Badge> : <span className="text-xs opacity-40">—</span>}</td>
-                       <td>
+                        <td>{i.lowStock ? <Badge status="Low">Low</Badge> : <Badge status="OK">OK</Badge>}</td>
+                        <td>{i.isAccountable ? <Badge status="info">PAR</Badge> : <span className="text-xs opacity-40">—</span>}</td>
+                        <td className="text-xs">{i.expiryDate ? new Date(i.expiryDate).toLocaleDateString() : '—'}</td>
+                        <td className="text-xs">{i.warrantyExpiry ? new Date(i.warrantyExpiry).toLocaleDateString() : '—'}</td>
+                        <td>
                         <div className="flex justify-end gap-1">
                           {canManage && (
                             <button className="btn btn-ghost btn-xs" title="Upload image" onClick={() => triggerImageUpload(i)}>
@@ -419,6 +423,7 @@ function ItemFormModal({ open, onClose, item, categories, onSaved }) {
   const [form, setForm] = useState({
     sku: '', name: '', description: '', categoryId: '', unit: '',
     reorderThreshold: 0, currentStock: 0, unitCost: 0, stockNumber: '', fundCluster: '', isAccountable: false,
+    expiryDate: '', warrantyExpiry: '',
   });
 
   useEffect(() => {
@@ -428,7 +433,9 @@ function ItemFormModal({ open, onClose, item, categories, onSaved }) {
         categoryId: item.categoryId, unit: item.unit,
         reorderThreshold: item.reorderThreshold, currentStock: item.currentStock, unitCost: item.unitCost,
         stockNumber: item.stockNumber || '', fundCluster: item.fundCluster || '', isAccountable: item.isAccountable || false,
-      } : { sku: '', name: '', description: '', categoryId: categories[0]?.id || '', unit: '', reorderThreshold: 0, currentStock: 0, unitCost: 0, stockNumber: '', fundCluster: '', isAccountable: false });
+        expiryDate: item.expiryDate ? item.expiryDate.slice(0, 10) : '',
+        warrantyExpiry: item.warrantyExpiry ? item.warrantyExpiry.slice(0, 10) : '',
+      } : { sku: '', name: '', description: '', categoryId: categories[0]?.id || '', unit: '', reorderThreshold: 0, currentStock: 0, unitCost: 0, stockNumber: '', fundCluster: '', isAccountable: false, expiryDate: '', warrantyExpiry: '' });
     }
   }, [open, item]);
 
@@ -507,6 +514,14 @@ function ItemFormModal({ open, onClose, item, categories, onSaved }) {
             <input type="checkbox" className="checkbox" checked={form.isAccountable} onChange={(e) => setForm({ ...form, isAccountable: e.target.checked })} />
             <span className="fieldset-legend">Accountable item (PAR / PPE)</span>
           </label>
+          <fieldset className="fieldset">
+            <legend className="fieldset-legend">Expiry date</legend>
+            <input type="date" className="input" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} />
+          </fieldset>
+          <fieldset className="fieldset">
+            <legend className="fieldset-legend">Warranty expiry</legend>
+            <input type="date" className="input" value={form.warrantyExpiry} onChange={(e) => setForm({ ...form, warrantyExpiry: e.target.value })} />
+          </fieldset>
           {!editing && (
             <fieldset className="fieldset sm:col-span-2">
               <legend className="fieldset-legend">Opening stock</legend>

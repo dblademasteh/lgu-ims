@@ -28,10 +28,15 @@ api.interceptors.response.use(
 export function openReport(path, download) {
   api.get(path, { responseType: 'blob' }).then((res) => {
     const url = URL.createObjectURL(res.data);
+    const disposition = res.headers['content-disposition'];
+    let filename = 'report';
+    if (disposition && disposition.includes('filename=')) {
+      filename = disposition.split('filename=')[1].replace(/['";]/g, '').trim();
+    }
     if (download) {
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'report';
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
