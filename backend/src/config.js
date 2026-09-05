@@ -15,6 +15,7 @@ const config = {
   })(),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   bcryptRounds: Number(process.env.BCRYPT_ROUNDS) || 10,
+  passwordExpiryDays: Number(process.env.PASSWORD_EXPIRY_DAYS) || 90,
   corsOrigins: (process.env.CORS_ORIGINS || 'http://localhost:5173')
     .split(',')
     .map((s) => s.trim())

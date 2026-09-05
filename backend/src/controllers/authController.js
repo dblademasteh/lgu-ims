@@ -37,6 +37,15 @@ async function login(req, res) {
     throw new ApiError(403, 'This account has been deactivated. Contact the administrator.');
   }
 
+  if (user.passwordChangedAt) {
+    const ageMs = Date.now() - new Date(user.passwordChangedAt).getTime();
+    const maxAge = config.passwordExpiryDays * 24 * 60 * 60 * 1000;
+    if (ageMs > maxAge) {
+      const tempToken = jwt.sign({ sub: user.id, type: 'pwd_expired' }, config.jwtSecret, { expiresIn: '5m' });
+      return res.json({ requiresPasswordChange: true, tempToken, user: publicUser(user) });
+    }
+  }
+
   await writeAudit(req, 'LOGIN', 'User', user.id, null, { username: user.username });
 
   if (user.twoFactorEnabled) {

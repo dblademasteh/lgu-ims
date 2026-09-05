@@ -31,8 +31,10 @@ export default function LoginPage() {
   const [forgotBusy, setForgotBusy] = useState(false);
   const [forgotMsg, setForgotMsg] = useState('');
   const [requires2FA, setRequires2FA] = useState(false);
+  const [requiresPasswordChange, setRequiresPasswordChange] = useState(false);
   const [tempToken, setTempToken] = useState('');
   const [code, setCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const navigate = useNavigate();
   const setSession = useAuthStore((s) => s.setSession);
   const toast = useToast();
@@ -44,6 +46,11 @@ export default function LoginPage() {
     setError('');
     try {
       const res = await api.post('/auth/login', { username, password });
+      if (res.data.requiresPasswordChange) {
+        setRequiresPasswordChange(true);
+        setTempToken(res.data.tempToken);
+        return;
+      }
       if (res.data.requires2FA) {
         setRequires2FA(true);
         setTempToken(res.data.tempToken);
@@ -54,6 +61,25 @@ export default function LoginPage() {
       navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to sign in. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitPasswordChange = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api.post('/auth/change-password', { tempToken, newPassword });
+      setSession(res.data);
+      toast.success('Password updated. Please sign in.');
+      setRequiresPasswordChange(false);
+      setTempToken('');
+      setNewPassword('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to update password.');
     } finally {
       setBusy(false);
     }
@@ -208,7 +234,21 @@ export default function LoginPage() {
                     <span className="loading loading-spinner loading-sm" />
                     Signing in…
                   </>
-                ) : (
+            ) : requiresPasswordChange ? (
+              <form onSubmit={submitPasswordChange} className="flex flex-col gap-4">
+                <div className="alert alert-warning py-2 text-sm">Your password has expired. Please choose a new password to continue.</div>
+                <label className="block">
+                  <span className="mb-2 block font-mono text-[11px] uppercase tracking-[0.12em] text-base-content/60">New password (min. 8 characters)</span>
+                  <span className="input flex h-12 items-center gap-3 py-0">
+                    <Lock className="h-4 w-4 shrink-0 opacity-50" />
+                    <input className="h-12 w-full bg-transparent" type="password" required minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" />
+                  </span>
+                </label>
+                <button type="submit" className="btn btn-primary h-12" disabled={busy}>
+                  {busy ? <><span className="loading loading-spinner loading-sm" /> Updating…</> : 'Update password'}
+                </button>
+              </form>
+            ) : (
                   <>
                     <LogIn className="h-5 w-5" />
                     Sign in
