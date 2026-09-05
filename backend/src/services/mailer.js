@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const config = require('../config');
+const { lowStock, passwordReset, risCreated, risStatusChange } = require('./templates');
 
 let transporter = null;
 
@@ -33,15 +34,27 @@ async function sendMail({ to, subject, text, html }) {
 async function sendLowStockEmail(item, users) {
   const emails = users.map((u) => u.email).filter(Boolean);
   if (emails.length === 0) return;
-  await sendMail({
-    to: emails.join(', '),
-    subject: `LOW STOCK: ${item.name} (${item.sku})`,
-    text:
-      `This is an automated low-stock alert.\n\n` +
-      `Item: ${item.name}\nSKU: ${item.sku}\n` +
-      `Current stock: ${item.currentStock} ${item.unit}\nReorder threshold: ${item.reorderThreshold} ${item.unit}\n\n` +
-      `Please reorder at your earliest convenience.\n\n- LGU Inventory Management System`,
-  });
+  const tpl = lowStock(item);
+  await sendMail({ to: emails.join(', '), subject: tpl.subject, text: tpl.text, html: tpl.html });
 }
 
-module.exports = { sendMail, sendLowStockEmail };
+async function sendPasswordResetEmail(user, resetUrl) {
+  const tpl = passwordReset(user.username, resetUrl);
+  await sendMail({ to: user.email, subject: tpl.subject, text: tpl.text, html: tpl.html });
+}
+
+async function sendRisCreatedEmail(ris, departmentName, recipients) {
+  const emails = recipients.map((u) => u.email).filter(Boolean);
+  if (emails.length === 0) return;
+  const url = `${config.appUrl || ''}/ris`;
+  const tpl = risCreated(ris.risNumber, departmentName, ris.purpose, url);
+  await sendMail({ to: emails.join(', '), subject: tpl.subject, text: tpl.text, html: tpl.html });
+}
+
+async function sendRisStatusEmail(ris, recipient) {
+  const url = `${config.appUrl || ''}/ris`;
+  const tpl = risStatusChange(ris.risNumber, ris.status, url);
+  await sendMail({ to: recipient.email, subject: tpl.subject, text: tpl.text, html: tpl.html });
+}
+
+module.exports = { sendMail, sendLowStockEmail, sendPasswordResetEmail, sendRisCreatedEmail, sendRisStatusEmail };

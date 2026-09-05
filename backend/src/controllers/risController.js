@@ -4,6 +4,9 @@ const { paginate } = require('../utils/paginate');
 const { writeAudit } = require('../utils/audit');
 const { generateRisNumber } = require('../utils/risNumber');
 const { notifyLowStock } = require('../services/notificationService');
+const { sendMail } = require('../services/mailer');
+const { risCreated, risStatusChange } = require('../services/templates');
+const config = require('../config');
 
 const RIS_INCLUDE = {
   department: true,
@@ -144,6 +147,10 @@ async function createRis(req, res) {
     await prisma.notification.createMany({
       data: approvers.map((u) => ({ ...notification, userId: u.id })),
     });
+    const appUrl = (config.appUrl || '').replace(/\/$/, '');
+    const url = `${appUrl}/ris`;
+    const tpl = risCreated(risNumber, department.name, purpose, url);
+    await sendMail({ to: approvers.map((u) => u.email).filter(Boolean).join(', '), subject: tpl.subject, text: tpl.text, html: tpl.html }).catch(() => {});
   }
 
   res.status(201).json({ data: ris });
@@ -190,6 +197,14 @@ async function approveRis(req, res) {
     },
   });
 
+  const appUrl = (config.appUrl || '').replace(/\/$/, '');
+  const url = `${appUrl}/ris`;
+  const tpl = risStatusChange(ris.risNumber, 'APPROVED', url);
+  const requester = await prisma.user.findUnique({ where: { id: ris.requestedById } });
+  if (requester?.email) {
+    await sendMail({ to: requester.email, subject: tpl.subject, text: tpl.text, html: tpl.html }).catch(() => {});
+  }
+
   res.json({ data: updated });
 }
 
@@ -221,6 +236,14 @@ async function rejectRis(req, res) {
       message: `${ris.risNumber} was rejected. Reason: ${reason}`,
     },
   });
+
+  const appUrl = (config.appUrl || '').replace(/\/$/, '');
+  const url = `${appUrl}/ris`;
+  const tpl = risStatusChange(ris.risNumber, 'REJECTED', url);
+  const requester = await prisma.user.findUnique({ where: { id: ris.requestedById } });
+  if (requester?.email) {
+    await sendMail({ to: requester.email, subject: tpl.subject, text: tpl.text, html: tpl.html }).catch(() => {});
+  }
 
   res.json({ data: updated });
 }
@@ -298,6 +321,14 @@ async function issueRis(req, res) {
       message: `${ris.risNumber} was issued (${updated.status.toLowerCase().replace('_', ' ')}).`,
     },
   });
+
+  const appUrl = (config.appUrl || '').replace(/\/$/, '');
+  const url = `${appUrl}/ris`;
+  const tpl = risStatusChange(ris.risNumber, updated.status, url);
+  const requester = await prisma.user.findUnique({ where: { id: ris.requestedById } });
+  if (requester?.email) {
+    await sendMail({ to: requester.email, subject: tpl.subject, text: tpl.text, html: tpl.html }).catch(() => {});
+  }
 
   res.json({ data: updated });
 }

@@ -5,7 +5,7 @@ const { writeAudit } = require('../utils/audit');
 const { signToken, publicUser } = require('../middleware/auth');
 const jwt = require('jsonwebtoken');
 const config = require('../config');
-const { sendMail } = require('../services/mailer');
+const { sendMail, sendPasswordResetEmail } = require('../services/mailer');
 
 async function login(req, res) {
   const { username, password } = req.body;
@@ -74,11 +74,11 @@ async function forgotPassword(req, res) {
     ? jwt.sign({ sub: user.id, type: 'reset' }, config.jwtSecret, { expiresIn: '1h' })
     : jwt.sign({ type: 'reset', dummy: true }, config.jwtSecret, { expiresIn: '1h' });
 
-  const resetUrl = `${req.protocol}://${req.get('host')}/api/v1/auth/reset-password?token=${resetToken}`;
+  const appUrl = (config.appUrl || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+  const resetUrl = `${appUrl}/reset-password?token=${resetToken}`;
 
   if (user) {
-    const message = `A password reset was requested for your account.\n\nIf you made this request, open this link within 1 hour:\n${resetUrl}\n\nIf you did not request this, you can safely ignore this message.`;
-    sendMail(user.email, 'LGU IMS — Password Reset', message).catch(() => {});
+    await sendPasswordResetEmail(user, resetUrl).catch(() => {});
   }
 
   res.json({ message: 'If an account matches, a reset link has been sent.' });

@@ -20,6 +20,7 @@ const config = {
     pass: process.env.SMTP_PASS || '',
     from: process.env.MAIL_FROM || 'LGU IMS <no-reply@lgu.local>',
   },
+  appUrl: process.env.APP_URL || '',
 };
 
 module.exports = config;
