@@ -5,8 +5,17 @@ const { paginate } = require('../utils/paginate');
 const { writeAudit } = require('../utils/audit');
 const { notifyLowStock } = require('../services/notificationService');
 const { uploadDir } = require('../middleware/upload');
+const { sanitizeString } = require('../utils/sanitize');
 const path = require('path');
 const fs = require('fs');
+
+function sanitizeBody(body, fields = []) {
+  const out = { ...body };
+  for (const f of fields) {
+    if (out[f] !== undefined) out[f] = sanitizeString(out[f]);
+  }
+  return out;
+}
 
 async function listItems(req, res) {
   const { page, limit, offset } = paginate(req.query);
@@ -78,7 +87,8 @@ async function getItem(req, res) {
 }
 
 async function createItem(req, res) {
-  const { sku, name, description, categoryId, unit, reorderThreshold, currentStock, unitCost, stockNumber, fundCluster } = req.body;
+  const body = sanitizeBody(req.body, ['sku', 'name', 'description', 'unit', 'stockNumber', 'fundCluster']);
+  const { sku, name, description, categoryId, unit, reorderThreshold, currentStock, unitCost, stockNumber, fundCluster } = body;
   if (!sku || !name || !categoryId || !unit) {
     throw new ApiError(400, 'sku, name, categoryId and unit are required.');
   }
@@ -130,9 +140,10 @@ async function updateItem(req, res) {
   if (!existing) throw new ApiError(404, 'Item not found.');
 
   const fields = ['name', 'description', 'categoryId', 'unit', 'reorderThreshold', 'unitCost', 'stockNumber', 'fundCluster'];
+  const body = sanitizeBody(req.body, ['name', 'description', 'unit', 'stockNumber', 'fundCluster']);
   const data = {};
   for (const f of fields) {
-    if (req.body[f] !== undefined) data[f] = f === 'reorderThreshold' || f === 'unitCost' ? Number(req.body[f]) || 0 : req.body[f];
+    if (body[f] !== undefined) data[f] = f === 'reorderThreshold' || f === 'unitCost' ? Number(body[f]) || 0 : body[f];
   }
 
   const item = await prisma.item.update({ where: { id }, data, include: { category: true } });

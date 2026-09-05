@@ -1,6 +1,16 @@
 const prisma = require('../prisma');
 const ApiError = require('../utils/ApiError');
 const { writeAudit } = require('../utils/audit');
+const { sanitizeString } = require('../utils/sanitize');
+const { round2 } = require('../utils/money');
+
+function sanitizeBody(body, fields = []) {
+  const out = { ...body };
+  for (const f of fields) {
+    if (out[f] !== undefined) out[f] = sanitizeString(out[f]);
+  }
+  return out;
+}
 
 async function listSuppliers(req, res) {
   const suppliers = await prisma.supplier.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } });
@@ -8,7 +18,8 @@ async function listSuppliers(req, res) {
 }
 
 async function createSupplier(req, res) {
-  const { name, contact, phone, email, address } = req.body;
+  const body = sanitizeBody(req.body, ['name', 'contact', 'phone', 'email', 'address']);
+  const { name, contact, phone, email, address } = body;
   if (!name) throw new ApiError(400, 'name is required.');
   const supplier = await prisma.supplier.create({ data: { name, contact, phone, email, address } });
   await writeAudit(req, 'CREATE', 'Supplier', supplier.id, null, supplier);
@@ -45,7 +56,8 @@ async function listReceivings(req, res) {
 }
 
 async function createReceiving(req, res) {
-  const { supplierId, receivingNo, receiptDate, poNumber, drNumber, remarks, items } = req.body;
+  const body = sanitizeBody(req.body, ['receivingNo', 'poNumber', 'drNumber', 'remarks']);
+  const { supplierId, receivingNo, receiptDate, poNumber, drNumber, remarks, items } = body;
   if (!supplierId || !receivingNo || !Array.isArray(items) || items.length === 0) {
     throw new ApiError(400, 'supplierId, receivingNo and items are required.');
   }
@@ -65,8 +77,8 @@ async function createReceiving(req, res) {
       items: {
         create: items.map((i) => ({
           itemId: i.itemId,
-          quantity: Number(i.quantity),
-          unitCost: Number(i.unitCost) || 0,
+          quantity: round2(i.quantity),
+          unitCost: round2(i.unitCost) || 0,
           remarks: i.remarks,
         })),
       },
@@ -133,7 +145,7 @@ async function updateReceiving(req, res) {
         poNumber: poNumber ?? existing.poNumber,
         drNumber: drNumber ?? existing.drNumber,
         remarks: remarks ?? existing.remarks,
-        items: { deleteMany: {}, create: items.map((i) => ({ itemId: i.itemId, quantity: Number(i.quantity), unitCost: Number(i.unitCost) || 0, remarks: i.remarks })) },
+        items: { deleteMany: {}, create: items.map((i) => ({ itemId: i.itemId, quantity: round2(i.quantity), unitCost: round2(i.unitCost) || 0, remarks: i.remarks })) },
       },
       include: { supplier: true, items: { include: { item: true } } },
     });
@@ -201,7 +213,8 @@ async function getSupplier(req, res) {
 }
 
 async function updateSupplier(req, res) {
-  const { name, contact, phone, email, address } = req.body;
+  const body = sanitizeBody(req.body, ['name', 'contact', 'phone', 'email', 'address']);
+  const { name, contact, phone, email, address } = body;
   const supplier = await prisma.supplier.update({
     where: { id: req.params.id },
     data: { name, contact, phone, email, address },

@@ -16,4 +16,12 @@ const strictAuthLimiter = rateLimit({
   message: { message: 'Too many password attempts. Your account has been temporarily locked.' },
 });
 
-module.exports = { authLimiter, strictAuthLimiter };
+const writeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many write operations. Please slow down.' },
+});
+
+module.exports = { authLimiter, strictAuthLimiter, writeLimiter };

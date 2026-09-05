@@ -7,9 +7,19 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const { sendMail, sendPasswordResetEmail } = require('../services/mailer');
 const { authenticator } = require('otplib');
+const { sanitizeString } = require('../utils/sanitize');
+
+function sanitizeBody(body, fields = []) {
+  const out = { ...body };
+  for (const f of fields) {
+    if (out[f] !== undefined) out[f] = sanitizeString(out[f]);
+  }
+  return out;
+}
 
 async function login(req, res) {
-  const { username, password } = req.body;
+  const body = sanitizeBody(req.body, ['username']);
+  const { username, password } = body;
   if (!username || !password) {
     throw new ApiError(400, 'Username and password are required.');
   }
@@ -45,7 +55,8 @@ async function me(req, res) {
 }
 
 async function changePassword(req, res) {
-  const { currentPassword, newPassword } = req.body;
+  const body = sanitizeBody(req.body, ['currentPassword', 'newPassword']);
+  const { currentPassword, newPassword } = body;
   if (!currentPassword || !newPassword) {
     throw new ApiError(400, 'Current and new passwords are required.');
   }
@@ -56,8 +67,8 @@ async function changePassword(req, res) {
   const ok = await bcrypt.compare(currentPassword, req.user.password);
   if (!ok) throw new ApiError(400, 'Current password is incorrect.');
 
-  const hash = await bcrypt.hash(newPassword, 10);
-  await prisma.user.update({ where: { id: req.user.id }, data: { password: hash } });
+  const hash = await bcrypt.hash(newPassword, config.bcryptRounds);
+  await prisma.user.update({ where: { id: req.user.id }, data: { password: hash, passwordChangedAt: new Date() } });
   await writeAudit(req, 'PASSWORD_CHANGE', 'User', req.user.id, null, { username: req.user.username });
 
   res.json({ message: 'Password updated successfully.' });
@@ -69,7 +80,8 @@ async function logout(req, res) {
 }
 
 async function forgotPassword(req, res) {
-  const { username } = req.body;
+  const body = sanitizeBody(req.body, ['username']);
+  const { username } = body;
   if (!username) throw new ApiError(400, 'Username or email is required.');
 
   const user = await prisma.user.findFirst({
@@ -91,7 +103,8 @@ async function forgotPassword(req, res) {
 }
 
 async function resetPassword(req, res) {
-  const { token, newPassword } = req.body;
+  const body = sanitizeBody(req.body, ['token', 'newPassword']);
+  const { token, newPassword } = body;
   if (!token || !newPassword) throw new ApiError(400, 'Token and new password are required.');
   if (newPassword.length < 8) throw new ApiError(400, 'New password must be at least 8 characters.');
 
@@ -106,7 +119,7 @@ async function resetPassword(req, res) {
   const user = await prisma.user.findUnique({ where: { id: payload.sub } });
   if (!user) throw new ApiError(404, 'User not found.');
 
-  await prisma.user.update({ where: { id: user.id }, data: { password: await bcrypt.hash(newPassword, 10) } });
+  await prisma.user.update({ where: { id: user.id }, data: { password: await bcrypt.hash(newPassword, config.bcryptRounds), passwordChangedAt: new Date() } });
   await writeAudit(req, 'PASSWORD_RESET', 'User', user.id, null, { username: user.username });
 
   res.json({ message: 'Password has been reset.' });
@@ -124,7 +137,8 @@ async function twoFactorSetup(req, res) {
 }
 
 async function twoFactorEnable(req, res) {
-  const { code } = req.body;
+  const body = sanitizeBody(req.body, ['code']);
+  const { code } = body;
   if (!code) throw new ApiError(400, 'Verification code is required.');
 
   const user = await prisma.user.findUnique({ where: { id: req.user.id } });
@@ -140,7 +154,8 @@ async function twoFactorEnable(req, res) {
 }
 
 async function twoFactorDisable(req, res) {
-  const { code } = req.body;
+  const body = sanitizeBody(req.body, ['code']);
+  const { code } = body;
   if (!code) throw new ApiError(400, 'Verification code is required.');
 
   const user = await prisma.user.findUnique({ where: { id: req.user.id } });
@@ -156,7 +171,8 @@ async function twoFactorDisable(req, res) {
 }
 
 async function twoFactorLogin(req, res) {
-  const { tempToken, code } = req.body;
+  const body = sanitizeBody(req.body, ['tempToken', 'code']);
+  const { tempToken, code } = body;
   if (!tempToken || !code) throw new ApiError(400, 'Temporary token and code are required.');
 
   let payload;

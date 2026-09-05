@@ -4,6 +4,16 @@ const ApiError = require('../utils/ApiError');
 const { paginate } = require('../utils/paginate');
 const { writeAudit } = require('../utils/audit');
 const { publicUser } = require('../middleware/auth');
+const config = require('../config');
+const { sanitizeString } = require('../utils/sanitize');
+
+function sanitizeBody(body, fields = []) {
+  const out = { ...body };
+  for (const f of fields) {
+    if (out[f] !== undefined) out[f] = sanitizeString(out[f]);
+  }
+  return out;
+}
 
 async function listUsers(req, res) {
   const { page, limit, offset } = paginate(req.query);
@@ -33,7 +43,8 @@ async function listUsers(req, res) {
 }
 
 async function createUser(req, res) {
-  const { username, email, password, fullName, role, departmentId, externalId } = req.body;
+  const body = sanitizeBody(req.body, ['username', 'email', 'fullName']);
+  const { username, email, password, fullName, role, departmentId, externalId } = body;
   if (!username || !email || !password || !fullName || !role) {
     throw new ApiError(400, 'username, email, password, fullName and role are required.');
   }
@@ -46,7 +57,7 @@ async function createUser(req, res) {
     data: {
       username,
       email,
-      password: await bcrypt.hash(password, 10),
+      password: await bcrypt.hash(password, config.bcryptRounds),
       fullName,
       role,
       departmentId: departmentId || null,
@@ -61,7 +72,8 @@ async function createUser(req, res) {
 
 async function updateUser(req, res) {
   const { id } = req.params;
-  const { fullName, email, role, departmentId, isActive, externalId, password } = req.body;
+  const body = sanitizeBody(req.body, ['fullName', 'email', 'externalId']);
+  const { fullName, email, role, departmentId, isActive, externalId, password } = body;
 
   const existing = await prisma.user.findUnique({ where: { id } });
   if (!existing) throw new ApiError(404, 'User not found.');
@@ -83,7 +95,8 @@ async function updateUser(req, res) {
   if (departmentId !== undefined) data.departmentId = departmentId || null;
   if (isActive !== undefined) data.isActive = isActive;
   if (externalId !== undefined) data.externalId = externalId || null;
-  if (password) data.password = await bcrypt.hash(password, 10);
+  if (password) data.password = await bcrypt.hash(password, config.bcryptRounds);
+  if (password) data.passwordChangedAt = new Date();
 
   const user = await prisma.user.update({
     where: { id },

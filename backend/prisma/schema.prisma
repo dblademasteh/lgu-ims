@@ -65,6 +65,7 @@ model User {
   isActive     Boolean  @default(true)
   twoFactorEnabled Boolean @default(false)
   twoFactorSecret   String?
+  passwordChangedAt DateTime?
   externalId   String? // future SSO / HRIS integration
   departmentId String?  @db.Uuid
   department   Department? @relation(fields: [departmentId], references: [id])

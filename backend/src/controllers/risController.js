@@ -7,6 +7,16 @@ const { notifyLowStock } = require('../services/notificationService');
 const { sendMail } = require('../services/mailer');
 const { risCreated, risStatusChange } = require('../services/templates');
 const config = require('../config');
+const { sanitizeString } = require('../utils/sanitize');
+const { round2 } = require('../utils/money');
+
+function sanitizeBody(body, fields = []) {
+  const out = { ...body };
+  for (const f of fields) {
+    if (out[f] !== undefined) out[f] = sanitizeString(out[f]);
+  }
+  return out;
+}
 
 const RIS_INCLUDE = {
   department: true,
@@ -87,7 +97,8 @@ async function getRis(req, res) {
 }
 
 async function createRis(req, res) {
-  const { departmentId, purpose, items, remarks } = req.body;
+  const body = sanitizeBody(req.body, ['purpose', 'remarks']);
+  const { departmentId, purpose, items, remarks } = body;
 
   let deptId = departmentId;
   if (req.user.role === 'DEPARTMENT_HEAD') {
@@ -117,6 +128,7 @@ async function createRis(req, res) {
           create: items.map((it) => ({
             itemId: it.itemId,
             quantityRequested: Number(it.quantityRequested) || 0,
+            unitCost: round2(it.unitCost) || 0,
             remarks: it.remarks,
           })),
         },
@@ -127,7 +139,7 @@ async function createRis(req, res) {
     for (const it of items) {
       await tx.item.update({
         where: { id: it.itemId },
-        data: { unitCost: Number(it.unitCost) || undefined },
+        data: { unitCost: round2(it.unitCost) || undefined },
       });
     }
     return doc;
@@ -164,6 +176,7 @@ async function approveRis(req, res) {
   }
 
   const approvedItems = (req.body.items || []).length > 0 ? req.body.items : null;
+  const remarks = sanitizeString(req.body.remarks);
 
   const updated = await prisma.$transaction(async (tx) => {
     const doc = await tx.ris.update({
@@ -172,7 +185,7 @@ async function approveRis(req, res) {
         status: 'APPROVED',
         approvedById: req.user.id,
         approvedAt: new Date(),
-        remarks: req.body.remarks ?? ris.remarks,
+        remarks: remarks ?? ris.remarks,
       },
       include: RIS_INCLUDE,
     });
@@ -214,7 +227,7 @@ async function rejectRis(req, res) {
   if (!['PENDING', 'APPROVED'].includes(ris.status)) {
     throw new ApiError(400, `Only pending or approved RIS can be rejected (current: ${ris.status}).`);
   }
-  const reason = req.body.remarks || 'Rejected by approving officer.';
+  const reason = sanitizeString(req.body.remarks) || 'Rejected by approving officer.';
 
   const updated = await prisma.ris.update({
     where: { id: ris.id },
@@ -300,7 +313,7 @@ async function issueRis(req, res) {
         where: { id: line.id },
         data: {
           quantityIssued: newIssued,
-          unitCost: line.unitCost || line.item.unitCost,
+          unitCost: round2(line.unitCost || line.item.unitCost),
         },
       });
     }
@@ -352,6 +365,7 @@ async function cancelRis(req, res) {
   if (!['PENDING', 'APPROVED', 'ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status)) {
     throw new ApiError(400, `Only pending, approved, issued or partially issued RIS can be cancelled (current: ${ris.status}).`);
   }
+  const remarks = sanitizeString(req.body.remarks) || 'Cancelled.';
 
   const updated = await prisma.$transaction(async (tx) => {
     if (['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status)) {
@@ -378,7 +392,7 @@ async function cancelRis(req, res) {
 
     return tx.ris.update({
       where: { id: ris.id },
-      data: { status: 'CANCELLED', remarks: req.body.remarks || 'Cancelled.' },
+      data: { status: 'CANCELLED', remarks },
       include: RIS_INCLUDE,
     });
   });

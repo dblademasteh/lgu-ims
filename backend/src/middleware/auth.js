@@ -32,6 +32,10 @@ async function authenticate(req, res, next) {
     return res.status(401).json({ message: 'Account is inactive or no longer exists.' });
   }
 
+  if (user.passwordChangedAt && payload.iat && user.passwordChangedAt.getTime() / 1000 > payload.iat) {
+    return res.status(401).json({ message: 'Token expired due to password change. Please sign in again.' });
+  }
+
   req.user = user;
   next();
 }
