@@ -328,6 +328,7 @@ export default function ItemsPage() {
                         <td>{i.isAccountable ? <Badge status="info">PAR</Badge> : <span className="text-xs opacity-40">—</span>}</td>
                         <td className="text-xs">{i.expiryDate ? new Date(i.expiryDate).toLocaleDateString() : '—'}</td>
                         <td className="text-xs">{i.warrantyExpiry ? new Date(i.warrantyExpiry).toLocaleDateString() : '—'}</td>
+                        <td><Badge status={i.condition === 'SERVICEABLE' ? 'success' : i.condition === 'UNSERVICEABLE' ? 'warning' : 'error'}>{i.condition || 'SERVICEABLE'}</Badge></td>
                         <td>
                         <div className="flex justify-end gap-1">
                           {canManage && (
@@ -423,7 +424,7 @@ function ItemFormModal({ open, onClose, item, categories, onSaved }) {
   const [form, setForm] = useState({
     sku: '', name: '', description: '', categoryId: '', unit: '',
     reorderThreshold: 0, currentStock: 0, unitCost: 0, stockNumber: '', fundCluster: '', isAccountable: false,
-    expiryDate: '', warrantyExpiry: '',
+    expiryDate: '', warrantyExpiry: '', condition: 'SERVICEABLE',
   });
 
   useEffect(() => {
@@ -435,7 +436,8 @@ function ItemFormModal({ open, onClose, item, categories, onSaved }) {
         stockNumber: item.stockNumber || '', fundCluster: item.fundCluster || '', isAccountable: item.isAccountable || false,
         expiryDate: item.expiryDate ? item.expiryDate.slice(0, 10) : '',
         warrantyExpiry: item.warrantyExpiry ? item.warrantyExpiry.slice(0, 10) : '',
-      } : { sku: '', name: '', description: '', categoryId: categories[0]?.id || '', unit: '', reorderThreshold: 0, currentStock: 0, unitCost: 0, stockNumber: '', fundCluster: '', isAccountable: false, expiryDate: '', warrantyExpiry: '' });
+        condition: item.condition || 'SERVICEABLE',
+      } : { sku: '', name: '', description: '', categoryId: categories[0]?.id || '', unit: '', reorderThreshold: 0, currentStock: 0, unitCost: 0, stockNumber: '', fundCluster: '', isAccountable: false, expiryDate: '', warrantyExpiry: '', condition: 'SERVICEABLE' });
     }
   }, [open, item]);
 
@@ -521,6 +523,14 @@ function ItemFormModal({ open, onClose, item, categories, onSaved }) {
           <fieldset className="fieldset">
             <legend className="fieldset-legend">Warranty expiry</legend>
             <input type="date" className="input" value={form.warrantyExpiry} onChange={(e) => setForm({ ...form, warrantyExpiry: e.target.value })} />
+          </fieldset>
+          <fieldset className="fieldset">
+            <legend className="fieldset-legend">Condition</legend>
+            <select className="select" value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })}>
+              <option value="SERVICEABLE">Serviceable</option>
+              <option value="UNSERVICEABLE">Unserviceable</option>
+              <option value="CONDEMNED">Condemned</option>
+            </select>
           </fieldset>
           {!editing && (
             <fieldset className="fieldset sm:col-span-2">

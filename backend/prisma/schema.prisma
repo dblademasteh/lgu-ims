@@ -103,6 +103,7 @@ model Item {
   imageUrl         String?
   isActive         Boolean  @default(true)
   isAccountable    Boolean  @default(false)
+  condition        String? @default("SERVICEABLE")
   expiryDate       DateTime?
   warrantyExpiry   DateTime?
   createdAt        DateTime @default(now())
