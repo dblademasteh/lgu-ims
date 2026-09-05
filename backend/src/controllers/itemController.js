@@ -88,7 +88,7 @@ async function getItem(req, res) {
 
 async function createItem(req, res) {
   const body = sanitizeBody(req.body, ['sku', 'name', 'description', 'unit', 'stockNumber', 'fundCluster']);
-  const { sku, name, description, categoryId, unit, reorderThreshold, currentStock, unitCost, stockNumber, fundCluster } = body;
+  const { sku, name, description, categoryId, unit, reorderThreshold, currentStock, unitCost, stockNumber, fundCluster, isAccountable, condition, expiryDate, warrantyExpiry } = body;
   if (!sku || !name || !categoryId || !unit) {
     throw new ApiError(400, 'sku, name, categoryId and unit are required.');
   }
@@ -105,6 +105,10 @@ async function createItem(req, res) {
       unitCost: Number(unitCost) || 0,
       stockNumber: stockNumber || null,
       fundCluster: fundCluster || null,
+      isAccountable: Boolean(isAccountable),
+      condition: condition || 'SERVICEABLE',
+      expiryDate: expiryDate ? new Date(expiryDate) : null,
+      warrantyExpiry: warrantyExpiry ? new Date(warrantyExpiry) : null,
       isActive: true,
     },
     include: { category: true },
@@ -139,11 +143,21 @@ async function updateItem(req, res) {
   const existing = await prisma.item.findUnique({ where: { id } });
   if (!existing) throw new ApiError(404, 'Item not found.');
 
-  const fields = ['name', 'description', 'categoryId', 'unit', 'reorderThreshold', 'unitCost', 'stockNumber', 'fundCluster'];
-  const body = sanitizeBody(req.body, ['name', 'description', 'unit', 'stockNumber', 'fundCluster']);
+  const fields = ['name', 'description', 'categoryId', 'unit', 'reorderThreshold', 'unitCost', 'stockNumber', 'fundCluster', 'isAccountable', 'condition', 'expiryDate', 'warrantyExpiry'];
+  const body = sanitizeBody(req.body, ['name', 'description', 'unit', 'stockNumber', 'fundCluster', 'condition']);
   const data = {};
   for (const f of fields) {
-    if (body[f] !== undefined) data[f] = f === 'reorderThreshold' || f === 'unitCost' ? Number(body[f]) || 0 : body[f];
+    if (body[f] !== undefined) {
+      if (f === 'reorderThreshold' || f === 'unitCost') {
+        data[f] = Number(body[f]) || 0;
+      } else if (f === 'isAccountable') {
+        data[f] = Boolean(body[f]);
+      } else if (f === 'expiryDate' || f === 'warrantyExpiry') {
+        data[f] = body[f] ? new Date(body[f]) : null;
+      } else {
+        data[f] = body[f];
+      }
+    }
   }
 
   const item = await prisma.item.update({ where: { id }, data, include: { category: true } });

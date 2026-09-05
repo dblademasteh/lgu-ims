@@ -155,7 +155,7 @@ async function dashboardStats(req, res) {
   const [totalItems, totalCategories, pendingRis, issuedThisMonth] = await Promise.all([
     prisma.item.count({ where: { isActive: true } }),
     prisma.category.count(),
-    prisma.ris.count({ where: { status: 'PENDING' } }),
+    prisma.ris.count({ where: { status: 'PENDING', createdAt: { gte: effectiveStart, lte: effectiveEnd } } }),
     prisma.ledgerEntry.count({ where: issuanceWhere }),
   ]);
 

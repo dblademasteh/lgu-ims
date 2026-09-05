@@ -392,8 +392,12 @@ async function cancelRis(req, res) {
     if (['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status)) {
       for (const line of ris.items) {
         if (line.quantityIssued > 0) {
-          const item = line.item;
+          const item = await tx.item.findUnique({ where: { id: line.itemId } });
+          if (!item) continue;
           const newStock = item.currentStock + line.quantityIssued;
+          if (newStock < 0) {
+            throw new ApiError(400, `Cannot return ${line.quantityIssued} ${item.unit} of ${item.name}: resulting stock would be negative.`);
+          }
           await tx.item.update({ where: { id: item.id }, data: { currentStock: newStock } });
           await tx.ledgerEntry.create({
             data: {
@@ -442,7 +446,10 @@ async function returnRisItems(req, res) {
       if (!Number.isFinite(qty) || qty <= 0) throw new ApiError(400, 'Return quantity must be positive.');
       if (qty > line.quantityIssued) throw new ApiError(400, `Cannot return more than issued (${line.quantityIssued}).`);
 
-      const newStock = line.item.currentStock + qty;
+      await tx.$queryRaw`SELECT "id" FROM "Item" WHERE "id" = ${line.itemId} FOR UPDATE`;
+      const item = await tx.item.findUnique({ where: { id: line.itemId } });
+      if (!item) continue;
+      const newStock = item.currentStock + qty;
       const newIssued = line.quantityIssued - qty;
 
       await tx.item.update({ where: { id: line.itemId }, data: { currentStock: newStock } });

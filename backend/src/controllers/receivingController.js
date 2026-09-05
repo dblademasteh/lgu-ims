@@ -57,7 +57,7 @@ async function listReceivings(req, res) {
 
 async function createReceiving(req, res) {
   const body = sanitizeBody(req.body, ['receivingNo', 'poNumber', 'drNumber', 'remarks']);
-  const { supplierId, receivingNo, receiptDate, poNumber, drNumber, remarks, items } = body;
+  const { supplierId, receivingNo, receiptDate, poNumber, drNumber, remarks, items, purchaseOrderId } = body;
   if (!supplierId || !receivingNo || !Array.isArray(items) || items.length === 0) {
     throw new ApiError(400, 'supplierId, receivingNo and items are required.');
   }
@@ -69,49 +69,80 @@ async function createReceiving(req, res) {
     throw new ApiError(409, `Receiving number "${receivingNo}" already exists.`);
   }
 
-  const receiving = await prisma.$transaction(async (tx) => {
-  const doc = await tx.receiving.create({
-    data: {
-      supplierId,
-      receivingNo,
-      receiptDate: receiptDate ? new Date(receiptDate) : new Date(),
-      poNumber,
-      drNumber,
-      remarks,
-      createdById: req.user.id,
-      items: {
-        create: items.map((i) => ({
-          itemId: i.itemId,
-          quantity: round2(i.quantity),
-          unitCost: round2(i.unitCost) || 0,
-          remarks: i.remarks,
-        })),
-      },
-    },
-    include: { supplier: true, items: { include: { item: true } } },
-  });
-
-  for (const ri of doc.items) {
-    const item = await tx.item.findUnique({ where: { id: ri.itemId } });
-    if (!item) continue;
-    const newBalance = item.currentStock + ri.quantity;
-    await tx.item.update({ where: { id: item.id }, data: { currentStock: newBalance, unitCost: ri.unitCost ? Number(ri.unitCost) : item.unitCost } });
-    await tx.ledgerEntry.create({
-      data: {
-        itemId: item.id,
-        referenceType: 'RECEIPT',
-        referenceId: doc.id,
-        date: doc.receiptDate,
-        inflow: ri.quantity,
-        runningBalance: newBalance,
-        remarks: `Receiving ${doc.receivingNo}` + (poNumber ? ` PO ${poNumber}` : ''),
-        createdById: req.user.id,
-      },
-    });
+  let po = null;
+  if (purchaseOrderId) {
+    po = await prisma.purchaseOrder.findUnique({ where: { id: purchaseOrderId }, include: { items: true } });
+    if (!po) throw new ApiError(404, 'Purchase Order not found.');
+    if (po.status === 'CANCELLED') throw new ApiError(400, 'Cannot receive against a cancelled purchase order.');
   }
 
-  return doc;
-});
+  const receiving = await prisma.$transaction(async (tx) => {
+    const doc = await tx.receiving.create({
+      data: {
+        supplierId,
+        receivingNo,
+        receiptDate: receiptDate ? new Date(receiptDate) : new Date(),
+        poNumber,
+        drNumber,
+        remarks,
+        createdById: req.user.id,
+        purchaseOrderId: po ? po.id : null,
+        items: {
+          create: items.map((i) => ({
+            itemId: i.itemId,
+            quantity: round2(i.quantity),
+            unitCost: round2(i.unitCost) || 0,
+            remarks: i.remarks,
+          })),
+        },
+      },
+      include: { supplier: true, items: { include: { item: true } } },
+    });
+
+    for (const ri of doc.items) {
+      const item = await tx.item.findUnique({ where: { id: ri.itemId } });
+      if (!item) continue;
+      const newBalance = item.currentStock + ri.quantity;
+      await tx.item.update({ where: { id: item.id }, data: { currentStock: newBalance, unitCost: ri.unitCost ? Number(ri.unitCost) : item.unitCost } });
+      await tx.ledgerEntry.create({
+        data: {
+          itemId: item.id,
+          referenceType: 'RECEIPT',
+          referenceId: doc.id,
+          date: doc.receiptDate,
+          inflow: ri.quantity,
+          runningBalance: newBalance,
+          remarks: `Receiving ${doc.receivingNo}` + (poNumber ? ` PO ${poNumber}` : ''),
+          createdById: req.user.id,
+        },
+      });
+    }
+
+    if (po) {
+      for (const ri of doc.items) {
+        const poItem = po.items.find((pi) => pi.itemId === ri.itemId);
+        if (poItem) {
+          await tx.purchaseOrderItem.update({
+            where: { id: poItem.id },
+            data: { receivedQuantity: { increment: ri.quantity } },
+          });
+        }
+      }
+      const totalReceived = await tx.purchaseOrderItem.aggregate({
+        where: { purchaseOrderId: po.id },
+        _sum: { receivedQuantity: true },
+      });
+      const totalOrdered = await tx.purchaseOrderItem.aggregate({
+        where: { purchaseOrderId: po.id },
+        _sum: { quantity: true },
+      });
+      if (totalReceived._sum.receivedQuantity >= totalOrdered._sum.quantity) {
+        await tx.purchaseOrder.update({ where: { id: po.id }, data: { status: 'RECEIVED' } });
+      }
+    }
+
+    return doc;
+  });
 
   await writeAudit(req, 'CREATE', 'Receiving', receiving.id, null, { receivingNo, supplierId, itemsCount: items.length });
   res.json({ data: receiving, message: 'Receiving recorded and stock updated.' });
@@ -130,6 +161,13 @@ async function updateReceiving(req, res) {
   const { supplierId, receivingNo, receiptDate, poNumber, drNumber, remarks, items } = req.body;
   if (!supplierId || !receivingNo || !Array.isArray(items) || items.length === 0) {
     throw new ApiError(400, 'supplierId, receivingNo and items are required.');
+  }
+
+  if (receivingNo !== existing.receivingNo) {
+    const duplicate = await prisma.receiving.findFirst({ where: { receivingNo, NOT: { id: existing.id } } });
+    if (duplicate) {
+      throw new ApiError(409, `Receiving number "${receivingNo}" already exists.`);
+    }
   }
 
   const updated = await prisma.$transaction(async (tx) => {
@@ -189,6 +227,7 @@ async function deleteReceiving(req, res) {
 
   await prisma.$transaction(async (tx) => {
     for (const ri of existing.items) {
+      await tx.$queryRaw`SELECT "id" FROM "Item" WHERE "id" = ${ri.itemId} FOR UPDATE`;
       const item = await tx.item.findUnique({ where: { id: ri.itemId } });
       if (!item) continue;
       const reversed = item.currentStock - ri.quantity;
