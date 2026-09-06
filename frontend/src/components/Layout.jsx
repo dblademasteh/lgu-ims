@@ -198,6 +198,12 @@ export default function Layout() {
                       Audit trail
                     </NavLink>
                   </li>
+                  <li>
+                    <NavLink to="/coa-compliance">
+                      <ShieldCheck className="h-4 w-4" />
+                      COA compliance
+                    </NavLink>
+                  </li>
                 )}
                 <div className="divider my-1" />
                 <li>
@@ -371,3 +377,8 @@ function ChangePasswordModal() {
     </dialog>
   );
 }
+
+
+
+
+

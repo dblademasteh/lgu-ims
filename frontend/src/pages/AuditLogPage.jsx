@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api, { openReport } from '../api/client';
 import { useToast } from '../components/Toast';
 import PageHeader, { EmptyState, Pagination, Spinner } from '../components/ui';
@@ -40,6 +41,7 @@ export default function AuditLogPage() {
         subtitle="Full log of create, update, delete and workflow actions — with before / after values."
         actions={
           <div className="flex gap-2">
+            <Link to="/coa-compliance" className="btn btn-outline btn-sm">COA Compliance</Link>
             <button className="btn btn-outline btn-sm" onClick={() => {
               const q = new URLSearchParams({ format: 'pdf' });
               if (action) q.set('action', action);

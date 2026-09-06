@@ -10,6 +10,7 @@ import LedgerPage from './pages/LedgerPage';
 import ReportsPage from './pages/ReportsPage';
 import NotificationsPage from './pages/NotificationsPage';
 import AuditLogPage from './pages/AuditLogPage';
+import COACompliancePage from './pages/COACompliancePage';
 import UsersPage from './pages/UsersPage';
 import SettingsPage from './pages/SettingsPage';
 import ReceivingPage from './pages/ReceivingPage';
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="reports" element={<ProtectedRoute roles={['ADMIN', 'WAREHOUSE_STAFF', 'PROPERTY_CUSTODIAN', 'AUDITOR']}><ReportsPage /></ProtectedRoute>} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="audit" element={<ProtectedRoute roles={['ADMIN', 'AUDITOR']}><AuditLogPage /></ProtectedRoute>} />
+        <Route path="coa-compliance" element={<ProtectedRoute roles={['ADMIN', 'AUDITOR']}><COACompliancePage /></ProtectedRoute>} />
         <Route path="users" element={<ProtectedRoute roles={['ADMIN']}><UsersPage /></ProtectedRoute>} />
         <Route path="settings" element={<ProtectedRoute roles={['ADMIN', 'WAREHOUSE_STAFF']}><SettingsPage /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
