@@ -142,6 +142,33 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
+
+      {stats.budgetUtilization && stats.budgetUtilization.length > 0 && (
+        <section className="mt-6">
+          <h2 className="text-lg font-semibold mb-3">Budget Utilization — {new Date().getFullYear()}</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {stats.budgetUtilization.map((b) => {
+              const pct = b.utilizationPct;
+              const cls = pct >= 90 ? 'text-error' : pct >= 70 ? 'text-warning' : 'text-success';
+              return (
+                <div key={b.department?.id} className="card bg-base-100 shadow-sm">
+                  <div className="card-body p-4">
+                    <div className="font-medium text-sm truncate">{b.department?.name || 'General'}</div>
+                    <div className="text-2xl font-bold tabular-nums">{pct}%</div>
+                    <div className="text-xs text-base-content/60">
+                      ₱{Number(b.spent).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} of ₱{Number(b.budget).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </div>
+                    <div className="mt-2">
+                      <progress className={"progress " + (pct >= 90 ? 'progress-error' : pct >= 70 ? 'progress-warning' : 'progress-success') + " w-full"} value={Math.min(pct, 100)} max="100" />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
     </div>
   );
 }

@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-### Overall Readiness Score: 7.3 / 10
+### Overall Readiness Score: 7.4 / 10
 
 The system has a **solid core** — it covers the fundamental inventory loop (items ? receiving ? RIS ? ledger ? reports) with role-based access control, 2FA, audit logging, COA-compliant ledger cards, and PDF/Excel reporting. Several critical gaps identified in the original analysis have been addressed, including JWT secret enforcement, security headers (Helmet + CSP), CSRF protection, RIS number race condition mitigation, audit log immutability, and tamper-evident hashing.
 
@@ -452,7 +452,7 @@ All downloaded reports are named `report` regardless of `Content-Disposition` he
 | P2-1 | No physical count variance reports | 
 eportController.js | COA compliance | FIXED |
 | P2-2 | No ICS / APP reports | `reportController.js` | COA compliance | ? MISSING |
-| P2-3 | No budget / appropriation tracking | New models | Overspending | ?? PARTIAL — Budget model exists |
+| P2-3 | No budget / appropriation tracking | userController.js + Dashboard | Overspending | FIXED |
 | P2-4 | No item condition field | `schema.prisma` | COA PPE reporting | ? FIXED |
 | P2-5 | No JWT refresh token rotation | `authController.js` | Session hijacking | ?? PARTIAL — model exists |
 | P2-6 | No email digest | `notificationService.js` | Email fatigue | ? MISSING |
@@ -496,4 +496,4 @@ eportController.js | COA compliance | FIXED |
 | Mobile/Offline/Integration | 2/10 | Web-only, no offline, no integrations |
 | Security & Access Control | 8.5/10 | JWT enforced, CSRF+CSP, immutable+tamper-evident audit, refresh token rotation, concurrent session limit, password history |
 
-**Overall: 7.3/10 — Functional for a small LGU pilot; audit trail and security hardening now production-grade; procurement governance and COA compliance still incomplete.**
+**Overall: 7.4/10 — Functional for a small LGU pilot; audit trail and security hardening now production-grade; procurement governance and COA compliance still incomplete.**

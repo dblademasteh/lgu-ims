@@ -210,6 +210,13 @@ async function dashboardStats(req, res) {
     take: 8,
   });
 
+  const currentYear = new Date().getFullYear();
+  const budgets = await prisma.budget.findMany({
+    where: { year: currentYear },
+    include: { department: { select: { id: true, name: true } } },
+    orderBy: { department: { name: 'asc' } },
+  });
+
   res.json({
     stats: {
       totalItems,
@@ -221,6 +228,14 @@ async function dashboardStats(req, res) {
       itemsWithExpiry,
       itemsWithWarranty,
       pendingPhysicalCounts,
+      budgetUtilization: budgets.map((b) => ({
+        department: b.department,
+        year: b.year,
+        budget: b.amount,
+        spent: b.spent,
+        available: Math.max(0, b.amount - b.spent),
+        utilizationPct: b.amount > 0 ? Math.round((b.spent / b.amount) * 100) : 0,
+      })),
     },
     lowStock,
     recentLedger,
