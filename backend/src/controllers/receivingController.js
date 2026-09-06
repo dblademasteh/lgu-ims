@@ -3,6 +3,7 @@ const ApiError = require('../utils/ApiError');
 const { writeAudit } = require('../utils/audit');
 const { sanitizeString } = require('../utils/sanitize');
 const { round2 } = require('../utils/money');
+const { dispatch } = require('../services/webhooks');
 
 function sanitizeBody(body, fields = []) {
   const out = { ...body };
@@ -165,6 +166,7 @@ async function createReceiving(req, res) {
   });
 
   await writeAudit(req, 'CREATE', 'Receiving', receiving.id, null, { receivingNo, supplierId, itemsCount: items.length });
+  dispatch('receiving.created', { receivingId: receiving.id, receivingNo, supplierId, supplierName: supplier.name, itemsCount: items.length });
   res.json({ data: receiving, message: 'Receiving recorded and stock updated.' });
 }
 

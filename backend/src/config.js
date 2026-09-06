@@ -44,6 +44,7 @@ const config = {
     from: process.env.MAIL_FROM || 'LGU IMS <no-reply@lgu.local>',
   },
   appUrl: process.env.APP_URL || '',
+  webhookUrl: process.env.WEBHOOK_URL || '',
 };
 
 module.exports = config;

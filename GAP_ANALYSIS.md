@@ -458,7 +458,7 @@ eportController.js | COA compliance | FIXED |
 | P2-6 | No email digest | `notificationService.js` | Email fatigue | FIXED |
 | P2-7 | No concurrent session limit | `authController.js` | Shared credentials | FIXED |
 | P2-8 | `openReport` hardcodes filename | `frontend/src/api/client.js` | UX | FIXED |
-| P2-9 | No item serial/asset tag barcode | `schema.prisma` | Property tracking | ?? PARTIAL — stockNumber exists |
+| P2-9 | No item serial/asset tag barcode | `schema.prisma` | Property tracking | FIXED |
 | P2-10 | No supplier performance tracking | eportController.js + ReportsPage | Procurement governance | FIXED |
 | P2-11 | No dashboard trend charts | userController.js + DashboardPage | User analytics | FIXED |
 
@@ -467,7 +467,7 @@ eportController.js | COA compliance | FIXED |
 | ID | Gap | Notes | Status |
 |----|-----|-------|--------|
 | P3-1 | No mobile app / offline mode | Web-only | ?? PARTIAL — PWA exists |
-| P3-2 | No webhook/event hooks | Add event emitter | ? MISSING |
+| P3-2 | No webhook/event hooks | Add event emitter | ? FIXED |
 | P3-3 | No feature flags | Add gradual rollout | ? MISSING |
 | P3-4 | No multi-LGU / tenant isolation | Schema refactor | ? MISSING |
 | P3-5 | No document digital signing | Integrate DTI/DICT | ? MISSING |

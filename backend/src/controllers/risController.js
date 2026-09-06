@@ -9,6 +9,7 @@ const { risCreated, risStatusChange } = require('../services/templates');
 const config = require('../config');
 const { sanitizeString } = require('../utils/sanitize');
 const { round2 } = require('../utils/money');
+const { dispatch } = require('../services/webhooks');
 
 function sanitizeBody(body, fields = []) {
   const out = { ...body };
@@ -155,6 +156,7 @@ async function createRis(req, res) {
   if (!ris) throw new ApiError(500, 'Failed to generate unique RIS number after multiple attempts.');
 
   await writeAudit(req, 'CREATE', 'Ris', ris.id, null, { risNumber, purpose });
+  dispatch('ris.created', { risId: ris.id, risNumber, purpose, department: department.name, requestedBy: req.user.fullName });
 
   const notification = {
     type: 'RIS',
