@@ -165,7 +165,7 @@ export default function ReceivingPage() {
                       <td className="text-right">
                         <button className="btn btn-ghost btn-xs" onClick={async () => { const res = await api.get(`/inventory/receivings/${r.id}`); setDetailRec(res.data.data); }}>View</button>
                         <button className="btn btn-ghost btn-xs" onClick={async () => { const res = await api.get(`/inventory/receivings/${r.id}`); setPrintRec(res.data.data); }}>Print</button>
-                        {canManage && <button className="btn btn-ghost btn-xs text-error" onClick={() => { if (window.confirm(`Delete receiving ${r.receivingNo}? This will reverse stock.`)) { setDeleteId(r.id); } }}>Delete</button>}
+                        {canManage && <button className="btn btn-ghost btn-xs text-error" onClick={() => setDeleteId(r.id)}>Delete</button>}
                       </td>
                     </tr>
                   ))}
