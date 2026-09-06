@@ -99,6 +99,16 @@ export default function Layout() {
     navigate('/login', { replace: true });
   };
 
+  const handleLogoutAll = async () => {
+    try {
+      await api.post('/auth/logout-all');
+      toast.success('Signed out from all sessions');
+    } catch { /* best-effort */ }
+    logout();
+    navigate('/login', { replace: true });
+  };
+
+
   const current = menu.find((m) => location.pathname.startsWith(m.to));
 
   return (
@@ -196,6 +206,13 @@ export default function Layout() {
                     Sign out
                   </button>
                 </li>
+                <li>
+                  <button onClick={handleLogoutAll} className="text-error">
+                    <LogOut className="h-4 w-4" />
+                    Sign out from all sessions
+                  </button>
+                </li>
+
               </ul>
             </div>
           </div>

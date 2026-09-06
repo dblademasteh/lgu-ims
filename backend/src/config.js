@@ -15,6 +15,7 @@ const config = {
   })(),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   refreshTokenExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '30d',
+  maxSessionsPerUser: Number(process.env.MAX_SESSIONS_PER_USER) || 5,
   bcryptRounds: Number(process.env.BCRYPT_ROUNDS) || 10,
   passwordExpiryDays: Number(process.env.PASSWORD_EXPIRY_DAYS) || 90,
   auditChainSecret: (() => {

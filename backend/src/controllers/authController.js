@@ -28,7 +28,7 @@ function parseExpiry(str, fallbackMs) {
   }
 
 async function issueRefreshToken(userId) {
-  const MAX_SESSIONS = 5;
+    const MAX_SESSIONS = config.maxSessionsPerUser;
   const existing = await prisma.refreshToken.findMany({
     where: { userId },
     orderBy: { createdAt: 'asc' },
@@ -136,10 +136,12 @@ async function changePassword(req, res) {
   res.json({ message: 'Password updated successfully.' });
 }
 
-async function logout(req, res) {
-  await writeAudit(req, 'LOGOUT', 'User', req.user.id, null, { username: req.user.username });
-  res.json({ message: 'Signed out.' });
+async function logoutAll(req, res) {
+  await prisma.refreshToken.deleteMany({ where: { userId: req.user.id } });
+  await writeAudit(req, 'LOGOUT_ALL', 'User', req.user.id, null, { username: req.user.username });
+  res.json({ message: 'Signed out from all sessions.' });
 }
+
 
 async function forgotPassword(req, res) {
   const body = sanitizeBody(req.body, ['username']);
@@ -281,8 +283,8 @@ async function refreshToken(req, res) {
     throw new ApiError(401, 'Account is inactive or no longer exists.');
   }
 
+    await prisma.refreshToken.update({ where: { id: stored.id }, data: { lastUsedAt: new Date() } });
   await prisma.refreshToken.delete({ where: { id: stored.id } });
-    await prisma.refreshToken.update({ where: { id: stored.id }, data: { lastUsedAt: new Date() } }).catch(() => {});
   const newRefreshToken = await issueRefreshToken(user.id);
 
   res.json({
@@ -302,4 +304,4 @@ async function logout(req, res) {
   res.json({ message: 'Signed out.' });
 }
 
-module.exports = { login, me, changePassword, logout, forgotPassword, resetPassword, twoFactorSetup, twoFactorEnable, twoFactorDisable, twoFactorLogin, refreshToken };
+module.exports = { login, me, changePassword, logout, logoutAll, forgotPassword, resetPassword, twoFactorSetup, twoFactorEnable, twoFactorDisable, twoFactorLogin, refreshToken };
