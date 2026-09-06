@@ -49,14 +49,29 @@ api.interceptors.response.use(
   }
 );
 
+function parseFilename(disposition, fallback) {
+  if (!disposition) return fallback;
+  const match = disposition.match(/filename\*=UTF-8''([^;]+)/i) || disposition.match(/filename=([^;]+)/i);
+  if (match) {
+    const name = decodeURIComponent(match[1]).replace(/['";]/g, '').trim();
+    if (name) return name;
+  }
+  return fallback;
+}
+
+function filenameFromPath(path) {
+  const segments = path.split('/');
+  const last = segments[segments.length - 1];
+  const qIdx = last.indexOf('?');
+  return qIdx >= 0 ? last.slice(0, qIdx) : last;
+}
+
 export function openReport(path, download) {
   api.get(path, { responseType: 'blob' }).then((res) => {
     const url = URL.createObjectURL(res.data);
     const disposition = res.headers['content-disposition'];
-    let filename = 'report';
-    if (disposition && disposition.includes('filename=')) {
-      filename = disposition.split('filename=')[1].replace(/['";]/g, '').trim();
-    }
+    const fallback = filenameFromPath(path) || 'report';
+    const filename = parseFilename(disposition, fallback);
     if (download) {
       const a = document.createElement('a');
       a.href = url;
