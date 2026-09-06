@@ -116,6 +116,33 @@ async function me(req, res) {
   res.json({ user: publicUser(req.user) });
 }
 
+async function isPasswordInHistory(userId, newPassword) {
+  const history = await prisma.previousPassword.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    take: config.passwordHistoryCount,
+  });
+  for (const entry of history) {
+    if (await bcrypt.compare(newPassword, entry.hash)) return true;
+  }
+  return false;
+}
+
+async function addPasswordToHistory(userId, passwordHash) {
+  await prisma.previousPassword.create({ data: { userId, hash: passwordHash } });
+  const count = await prisma.previousPassword.count({ where: { userId } });
+  if (count > config.passwordHistoryCount) {
+    const oldest = await prisma.previousPassword.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+      take: count - config.passwordHistoryCount,
+    });
+    await prisma.previousPassword.deleteMany({
+      where: { id: { in: oldest.map((e) => e.id) } },
+    });
+  }
+}
+
 async function changePassword(req, res) {
   const body = sanitizeBody(req.body, ['currentPassword', 'newPassword']);
   const { currentPassword, newPassword } = body;
@@ -129,7 +156,12 @@ async function changePassword(req, res) {
   const ok = await bcrypt.compare(currentPassword, req.user.password);
   if (!ok) throw new ApiError(400, 'Current password is incorrect.');
 
+  if (await isPasswordInHistory(req.user.id, newPassword)) {
+    throw new ApiError(400, `New password must not match any of the last ${config.passwordHistoryCount} passwords.`);
+  }
+
   const hash = await bcrypt.hash(newPassword, config.bcryptRounds);
+  await addPasswordToHistory(req.user.id, req.user.password);
   await prisma.user.update({ where: { id: req.user.id }, data: { password: hash, passwordChangedAt: new Date() } });
   await writeAudit(req, 'PASSWORD_CHANGE', 'User', req.user.id, null, { username: req.user.username });
 
@@ -183,6 +215,11 @@ async function resetPassword(req, res) {
   const user = await prisma.user.findUnique({ where: { id: payload.sub } });
   if (!user) throw new ApiError(404, 'User not found.');
 
+  if (await isPasswordInHistory(user.id, newPassword)) {
+    throw new ApiError(400, `New password must not match any of the last ${config.passwordHistoryCount} passwords.`);
+  }
+
+  await addPasswordToHistory(user.id, user.password);
   await prisma.user.update({ where: { id: user.id }, data: { password: await bcrypt.hash(newPassword, config.bcryptRounds), passwordChangedAt: new Date() } });
   await writeAudit(req, 'PASSWORD_RESET', 'User', user.id, null, { username: user.username });
 

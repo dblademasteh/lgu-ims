@@ -18,6 +18,7 @@ const config = {
   maxSessionsPerUser: Number(process.env.MAX_SESSIONS_PER_USER) || 5,
   bcryptRounds: Number(process.env.BCRYPT_ROUNDS) || 10,
   passwordExpiryDays: Number(process.env.PASSWORD_EXPIRY_DAYS) || 90,
+  passwordHistoryCount: Number(process.env.PASSWORD_HISTORY_COUNT) || 5,
   auditChainSecret: (() => {
     const secret = process.env.AUDIT_CHAIN_SECRET;
     if (!secret) {

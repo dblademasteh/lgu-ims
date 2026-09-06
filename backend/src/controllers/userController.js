@@ -15,6 +15,31 @@ function sanitizeBody(body, fields = []) {
   return out;
 }
 
+async function isPasswordInHistory(userId, newPassword) {
+  const history = await prisma.previousPassword.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    take: config.passwordHistoryCount,
+  });
+  for (const entry of history) {
+    if (await bcrypt.compare(newPassword, entry.hash)) return true;
+  }
+  return false;
+}
+
+async function addPasswordToHistory(userId, passwordHash) {
+  await prisma.previousPassword.create({ data: { userId, hash: passwordHash } });
+  const count = await prisma.previousPassword.count({ where: { userId } });
+  if (count > config.passwordHistoryCount) {
+    const oldest = await prisma.previousPassword.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+      take: count - config.passwordHistoryCount,
+    });
+    await prisma.previousPassword.deleteMany({ where: { id: { in: oldest.map((e) => e.id) } } });
+  }
+}
+
 async function listUsers(req, res) {
   const { page, limit, offset } = paginate(req.query);
   const where = {};
@@ -95,8 +120,14 @@ async function updateUser(req, res) {
   if (departmentId !== undefined) data.departmentId = departmentId || null;
   if (isActive !== undefined) data.isActive = isActive;
   if (externalId !== undefined) data.externalId = externalId || null;
-  if (password) data.password = await bcrypt.hash(password, config.bcryptRounds);
-  if (password) data.passwordChangedAt = new Date();
+  if (password) {
+    if (await isPasswordInHistory(id, password)) {
+      throw new ApiError(400, `New password must not match any of the last ${config.passwordHistoryCount} passwords.`);
+    }
+    await addPasswordToHistory(id, existing.password);
+    data.password = await bcrypt.hash(password, config.bcryptRounds);
+    data.passwordChangedAt = new Date();
+  }
 
   const user = await prisma.user.update({
     where: { id },

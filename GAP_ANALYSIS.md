@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-### Overall Readiness Score: 6.5 / 10
+### Overall Readiness Score: 7.1 / 10
 
 The system has a **solid core** — it covers the fundamental inventory loop (items ? receiving ? RIS ? ledger ? reports) with role-based access control, 2FA, audit logging, COA-compliant ledger cards, and PDF/Excel reporting. Several critical gaps identified in the original analysis have been addressed, including JWT secret enforcement, security headers (Helmet + CSP), CSRF protection, RIS number race condition mitigation, audit log immutability, and tamper-evident hashing.
 
@@ -145,8 +145,10 @@ However, it is **not production-ready for a provincial LGU deployment or COA aud
 | Acknowledgment Slip | ? FIXED | `acknowledgmentSlipReport` in `reportController.js:475` |
 | Aging report | ? Implemented | `agingReport` in `reportController.js` |
 | Dashboard with stats | ? Implemented | Items, categories, pending RIS, low stock, issued this month |
-| ICS (Inventory Custodian Slip) | FIXED | Implemented at /reports/icing (eportController.js) |
-| APP (Annual Property, Plant & Equipment) | FIXED | Implemented at /reports/app (eportController.js) |
+| ICS (Inventory Custodian Slip) | FIXED | Implemented at /reports/icing (
+eportController.js) |
+| APP (Annual Property, Plant & Equipment) | FIXED | Implemented at /reports/app (
+eportController.js) |
 | Physical Count / Inventory Taking Report | ?? PARTIALLY | Physical count workflow exists; no variance report |
 | Obsolete / unserviceable items report | ? MISSING | No disposal report |
 | Semi-expendable property report | ? MISSING | No threshold-based classification |
@@ -485,7 +487,7 @@ All downloaded reports are named `report` regardless of `Content-Disposition` he
 | Core Inventory | 7.5/10 | No max stock, no serial tracking, no decommissioning |
 | RIS Workflow | 7.5/10 | Silent stock short issuance, no bulk creation |
 | Receiving & Suppliers | 6/10 | No PO creation UI, no 3-way matching, no IAS |
-| User & Role Management | 7/10 | No password history, no concurrent session limit, no profile self-service |
+| User & Role Management | 8/10 | No concurrent session limit, no profile self-service |
 | Notifications | 5.5/10 | No email digest, no push, limited preferences |
 | Reporting | 7/10 | ICS/APP implemented; no variance report |
 | Audit & Compliance | 8/10 | Immutable + tamper-evident + COA compliance dashboard |
@@ -493,4 +495,4 @@ All downloaded reports are named `report` regardless of `Content-Disposition` he
 | Mobile/Offline/Integration | 2/10 | Web-only, no offline, no integrations |
 | Security & Access Control | 7.5/10 | JWT enforced (P0-2), CSRF+CSP (P0-8), immutable+tamper-evident audit (P0-9/10); no refresh token rotation, no concurrent session limit |
 
-**Overall: 7/10 — Functional for a small LGU pilot; audit trail and security hardening now production-grade; procurement governance and COA compliance still incomplete.**
+**Overall: 7.1/10 — Functional for a small LGU pilot; audit trail and security hardening now production-grade; procurement governance and COA compliance still incomplete.**

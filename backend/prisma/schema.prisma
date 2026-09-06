@@ -90,6 +90,7 @@ model User {
   apiKeys       ApiKey[]
   purchaseOrders PurchaseOrder[]
   refreshTokens RefreshToken[]
+  previousPasswords PreviousPassword[]
   physicalCounts PhysicalCount[]
   notificationPreferences NotificationPreference[]
 }
@@ -354,6 +355,16 @@ model PurchaseOrderItem {
   @@index([itemId])
 }
 
+model PreviousPassword {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hash      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
 model RefreshToken {
   id           String   @id @default(uuid()) @db.Uuid
   userId       String   @db.Uuid
@@ -415,3 +426,5 @@ model PhysicalCountItem {
   @@index([physicalCountId])
   @@index([itemId])
 }
+
+
