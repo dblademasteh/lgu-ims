@@ -16,5 +16,6 @@ router.get('/icing', authorize(...VIEWERS), reportController.icsReport);
 router.get('/app', authorize(...VIEWERS), reportController.appReport);
 router.get('/variance', authorize(...VIEWERS), reportController.varianceReport);
 router.get('/acknowledgment/:risId', authorize(...VIEWERS), reportController.acknowledgmentSlipReport);
+router.get('/suppliers', authorize(...VIEWERS), reportController.supplierPerformanceReport);
 
 module.exports = router;

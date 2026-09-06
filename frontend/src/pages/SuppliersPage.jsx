@@ -11,6 +11,7 @@ export default function SuppliersPage() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [form, setForm] = useState({ name: '', contact: '', phone: '', email: '', address: '' });
 
   const load = () => {
@@ -57,8 +58,16 @@ export default function SuppliersPage() {
 
   return (
     <div>
-      <PageHeader title="Suppliers" subtitle="Manage supplier records for receiving and procurement." actions={
-        canManage && <button className="btn btn-primary" onClick={() => { setEditing(null); setForm({ name: '', contact: '', phone: '', email: '', address: '' }); setOpen(true); }}>Add Supplier</button>
+      <PageHeader title="Suppliers" subtitle="Manage supplier records for receiving and procurement."       actions={
+        canManage && (
+          <div className="flex gap-2">
+            <button className="btn btn-outline" onClick={() => setImportOpen(true)}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+              Import CSV
+            </button>
+            <button className="btn btn-primary" onClick={() => { setEditing(null); setForm({ name: '', contact: '', phone: '', email: '', address: '' }); setOpen(true); }}>Add Supplier</button>
+          </div>
+        )
       } />
       <div className="card bg-base-100 shadow-sm">
         <div className="card-body">
@@ -122,6 +131,56 @@ export default function SuppliersPage() {
           <form method="dialog" className="modal-backdrop"><button onClick={() => { setOpen(false); setEditing(null); }}>close</button></form>
         </dialog>
       )}
+      {importOpen && (
+        <dialog className="modal modal-open">
+          <div className="modal-box max-w-2xl">
+            <h3 className="font-bold text-lg">Import Suppliers from CSV</h3>
+            <p className="text-sm text-base-content/60 mt-1">Upload a CSV with columns: name, contact, phone, email, address, isActive. Existing suppliers (by name or email) will be updated.</p>
+            <ImportSuppliersForm onClose={() => setImportOpen(false)} onImported={load} />
+          </div>
+          <form method="dialog" className="modal-backdrop"><button onClick={() => setImportOpen(false)}>close</button></form>
+        </dialog>
+      )}
     </div>
+  );
+}
+
+function ImportSuppliersForm({ onClose, onImported }) {
+  const toast = useToast();
+  const [csv, setCsv] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!csv.trim()) { toast.error('CSV content is required.'); return; }
+    setBusy(true);
+    try {
+      const res = await api.post('/inventory/suppliers/import', { csv });
+      toast.success(res.data.message);
+      onImported();
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Import failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sampleCSV = 'name,contact,phone,email,address,isActive\nABC Supplies Corp.,Juan Dela Cruz,0917-123-4567,abc@supplies.ph,123 Manila St, true\nXYZ Trading,Maria Santos,0918-765-4321,xyz@trading.ph,456 QC Ave,true';
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4">
+      <fieldset className="fieldset">
+        <legend className="fieldset-legend">CSV content</legend>
+        <textarea className="textarea font-mono text-xs" rows={10} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={sampleCSV} />
+      </fieldset>
+      <div className="modal-action">
+        <button type="button" className="btn" onClick={onClose}>Cancel</button>
+        <button type="submit" className="btn btn-primary" disabled={busy}>
+          {busy && <span className="loading loading-spinner loading-xs" />}
+          Import
+        </button>
+      </div>
+    </form>
   );
 }

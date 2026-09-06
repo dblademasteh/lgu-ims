@@ -8,6 +8,7 @@ router.get('/stats/dashboard', userController.dashboardStats);
 
 router.get('/', authenticate, authorize('ADMIN', 'AUDITOR', 'PROPERTY_CUSTODIAN'), userController.listUsers);
 router.post('/', authenticate, authorize('ADMIN'), userController.createUser);
+router.post('/import', authenticate, authorize('ADMIN'), userController.importUsers);
 router.patch('/:id', authenticate, authorize('ADMIN'), userController.updateUser);
 
 module.exports = router;

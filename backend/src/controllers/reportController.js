@@ -810,7 +810,108 @@ async function varianceReport(req, res) {
         },
       },
     ],
-  }, Physical_Count_Variance_.pdf);
+  }, 'Physical_Count_Variance_' + new Date().toISOString().slice(0, 10) + '.pdf');
 }
 
-module.exports = { rsmiReport, inventoryReport, movementsReport, ledgerCardReport, parReport, agingReport, acknowledgmentSlipReport, icsReport, appReport, varianceReport };
+async function supplierPerformanceReport(req, res) {
+  const { format = 'pdf', from, to } = req.query;
+  const where = {};
+  if (from || to) {
+    where.receiptDate = {};
+    if (from) where.receiptDate.gte = new Date(from);
+    if (to) where.receiptDate.lte = new Date(to);
+  }
+
+  const suppliers = await prisma.supplier.findMany({
+    where: { isActive: true },
+    include: {
+      receivings: {
+        where: Object.keys(where).length > 0 ? where : undefined,
+        include: {
+          items: { include: { item: true } },
+          purchaseOrder: { select: { date: true } },
+        },
+      },
+      purchaseOrders: {
+        where: { status: { in: ['PENDING', 'APPROVED'] } },
+        select: { id: true, date: true, totalAmount: true },
+      },
+    },
+    orderBy: { name: 'asc' },
+  });
+
+  const rows = suppliers.map((s) => {
+    const totalReceivings = s.receivings.length;
+    const totalItems = s.receivings.reduce((sum, r) => sum + r.items.reduce((is, i) => is + Number(i.quantity), 0), 0);
+    const totalValue = s.receivings.reduce((sum, r) => sum + r.items.reduce((is, i) => is + (Number(i.quantity) * Number(i.unitCost || 0)), 0), 0);
+    const avgDeliveryDays = s.receivings.filter((r) => r.purchaseOrder?.date).reduce((sum, r, _, arr) => {
+      const days = Math.max(0, Math.ceil((new Date(r.receiptDate) - new Date(r.purchaseOrder.date)) / (1000 * 60 * 60 * 24)));
+      return sum + days;
+    }, 0) / (totalReceivings || 1);
+    const onTimeCount = s.receivings.filter((r) => {
+      if (!r.purchaseOrder?.date) return null;
+      return new Date(r.receiptDate) >= new Date(r.purchaseOrder.date);
+    }).length;
+    return {
+      name: s.name,
+      contact: s.contact || '—',
+      email: s.email || '—',
+      totalPOs: s.purchaseOrders.length,
+      totalReceivings,
+      totalItems,
+      totalValue,
+      avgDeliveryDays: Math.round(avgDeliveryDays * 10) / 10,
+      onTimeRate: totalReceivings > 0 ? Math.round((onTimeCount / totalReceivings) * 100) : null,
+    };
+  });
+
+  if (format === 'excel') {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Supplier Performance');
+    ws.columns = [
+      { header: 'Supplier', key: 'name', width: 30 },
+      { header: 'Contact', key: 'contact', width: 20 },
+      { header: 'Email', key: 'email', width: 25 },
+      { header: 'Total POs', key: 'totalPOs', width: 12 },
+      { header: 'Receivings', key: 'totalReceivings', width: 14 },
+      { header: 'Items Received', key: 'totalItems', width: 16 },
+      { header: 'Total Value', key: 'totalValue', width: 16 },
+      { header: 'Avg Delivery (days)', key: 'avgDeliveryDays', width: 20 },
+      { header: 'On-Time %', key: 'onTimeRate', width: 14 },
+    ];
+    ws.getRow(1).font = { bold: true };
+    rows.forEach((r) => ws.addRow(r));
+    renderExcel(res, wb, 'Supplier_Performance_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+    return;
+  }
+
+  const body = [
+    [{ text: 'SUPPLIER PERFORMANCE REPORT', style: 'title' }, {}, {}, {}, {}, {}, {}, {}, {}],
+    [{ text: 'Generated: ' + new Date().toLocaleString() + (from || to ? ' | Period: ' + (from || 'start') + ' to ' + (to || 'now') : ''), colSpan: 9 }, {}, {}, {}, {}, {}, {}, {}, {}],
+    [{ text: '', bold: true }, {}, {}, {}, {}, {}, {}, {}, {}],
+    [{ text: 'Supplier', style: 'th' }, { text: 'Contact', style: 'th' }, { text: 'Email', style: 'th' }, { text: 'POs', style: 'th' }, { text: 'Receivings', style: 'th' }, { text: 'Items', style: 'th' }, { text: 'Value', style: 'th' }, { text: 'Avg Days', style: 'th' }, { text: 'On-Time%', style: 'th' }],
+    ...rows.map((r) => [
+      r.name, r.contact, r.email,
+      String(r.totalPOs), String(r.totalReceivings), String(r.totalItems),
+      '\u20b1' + Number(r.totalValue || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }),
+      String(r.avgDeliveryDays),
+      r.onTimeRate !== null ? r.onTimeRate + '%' : 'N/A',
+    ]),
+  ];
+
+  renderPdf(res, {
+    ...pdfHeader('SUPPLIER PERFORMANCE REPORT', 'RA 9184 — Supplier evaluation and tracking'),
+    content: [
+      {
+        table: {
+          headerRows: 1,
+          widths: ['*', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto'],
+          body,
+          layout: { fillColor: (rowIndex) => (rowIndex % 2 === 0 ? null : '#F3F4F6') },
+        },
+      },
+    ],
+  }, 'Supplier_Performance_' + new Date().toISOString().slice(0, 10) + '.pdf');
+}
+
+module.exports = { rsmiReport, inventoryReport, movementsReport, ledgerCardReport, parReport, agingReport, acknowledgmentSlipReport, icsReport, appReport, varianceReport, supplierPerformanceReport };

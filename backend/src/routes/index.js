@@ -19,6 +19,7 @@ const purchaseOrderRoutes = require('./purchaseOrder.routes');
 const budgetRoutes = require('./budget.routes');
 const physicalCountRoutes = require('./physicalCount.routes');
 const apiKeyRoutes = require('./apiKey.routes');
+const backupRoutes = require('./backup.routes');
 
 const router = Router();
 
@@ -42,6 +43,7 @@ router.use('/purchase-orders', purchaseOrderRoutes);
 router.use('/budgets', budgetRoutes);
 router.use('/physical-counts', physicalCountRoutes);
 router.use('/api-keys', apiKeyRoutes);
+router.use('/backup', backupRoutes);
 
 router.get('/roles', (req, res) => {
   res.json({ data: Object.values(ROLES).map((role) => ({ code: role, label: role.replace(/_/g, ' ').toLowerCase() })) });

@@ -322,4 +322,89 @@ async function deactivateSupplier(req, res) {
   res.json({ data: supplier, message: 'Supplier deactivated.' });
 }
 
-module.exports = { listSuppliers, createSupplier, listReceivings, createReceiving, getReceiving, updateReceiving, deleteReceiving, getSupplier, updateSupplier, deactivateSupplier };
+function parseCsv(text) {
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((l) => l.trim());
+  if (!lines.length) return [];
+  return lines.map((line) => {
+    const out = [];
+    let cur = '';
+    let inQ = false;
+    for (let k = 0; k < line.length; k += 1) {
+      const ch = line[k];
+      if (inQ) {
+        if (ch === '"') {
+          if (line[k + 1] === '"') { cur += '"'; k += 1; }
+          else inQ = false;
+        } else cur += ch;
+      } else if (ch === '"') inQ = true;
+      else if (ch === ',') { out.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    out.push(cur);
+    return out;
+  }).map((cells) => cells.map((c) => c.trim()));
+}
+
+async function importSuppliers(req, res) {
+  const { csv } = req.body;
+  if (!csv || typeof csv !== 'string' || !csv.trim()) {
+    throw new ApiError(400, 'CSV content is required.');
+  }
+  const rows = parseCsv(csv);
+  if (rows.length < 2) throw new ApiError(400, 'CSV must include a header row and at least one supplier row.');
+
+  const header = rows[0].map((h) => h.toLowerCase());
+  const idx = (name) => header.indexOf(name);
+
+  const iName = idx('name');
+  const iContact = idx('contact');
+  const iPhone = idx('phone');
+  const iEmail = idx('email');
+  const iAddress = idx('address');
+  const iIsActive = idx('isactive');
+
+  if (iName === -1) {
+    throw new ApiError(400, 'CSV must have columns: name (contact, phone, email, address, isActive optional).');
+  }
+
+  let created = 0;
+  let updated = 0;
+  const errors = [];
+
+  await prisma.$transaction(async (tx) => {
+    for (let r = 1; r < rows.length; r += 1) {
+      const row = rows[r];
+      const name = row[iName];
+      if (!name) {
+        errors.push(`Row ${r + 1}: missing name — skipped.`);
+        continue;
+      }
+      try {
+        const isActive = iIsActive >= 0 ? (row[iIsActive] || 'true').toLowerCase() !== 'false' : true;
+        const existing = await tx.supplier.findFirst({ where: { OR: [{ name }, row[iEmail] >= 0 && row[iEmail] ? { email: row[iEmail] } : {}] } });
+        const data = {
+          name,
+          contact: iContact >= 0 ? row[iContact] || null : null,
+          phone: iPhone >= 0 ? row[iPhone] || null : null,
+          email: iEmail >= 0 ? row[iEmail] || null : null,
+          address: iAddress >= 0 ? row[iAddress] || null : null,
+          isActive,
+        };
+        if (existing) {
+          await tx.supplier.update({ where: { id: existing.id }, data });
+          updated += 1;
+        } else {
+          await tx.supplier.create({ data });
+          created += 1;
+        }
+      } catch (err) {
+        errors.push(`Row ${r + 1} (${name}): ${err.message}`);
+      }
+    }
+  });
+
+  await writeAudit(req, 'IMPORT', 'Supplier', null, null, { rows: rows.length - 1, created, updated, errors: errors.length });
+  res.json({ data: { created, updated, errors }, message: `Import complete: ${created} created, ${updated} updated, ${errors.length} errors.` });
+}
+
+module.exports = { listSuppliers, createSupplier, listReceivings, createReceiving, getReceiving, updateReceiving, deleteReceiving, getSupplier, updateSupplier, deactivateSupplier, importSuppliers };

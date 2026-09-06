@@ -285,4 +285,106 @@ async function dashboardStats(req, res) {
   });
 }
 
-module.exports = { listUsers, createUser, updateUser, dashboardStats };
+function parseCsv(text) {
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter((l) => l.trim());
+  if (!lines.length) return [];
+  return lines.map((line) => {
+    const out = [];
+    let cur = '';
+    let inQ = false;
+    for (let k = 0; k < line.length; k += 1) {
+      const ch = line[k];
+      if (inQ) {
+        if (ch === '"') {
+          if (line[k + 1] === '"') { cur += '"'; k += 1; }
+          else inQ = false;
+        } else cur += ch;
+      } else if (ch === '"') inQ = true;
+      else if (ch === ',') { out.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    out.push(cur);
+    return out;
+  }).map((cells) => cells.map((c) => c.trim()));
+}
+
+async function importUsers(req, res) {
+  const { csv } = req.body;
+  if (!csv || typeof csv !== 'string' || !csv.trim()) {
+    throw new ApiError(400, 'CSV content is required.');
+  }
+  const rows = parseCsv(csv);
+  if (rows.length < 2) throw new ApiError(400, 'CSV must include a header row and at least one user row.');
+
+  const header = rows[0].map((h) => h.toLowerCase());
+  const idx = (name) => header.indexOf(name);
+
+  const iUsername = idx('username');
+  const iEmail = idx('email');
+  const iFullName = idx('fullname');
+  const iRole = idx('role');
+  const iDepartment = idx('department');
+  const iIsActive = idx('isactive');
+
+  if (iUsername === -1 || iEmail === -1 || iFullName === -1) {
+    throw new ApiError(400, 'CSV must have columns: username, email, fullname (role, department, isActive optional).');
+  }
+
+  let created = 0;
+  let updated = 0;
+  const errors = [];
+  const defaultPassword = process.env.SEED_DEFAULT_PASSWORD || 'LguIms2026!';
+  const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+  await prisma.$transaction(async (tx) => {
+    const deptCache = new Map();
+    const getDept = async (name) => {
+      if (!name) return null;
+      if (deptCache.has(name)) return deptCache.get(name);
+      let dept = await tx.department.findUnique({ where: { name } });
+      if (!dept) dept = await tx.department.create({ data: { name, code: name.substring(0, 3).toUpperCase() } });
+      deptCache.set(name, dept);
+      return dept;
+    };
+
+    for (let r = 1; r < rows.length; r += 1) {
+      const row = rows[r];
+      const username = (row[iUsername] || '').toLowerCase().trim();
+      const email = (row[iEmail] || '').toLowerCase().trim();
+      const fullName = row[iFullName];
+      if (!username || !email || !fullName) {
+        errors.push(`Row ${r + 1}: missing username/email/fullname — skipped.`);
+        continue;
+      }
+      try {
+        const role = iRole >= 0 ? (row[iRole] || 'WAREHOUSE_STAFF').toUpperCase() : 'WAREHOUSE_STAFF';
+        const dept = iDepartment >= 0 ? await getDept(row[iDepartment]) : null;
+        const isActive = iIsActive >= 0 ? (row[iIsActive] || 'true').toLowerCase() !== 'false' : true;
+        const existing = await tx.user.findFirst({ where: { OR: [{ username }, { email }] } });
+        const data = {
+          username,
+          email,
+          fullName,
+          role,
+          password: hashedPassword,
+          isActive,
+          ...(dept ? { departmentId: dept.id } : {}),
+        };
+        if (existing) {
+          await tx.user.update({ where: { id: existing.id }, data });
+          updated += 1;
+        } else {
+          await tx.user.create({ data });
+          created += 1;
+        }
+      } catch (err) {
+        errors.push(`Row ${r + 1} (${username}): ${err.message}`);
+      }
+    }
+  });
+
+  await writeAudit(req, 'IMPORT', 'User', null, null, { rows: rows.length - 1, created, updated, errors: errors.length });
+  res.json({ data: { created, updated, errors }, message: `Import complete: ${created} created, ${updated} updated, ${errors.length} errors. Default password: ${defaultPassword}` });
+}
+
+module.exports = { listUsers, createUser, updateUser, dashboardStats, importUsers };

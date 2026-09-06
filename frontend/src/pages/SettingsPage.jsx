@@ -211,8 +211,9 @@ export default function SettingsPage() {
         <button role="tab" className={`tab ${tab === 'categories' ? 'tab-active' : ''}`} onClick={() => setTab('categories')}>Categories</button>
         <button role="tab" className={`tab ${tab === 'departments' ? 'tab-active' : ''}`} onClick={() => setTab('departments')}>Departments</button>
         <button role="tab" className={`tab ${tab === 'security' ? 'tab-active' : ''}`} onClick={() => setTab('security')}>Security</button>
+        <button role="tab" className={`tab ${tab === 'backup' ? 'tab-active' : ''}`} onClick={() => setTab('backup')}>Backup</button>
       </div>
-      {tab === 'categories' ? <CategoryTab /> : tab === 'departments' ? <DepartmentTab /> : <SecurityTab />}
+      {tab === 'categories' ? <CategoryTab /> : tab === 'departments' ? <DepartmentTab /> : tab === 'security' ? <SecurityTab /> : <BackupTab />}
     </div>
   );
 }
@@ -403,6 +404,46 @@ function SecurityTab() {
           <form method="dialog" className="modal-backdrop"><button onClick={() => setSetupOpen(false)}>close</button></form>
         </dialog>
       )}
+    </div>
+  );
+}
+
+function BackupTab() {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+
+  const downloadBackup = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch('/api/backup', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      if (!res.ok) throw new Error((await res.json()).message || 'Backup failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `lgu_ims_backup_${new Date().toISOString().slice(0, 10)}.sql`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Backup downloaded.');
+    } catch (err) {
+      toast.error(err.message || 'Backup failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="card bg-base-100 shadow-sm">
+      <div className="card-body">
+        <h2 className="card-title text-base">Database Backup</h2>
+        <p className="text-sm text-base-content/60 mt-1">Download a full PostgreSQL dump of the system database. Run regularly for disaster recovery.</p>
+        <div className="mt-4">
+          <button className="btn btn-primary" disabled={busy} onClick={downloadBackup}>
+            {busy ? <span className="loading loading-spinner loading-xs" /> : <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>}
+            Download Backup
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

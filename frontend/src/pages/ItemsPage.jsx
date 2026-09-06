@@ -5,6 +5,7 @@ import useAuthStore, { useCan } from '../stores/authStore';
 import { useToast } from '../components/Toast';
 import PageHeader, { Badge, EmptyState, Money, Pagination, Spinner } from '../components/ui';
 import ScanModal from '../components/ScanModal';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 function fmt(n) {
   return Number(n || 0).toLocaleString('en-US');
@@ -57,6 +58,17 @@ export default function ItemsPage() {
   useEffect(load, [page, categoryId, lowStockOnly]);
 
   useEffect(() => { loadCategories(); }, []);
+
+  useKeyboardShortcuts({
+    'ctrl+n': () => { if (canManage) { setEditing(null); setEditOpen(true); } },
+    'ctrl+f': () => { document.querySelector('input[type="search"]')?.focus(); },
+    'escape': () => {
+      if (editOpen) setEditOpen(false);
+      if (adjustOpen) setAdjustOpen(false);
+      if (scanOpen) setScanOpen(false);
+      if (qrs) setQrs(null);
+    },
+  });
 
   const filtered = useMemo(() => data?.data || [], [data]);
 

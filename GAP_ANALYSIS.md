@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-### Overall Readiness Score: 7.5 / 10
+### Overall Readiness Score: 7.6 / 10
 
 The system has a **solid core** — it covers the fundamental inventory loop (items ? receiving ? RIS ? ledger ? reports) with role-based access control, 2FA, audit logging, COA-compliant ledger cards, and PDF/Excel reporting. Several critical gaps identified in the original analysis have been addressed, including JWT secret enforcement, security headers (Helmet + CSP), CSRF protection, RIS number race condition mitigation, audit log immutability, and tamper-evident hashing.
 
@@ -451,15 +451,15 @@ All downloaded reports are named `report` regardless of `Content-Disposition` he
 |----|-----|---------|------|--------|
 | P2-1 | No physical count variance reports | 
 eportController.js | COA compliance | FIXED |
-| P2-2 | No ICS / APP reports | `reportController.js` | COA compliance | ? MISSING |
+| P2-2 | No ICS / APP reports | `reportController.js` | COA compliance | FIXED |
 | P2-3 | No budget / appropriation tracking | userController.js + Dashboard | Overspending | FIXED |
 | P2-4 | No item condition field | `schema.prisma` | COA PPE reporting | ? FIXED |
-| P2-5 | No JWT refresh token rotation | `authController.js` | Session hijacking | ?? PARTIAL — model exists |
-| P2-6 | No email digest | `notificationService.js` | Email fatigue | ? MISSING |
-| P2-7 | No concurrent session limit | `authController.js` | Shared credentials | ?? UNCHANGED |
-| P2-8 | `openReport` hardcodes filename | `frontend/src/api/client.js` | UX | ?? UNCHANGED |
+| P2-5 | No JWT refresh token rotation | `authController.js` | Session hijacking | FIXED |
+| P2-6 | No email digest | `notificationService.js` | Email fatigue | FIXED |
+| P2-7 | No concurrent session limit | `authController.js` | Shared credentials | FIXED |
+| P2-8 | `openReport` hardcodes filename | `frontend/src/api/client.js` | UX | FIXED |
 | P2-9 | No item serial/asset tag barcode | `schema.prisma` | Property tracking | ?? PARTIAL — stockNumber exists |
-| P2-10 | No supplier performance tracking | New model/report | Procurement governance | ? MISSING |
+| P2-10 | No supplier performance tracking | eportController.js + ReportsPage | Procurement governance | FIXED |
 | P2-11 | No dashboard trend charts | userController.js + DashboardPage | User analytics | FIXED |
 
 ### P3 — Low (Backlog)
@@ -473,10 +473,10 @@ eportController.js | COA compliance | FIXED |
 | P3-5 | No document digital signing | Integrate DTI/DICT | ? MISSING |
 | P3-6 | No HRIS/SSO integration | SAML2/OIDC | ? MISSING |
 | P3-7 | No APM / error tracking | Add Sentry | ? MISSING |
-| P3-8 | No backup/restore UI | Add UI over pg_dump | ? MISSING |
+| P3-8 | No backup/restore UI | Add UI over pg_dump | ? FIXED |
 | P3-9 | Demo credentials exposure | ? FIXED — build flag | ? FIXED |
-| P3-10 | No keyboard shortcuts | Add hotkeys | ? MISSING |
-| P3-11 | No import for users/suppliers | Extend import pattern | ? MISSING |
+| P3-10 | No keyboard shortcuts | Add hotkeys | ? FIXED |
+| P3-11 | No import for users/suppliers | Extend import pattern | ? FIXED |
 | P3-12 | No LGU hierarchy | Add organizational tree | ? MISSING |
 
 ---
@@ -496,4 +496,4 @@ eportController.js | COA compliance | FIXED |
 | Mobile/Offline/Integration | 2/10 | Web-only, no offline, no integrations |
 | Security & Access Control | 8.5/10 | JWT enforced, CSRF+CSP, immutable+tamper-evident audit, refresh token rotation, concurrent session limit, password history |
 
-**Overall: 7.5/10 — Functional for a small LGU pilot; audit trail and security hardening now production-grade; procurement governance and COA compliance still incomplete.**
+**Overall: 7.6/10 — Functional for a small LGU pilot; audit trail and security hardening now production-grade; procurement governance and COA compliance still incomplete.**

@@ -32,6 +32,7 @@ export default function ReportsPage() {
   const [ics, setIcs] = useState({ from: monthStart, to: today });
   const [appYear, setAppYear] = useState(new Date().getFullYear());
   const [variance, setVariance] = useState({ from: monthStart, to: today, departmentId: '' });
+  const [supplier, setSupplier] = useState({ from: '', to: '' });
 
   useEffect(() => {
     api.get('/items?limit=200').then((r) => setItems(r.data.data)).catch(() => {});
@@ -208,6 +209,27 @@ export default function ReportsPage() {
             }}>PDF</button>
             <button className="btn btn-outline flex-1" onClick={() => {
               run('/reports/variance?from=' + variance.from + '&to=' + variance.to + (variance.departmentId ? '&departmentId=' + variance.departmentId : '') + '&format=excel', true);
+            }}>Excel</button>
+          </div>
+        </ReportCard>
+
+        <ReportCard title="Supplier Performance Report" description="Supplier delivery timeliness, volume, and value metrics for RA 9184 procurement governance.">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <fieldset className="fieldset">
+              <legend className="fieldset-legend">From</legend>
+              <input className="input" type="date" value={supplier.from} onChange={(e) => setSupplier({ ...supplier, from: e.target.value })} />
+            </fieldset>
+            <fieldset className="fieldset">
+              <legend className="fieldset-legend">To</legend>
+              <input className="input" type="date" value={supplier.to} onChange={(e) => setSupplier({ ...supplier, to: e.target.value })} />
+            </fieldset>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button className="btn btn-primary flex-1" onClick={() => {
+              run('/reports/suppliers?from=' + supplier.from + '&to=' + supplier.to);
+            }}>PDF</button>
+            <button className="btn btn-outline flex-1" onClick={() => {
+              run('/reports/suppliers?from=' + supplier.from + '&to=' + supplier.to + '&format=excel', true);
             }}>Excel</button>
           </div>
         </ReportCard>
