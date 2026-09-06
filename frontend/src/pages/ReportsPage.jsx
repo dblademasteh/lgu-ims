@@ -29,6 +29,8 @@ export default function ReportsPage() {
   const [inventory, setInventory] = useState({ categoryId: '' });
   const [movement, setMovement] = useState({ itemId: '', from: '', to: '', useRange: false });
   const [ledgerItemId, setLedgerItemId] = useState('');
+  const [ics, setIcs] = useState({ from: monthStart, to: today });
+  const [appYear, setAppYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     api.get('/items?limit=200').then((r) => setItems(r.data.data)).catch(() => {});
@@ -144,6 +146,40 @@ export default function ReportsPage() {
               if (!ledgerItemId) return toast.error('Select an item first.');
               run(`/reports/ledger-card/${ledgerItemId}?format=excel`, true);
             }}>Excel</button>
+          </div>
+</ReportCard>
+
+        <ReportCard title="Inventory Custodian Slip (ICS)" description="Records all items transferred to custodians within a date range.">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <fieldset className="fieldset">
+              <legend className="fieldset-legend">From</legend>
+              <input className="input" type="date" value={ics.from} onChange={(e) => setIcs({ ...ics, from: e.target.value })} />
+            </fieldset>
+            <fieldset className="fieldset">
+              <legend className="fieldset-legend">To</legend>
+              <input className="input" type="date" value={ics.to} onChange={(e) => setIcs({ ...ics, to: e.target.value })} />
+            </fieldset>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button className="btn btn-primary flex-1" onClick={() => {
+              if (!ics.from || !ics.to) return toast.error('Select a date range.');
+              run('/reports/icing?from=' + ics.from + '&to=' + ics.to);
+            }}>PDF</button>
+            <button className="btn btn-outline flex-1" onClick={() => {
+              if (!ics.from || !ics.to) return toast.error('Select a date range.');
+              run('/reports/icing?from=' + ics.from + '&to=' + ics.to + '&format=excel', true);
+            }}>Excel</button>
+          </div>
+        </ReportCard>
+
+        <ReportCard title="Annual Property, Plant & Equipment (APP)" description="Year-end inventory of all accountable property with depreciation.">
+          <fieldset className="fieldset">
+            <legend className="fieldset-legend">Year</legend>
+            <input className="input" type="number" value={appYear} onChange={(e) => setAppYear(Number(e.target.value) || new Date().getFullYear())} />
+          </fieldset>
+          <div className="flex gap-2 mt-3">
+            <button className="btn btn-primary flex-1" onClick={() => run('/reports/app?year=' + appYear)}>PDF</button>
+            <button className="btn btn-outline flex-1" onClick={() => run('/reports/app?year=' + appYear + '&format=excel', true)}>Excel</button>
           </div>
         </ReportCard>
       </div>

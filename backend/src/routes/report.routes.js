@@ -12,6 +12,8 @@ router.get('/movements', authorize(...VIEWERS), reportController.movementsReport
 router.get('/ledger-card/:itemId', authorize(...VIEWERS), reportController.ledgerCardReport);
 router.get('/par/:risId', authorize(...VIEWERS), reportController.parReport);
 router.get('/aging', authorize(...VIEWERS), reportController.agingReport);
+router.get('/icing', authorize(...VIEWERS), reportController.icsReport);
+router.get('/app', authorize(...VIEWERS), reportController.appReport);
 router.get('/acknowledgment/:risId', authorize(...VIEWERS), reportController.acknowledgmentSlipReport);
 
 module.exports = router;

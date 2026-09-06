@@ -523,4 +523,194 @@ async function acknowledgmentSlipReport(req, res) {
   }, `Acknowledgment_${ris.risNumber}.pdf`);
 }
 
-module.exports = { rsmiReport, inventoryReport, movementsReport, ledgerCardReport, parReport, agingReport, acknowledgmentSlipReport };
+
+async function icsReport(req, res) {
+  const { from, to, format = 'pdf' } = req.query;
+  if (!from || !to) throw new ApiError(400, 'from and to (dates) are required.');
+
+  const risList = await prisma.ris.findMany({
+    where: {
+      status: { in: ['ISSUED', 'PARTIALLY_ISSUED'] },
+      issuedAt: { gte: new Date(`${from}T00:00:00.000Z`), lte: new Date(`${to}T23:59:59.999Z`) },
+    },
+    include: {
+      department: true,
+      requestedBy: { select: { fullName: true, username: true } },
+      issuedBy: { select: { fullName: true } },
+      items: {
+        where: { quantityIssued: { gt: 0 } },
+        include: { item: { include: { category: true } } },
+      },
+    },
+    orderBy: { issuedAt: 'desc' },
+  });
+
+  if (risList.length === 0) {
+    throw new ApiError(404, 'No ICS records found for the selected period.');
+  }
+
+  const rows = [];
+  let totalValue = 0;
+  for (const ris of risList) {
+    for (const line of ris.items) {
+      const cost = line.unitCost || line.item.unitCost;
+      const lineTotal = line.quantityIssued * cost;
+      totalValue += lineTotal;
+      rows.push({
+        date: ris.issuedAt ? new Date(ris.issuedAt).toLocaleDateString() : '—',
+        risNumber: ris.risNumber,
+        department: ris.department.name,
+        item: line.item.name,
+        stockNumber: line.item.stockNumber || '—',
+        unit: line.item.unit,
+        qty: line.quantityIssued,
+        unitCost: cost,
+        total: lineTotal,
+        issuedBy: ris.issuedBy?.fullName || '—',
+      });
+    }
+  }
+
+  const startDate = new Date(from).toLocaleDateString();
+  const endDate = new Date(to).toLocaleDateString();
+
+  if (format === 'excel') {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('ICS Report');
+    addTableStyle(ws, [
+      { header: 'Date', key: 'date', width: 14 },
+      { header: 'RIS No.', key: 'risNumber', width: 20 },
+      { header: 'Department', key: 'department', width: 26 },
+      { header: 'Item', key: 'item', width: 30 },
+      { header: 'Stock No.', key: 'stockNumber', width: 20 },
+      { header: 'Unit', key: 'unit', width: 10 },
+      { header: 'Qty', key: 'qty', width: 10 },
+      { header: 'Unit Cost', key: 'unitCost', width: 14 },
+      { header: 'Total', key: 'total', width: 14 },
+      { header: 'Issued By', key: 'issuedBy', width: 26 },
+    ], rows.map((r) => ({ ...r, unitCost: money(r.unitCost), total: money(r.total) })));
+    return renderExcel(res, wb, `ICS_Report_${startDate}_to_${endDate}.xlsx`);
+  }
+
+  const body = [
+    [{ text: 'INVENTORY CUSTODIAN SLIP (ICS)', style: 'title' }, {}, {}, {}, {}],
+    [{ text: `Period: ${startDate} to ${endDate}`, colSpan: 5, alignment: 'center' }],
+    [{ text: 'Item', style: 'th' }, { text: 'Stock No.', style: 'th' }, { text: 'Unit', style: 'th' }, { text: 'Qty', style: 'th' }, { text: 'Unit Cost', style: 'th' }, { text: 'Total', style: 'th' }, { text: 'Dept', style: 'th' }, { text: 'RIS No.', style: 'th' }, { text: 'Date', style: 'th' }, { text: 'Issued By', style: 'th' }],
+    ...rows.map((r) => [r.item, r.stockNumber, r.unit, r.qty, money(r.unitCost), money(r.total), r.department, r.risNumber, r.date, r.issuedBy]),
+    [{ text: `TOTAL: ${money(totalValue)}`, colSpan: 6, bold: true }, {}, {}, {}, {}],
+  ];
+
+  renderPdf(res, {
+    ...pdfHeader('INVENTORY CUSTODIAN SLIP (ICS)', `Period: ${startDate} to ${endDate}`),
+    content: [
+      {
+        table: {
+          headerRows: 2,
+          widths: ['*', 'auto', 'auto', 'auto', 'auto', 'auto', '*', 'auto', 'auto', '*'],
+          body,
+        },
+        layout: { fillColor: (rowIndex) => (rowIndex % 2 === 0 ? null : '#F3F4F6') },
+      },
+    ],
+  }, `ICS_Report_${startDate}_to_${endDate}.pdf`);
+}
+
+async function appReport(req, res) {
+  const { year, format = 'pdf' } = req.query;
+  const currentYear = new Date().getFullYear();
+  const targetYear = year ? Number(year) : currentYear;
+  if (!Number.isFinite(targetYear) || targetYear < 2000) {
+    throw new ApiError(400, 'Invalid year.');
+  }
+
+  const accountableItems = await prisma.item.findMany({
+    where: { isActive: true, isAccountable: true },
+    include: { category: true },
+  });
+
+  const risIssued = await prisma.ris.findMany({
+    where: {
+      status: { in: ['ISSUED', 'PARTIALLY_ISSUED'] },
+      issuedAt: { gte: new Date(`${targetYear}-01-01T00:00:00.000Z`), lte: new Date(`${targetYear}-12-31T23:59:59.999Z`) },
+    },
+    include: {
+      items: {
+        where: { quantityIssued: { gt: 0 } },
+        include: { item: true },
+      },
+    },
+  });
+
+  let totalOriginalCost = 0;
+  let totalCurrentValue = 0;
+  const rows = accountableItems.map((item, idx) => {
+    const originalCost = item.unitCost * item.currentStock;
+    const yearsOwned = Math.max(new Date().getFullYear() - new Date(item.createdAt).getFullYear(), 1);
+    const depreciationRate = Math.min(0.2 * yearsOwned, 0.8);
+    const currentValue = originalCost * (1 - depreciationRate);
+    totalOriginalCost += originalCost;
+    totalCurrentValue += currentValue;
+    return {
+      no: idx + 1,
+      sku: item.sku,
+      name: item.name,
+      stockNumber: item.stockNumber || '—',
+      unit: item.unit,
+      quantity: item.currentStock,
+      unitCost: item.unitCost,
+      originalCost,
+      currentValue,
+    };
+  });
+
+  const totalRisValue = risIssued.reduce((sum, r) => {
+    return sum + r.items.reduce((s, it) => s + (it.quantityIssued * (it.unitCost || it.item.unitCost)), 0);
+  }, 0);
+
+  if (format === 'excel') {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('APP Report');
+    addTableStyle(ws, [
+      { header: 'No.', key: 'no', width: 8 },
+      { header: 'SKU', key: 'sku', width: 20 },
+      { header: 'Name', key: 'name', width: 34 },
+      { header: 'Stock No.', key: 'stockNumber', width: 20 },
+      { header: 'Unit', key: 'unit', width: 10 },
+      { header: 'Qty', key: 'quantity', width: 10 },
+      { header: 'Unit Cost', key: 'unitCost', width: 14 },
+      { header: 'Original Cost', key: 'originalCost', width: 16 },
+      { header: 'Current Value', key: 'currentValue', width: 16 },
+    ], rows.map((r) => ({ ...r, unitCost: money(r.unitCost), originalCost: money(r.originalCost), currentValue: money(r.currentValue) })));
+    ws.addRow({});
+    ws.addRow({ no: 'TOTALS', originalCost: money(totalOriginalCost), currentValue: money(totalCurrentValue) });
+    ws.addRow({ no: `Issued YTD (${targetYear})`, originalCost: money(totalRisValue) });
+    return renderExcel(res, wb, `APP_Report_${targetYear}.xlsx`);
+  }
+
+  const body = [
+    [{ text: 'ANNUAL PROPERTY, PLANT AND EQUIPMENT (APP)', style: 'title' }, {}, {}, {}, {}],
+    [{ text: `For the Year Ending: December 31, ${targetYear}`, colSpan: 5, alignment: 'center' }],
+    [{ text: 'No.', style: 'th' }, { text: 'SKU', style: 'th' }, { text: 'Item', style: 'th' }, { text: 'Stock No.', style: 'th' }, { text: 'Unit', style: 'th' }, { text: 'Qty', style: 'th' }, { text: 'Unit Cost', style: 'th' }, { text: 'Orig. Cost', style: 'th' }, { text: 'Cur. Value', style: 'th' }],
+    ...rows.map((r) => [r.no, r.sku, r.name, r.stockNumber, r.unit, r.quantity, money(r.unitCost), money(r.originalCost), money(r.currentValue)]),
+    [{ text: '', bold: true }, {}, {}, {}, {}, {}, { text: 'TOTAL ORIGINAL COST' }, { text: money(totalOriginalCost), bold: true }, {}],
+    [{ text: '', bold: true }, {}, {}, {}, {}, {}, { text: 'TOTAL CURRENT VALUE' }, { text: money(totalCurrentValue), bold: true }, {}],
+    [{ text: '', bold: true }, {}, {}, {}, {}, {}, { text: `Issued YTD (${targetYear})` }, { text: money(totalRisValue), bold: true }, {}],
+  ];
+
+  renderPdf(res, {
+    ...pdfHeader('ANNUAL PROPERTY, PLANT AND EQUIPMENT (APP)', `For the Year Ending: December 31, ${targetYear}`),
+    content: [
+      {
+        table: {
+          headerRows: 2,
+          widths: ['auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto'],
+          body,
+        },
+        layout: { fillColor: (rowIndex) => (rowIndex % 2 === 0 ? null : '#F3F4F6') },
+      },
+    ],
+  }, `APP_Report_${targetYear}.pdf`);
+}
+
+
+module.exports = { rsmiReport, inventoryReport, movementsReport, ledgerCardReport, parReport, agingReport, acknowledgmentSlipReport, icsReport, appReport };
