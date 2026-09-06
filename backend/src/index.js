@@ -3,6 +3,14 @@ const config = require('./config');
 const prisma = require('./prisma');
 const { startProcessor, stopProcessor } = require('./services/queue');
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[unhandledRejection]', reason);
+  if (process.env.SENTRY_DSN) {
+    const Sentry = require('@sentry/node');
+    Sentry.captureException(reason);
+  }
+});
+
 async function start() {
   try {
     await prisma.$connect();

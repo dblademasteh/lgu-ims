@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "@sentry/node": "^7.120.4",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",

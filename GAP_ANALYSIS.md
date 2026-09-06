@@ -453,7 +453,7 @@ All downloaded reports are named `report` regardless of `Content-Disposition` he
 eportController.js | COA compliance | FIXED |
 | P2-2 | No ICS / APP reports | `reportController.js` | COA compliance | FIXED |
 | P2-3 | No budget / appropriation tracking | userController.js + Dashboard | Overspending | FIXED |
-| P2-4 | No item condition field | `schema.prisma` | COA PPE reporting | ? FIXED |
+| P2-4 | No item condition field | `schema.prisma` | COA PPE reporting | FIXED |
 | P2-5 | No JWT refresh token rotation | `authController.js` | Session hijacking | FIXED |
 | P2-6 | No email digest | `notificationService.js` | Email fatigue | FIXED |
 | P2-7 | No concurrent session limit | `authController.js` | Shared credentials | FIXED |
@@ -472,7 +472,7 @@ eportController.js | COA compliance | FIXED |
 | P3-4 | No multi-LGU / tenant isolation | Schema refactor | ? MISSING |
 | P3-5 | No document digital signing | Integrate DTI/DICT | ? MISSING |
 | P3-6 | No HRIS/SSO integration | SAML2/OIDC | ? MISSING |
-| P3-7 | No APM / error tracking | Add Sentry | ? MISSING |
+| P3-7 | No APM / error tracking | Add Sentry | ? FIXED |
 | P3-8 | No backup/restore UI | Add UI over pg_dump | ? FIXED |
 | P3-9 | Demo credentials exposure | ? FIXED — build flag | ? FIXED |
 | P3-10 | No keyboard shortcuts | Add hotkeys | ? FIXED |
@@ -488,11 +488,11 @@ eportController.js | COA compliance | FIXED |
 | Core Inventory | 7.5/10 | No max stock, no serial tracking, no decommissioning |
 | RIS Workflow | 7.5/10 | Silent stock short issuance, no bulk creation |
 | Receiving & Suppliers | 6/10 | No PO creation UI, no 3-way matching, no IAS |
-| User & Role Management | 8/10 | No concurrent session limit, no profile self-service |
+| User & Role Management | 9/10 | No profile self-service |
 | Notifications | 6.5/10 | Email digest implemented; no push notifications, limited preferences |
 | Reporting | 8/10 | ICS/APP and variance report implemented |
 | Audit & Compliance | 8/10 | Immutable + tamper-evident + COA compliance dashboard |
-| System Administration | 4/10 | No backup UI, no migration UI, no feature flags |
+| System Administration | 6/10 | No migration UI, no feature flags |
 | Mobile/Offline/Integration | 2/10 | Web-only, no offline, no integrations |
 | Security & Access Control | 8.5/10 | JWT enforced, CSRF+CSP, immutable+tamper-evident audit, refresh token rotation, concurrent session limit, password history |
 

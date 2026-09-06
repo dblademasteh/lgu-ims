@@ -13,6 +13,12 @@ const CsrfMiddleware = require('./middleware/csrf');
 
 const app = express();
 
+if (process.env.SENTRY_DSN) {
+  const Sentry = require('@sentry/node');
+  Sentry.init({ dsn: process.env.SENTRY_DSN, environment: config.env });
+  app.use(Sentry.Handlers.requestHandler());
+}
+
 const csrf = CsrfMiddleware();
 app.use(helmet({
   contentSecurityPolicy: {
@@ -52,6 +58,10 @@ app.use(csrf.middleware[0]);
 app.use('/api/v1', writeLimiter, csrf.middleware[1], routes);
 
 app.use(notFoundHandler);
+if (process.env.SENTRY_DSN) {
+  const Sentry = require('@sentry/node');
+  app.use(Sentry.Handlers.errorHandler());
+}
 app.use(errorHandler);
 
 module.exports = app;
