@@ -145,8 +145,8 @@ However, it is **not production-ready for a provincial LGU deployment or COA aud
 | Acknowledgment Slip | ? FIXED | `acknowledgmentSlipReport` in `reportController.js:475` |
 | Aging report | ? Implemented | `agingReport` in `reportController.js` |
 | Dashboard with stats | ? Implemented | Items, categories, pending RIS, low stock, issued this month |
-| ICS (Inventory Custodian Slip) | ? MISSING | Not generated |
-| APP (Annual Property Plant & Equipment) | ? MISSING | Not generated |
+| ICS (Inventory Custodian Slip) | FIXED | Implemented at /reports/icing (eportController.js) |
+| APP (Annual Property, Plant & Equipment) | FIXED | Implemented at /reports/app (eportController.js) |
 | Physical Count / Inventory Taking Report | ?? PARTIALLY | Physical count workflow exists; no variance report |
 | Obsolete / unserviceable items report | ? MISSING | No disposal report |
 | Semi-expendable property report | ? MISSING | No threshold-based classification |
@@ -167,7 +167,7 @@ However, it is **not production-ready for a provincial LGU deployment or COA aud
 | COA-compliant ledger card | ? Implemented | Reference type, inflow, outflow, balance |
 | Immutable / append-only audit log | ? FIXED | Prisma `$extends` middleware blocks UPDATE/DELETE on AuditLog (`prisma.js:7-16`) |
 | Tamper-evident / signed audit trail | ? FIXED | HMAC-SHA256 hash chain with `chainHash`/`previousHash` fields (`audit.js:7-10, 24-32, 38-59`); `GET /api/audit/verify` endpoint |
-| COA-specific compliance dashboard | ? MISSING | No COA Circular 2020-001 / 2021-002 specific reports |
+| COA-specific compliance dashboard | FIXED | Dashboard at /coa/compliance covering 6 domains (PPE tracking, audit of inventories, audit trail, RA 9184 procurement, inventory health, RIS workflow) |
 | Log retention policy | ? MISSING | `cleanupOldNotifications` exists for notifications; no equivalent for audit logs |
 | Data retention / archival policy | ? MISSING | No year-end close or data archival process |
 | Disaster recovery documentation | ? MISSING | Shell scripts exist (`backup.sh`, `restore.sh`) but no UI, no scheduling, no documentation |
@@ -487,10 +487,10 @@ All downloaded reports are named `report` regardless of `Content-Disposition` he
 | Receiving & Suppliers | 6/10 | No PO creation UI, no 3-way matching, no IAS |
 | User & Role Management | 7/10 | No password history, no concurrent session limit, no profile self-service |
 | Notifications | 5.5/10 | No email digest, no push, limited preferences |
-| Reporting | 6/10 | No ICS/APP, no variance report |
-| Audit & Compliance | 8/10 | Immutable (P0-9) + tamper-evident (P0-10); no retention policy or digital signing |
+| Reporting | 7/10 | ICS/APP implemented; no variance report |
+| Audit & Compliance | 8/10 | Immutable + tamper-evident + COA compliance dashboard |
 | System Administration | 4/10 | No backup UI, no migration UI, no feature flags |
 | Mobile/Offline/Integration | 2/10 | Web-only, no offline, no integrations |
 | Security & Access Control | 7.5/10 | JWT enforced (P0-2), CSRF+CSP (P0-8), immutable+tamper-evident audit (P0-9/10); no refresh token rotation, no concurrent session limit |
 
-**Overall: 6.5/10 — Functional for a small LGU pilot; audit trail and security hardening now production-grade; procurement governance and COA compliance still incomplete.**
+**Overall: 7/10 — Functional for a small LGU pilot; audit trail and security hardening now production-grade; procurement governance and COA compliance still incomplete.**
