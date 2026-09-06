@@ -18,6 +18,15 @@ function sanitizeBody(body, fields = []) {
   return out;
 }
 
+function parseExpiry(str, fallbackMs) {
+    const match = String(str).match(/^(\d+)([smhd])$/);
+    if (!match) return fallbackMs;
+    const n = Number(match[1]);
+    const unit = match[2];
+    const mult = { 's': 1000, 'm': 60000, 'h': 3600000, 'd': 86400000 }[unit] || fallbackMs;
+    return n * mult;
+  }
+
 async function issueRefreshToken(userId) {
   const MAX_SESSIONS = 5;
   const existing = await prisma.refreshToken.findMany({
@@ -33,7 +42,7 @@ async function issueRefreshToken(userId) {
 
   const raw = crypto.randomBytes(40).toString('hex');
   const hash = crypto.createHash('sha256').update(raw).digest('hex');
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + parseExpiry(config.refreshTokenExpiresIn, 7 * 24 * 60 * 60 * 1000));
   await prisma.refreshToken.create({
     data: {
       userId,
@@ -273,6 +282,7 @@ async function refreshToken(req, res) {
   }
 
   await prisma.refreshToken.delete({ where: { id: stored.id } });
+    await prisma.refreshToken.update({ where: { id: stored.id }, data: { lastUsedAt: new Date() } }).catch(() => {});
   const newRefreshToken = await issueRefreshToken(user.id);
 
   res.json({

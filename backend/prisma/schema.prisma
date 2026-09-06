@@ -332,12 +332,16 @@ model PurchaseOrderItem {
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @db.Uuid
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token        String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  lastUsedAt   DateTime?
+  replacedById String?  @db.Uuid
+  replacedBy   RefreshToken? @relation("replacedTokens", fields: [replacedById], references: [id])
+  replacedTokens RefreshToken[] @relation("replacedTokens")
 
   @@index([userId])
   @@index([token])
