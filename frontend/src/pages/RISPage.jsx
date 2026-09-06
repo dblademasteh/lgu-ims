@@ -158,7 +158,7 @@ export default function RISPage() {
             setApproveOpen(true);
           }}
           onReject={() => setConfirm({ id: detail.id, action: 'reject', label: 'rejected', kind: 'rem' })}
-          onIssue={() => act(detail.id, 'issue', {}, 'issued')}
+          onIssue={() => setConfirm({ id: detail.id, action: 'issue', label: 'issued', kind: 'issue' })}
           onCancel={() => setConfirm({ id: detail.id, action: 'cancel', label: 'cancelled', kind: 'rem' })}
           onReturn={() => setReturnOpen(true)}
         />
@@ -177,8 +177,8 @@ export default function RISPage() {
           placeholder="Reason / remarks (optional for reject / cancel)"
           onClose={() => setConfirm(null)}
           onConfirm={async (remarks) => {
-            const isReject = confirm.action === 'reject';
-            const endpoint = isReject ? 'reject' : 'cancel';
+            const isIssue = confirm.action === 'issue';
+            const endpoint = isIssue ? 'issue' : confirm.action === 'reject' ? 'reject' : 'cancel';
             await act(confirm.id, endpoint, { remarks }, confirm.label);
           }}
         />
