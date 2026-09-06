@@ -192,20 +192,22 @@ export default function Layout() {
                   </button>
                 </li>
                 {canAudit && (
-                  <li>
-                    <NavLink to="/audit">
-                      <ShieldCheck className="h-4 w-4" />
-                      Audit trail
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/coa-compliance">
-                      <ShieldCheck className="h-4 w-4" />
-                      COA compliance
-                    </NavLink>
-                  </li>
+                  <>
+                    <li>
+                      <NavLink to="/audit">
+                        <ShieldCheck className="h-4 w-4" />
+                        Audit trail
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/coa-compliance">
+                        <ShieldCheck className="h-4 w-4" />
+                        COA compliance
+                      </NavLink>
+                    </li>
+                  </>
                 )}
-                <div className="divider my-1" />
+                <li><div className="divider my-1" /></li>
                 <li>
                   <button onClick={handleLogout} className="text-error">
                     <LogOut className="h-4 w-4" />
