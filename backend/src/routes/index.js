@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const { authenticate, authorize, ROLES } = require('../middleware/auth');
+const { getStats: getEmailStats } = require('../services/queue');
 
 const authRoutes = require('./auth.routes');
 const userRoutes = require('./user.routes');
@@ -42,6 +43,11 @@ router.use('/api-keys', apiKeyRoutes);
 
 router.get('/roles', (req, res) => {
   res.json({ data: Object.values(ROLES).map((role) => ({ code: role, label: role.replace(/_/g, ' ').toLowerCase() })) });
+});
+
+router.get('/queue/stats', authorize('ADMIN'), async (req, res) => {
+  const stats = await getEmailStats();
+  res.json({ data: stats });
 });
 
 module.exports = router;
