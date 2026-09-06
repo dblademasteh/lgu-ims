@@ -104,7 +104,8 @@ function DepartmentTab() {
   const [data, setData] = useState(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: '', code: '', headName: '' });
+  const [form, setForm] = useState({ name: '', code: '', headName: '', parentId: '' });
+  const [showTree, setShowTree] = useState(false);
 
   const load = () => {
     api.get('/departments').then((r) => setData(r.data.data)).catch((e) => toast.error(e.response?.data?.message || 'Unable to load departments.'));
@@ -114,15 +115,16 @@ function DepartmentTab() {
   const submit = async (e) => {
     e.preventDefault();
     try {
+      const payload = { ...form, parentId: form.parentId || null };
       if (editing) {
-        await api.patch(`/departments/${editing.id}`, form);
+        await api.patch(`/departments/${editing.id}`, payload);
         toast.success('Department updated.');
       } else {
-        await api.post('/departments', form);
+        await api.post('/departments', payload);
         toast.success('Department created.');
       }
       setOpen(false);
-      setForm({ name: '', code: '', headName: '' });
+      setForm({ name: '', code: '', headName: '', parentId: '' });
       load();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Unable to save department.');
@@ -140,26 +142,54 @@ function DepartmentTab() {
     }
   };
 
+  const buildTree = (depts, parentId = null, level = 0) => {
+    return depts
+      .filter((d) => d.parentId === parentId)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .flatMap((d) => [{ ...d, level }, ...buildTree(depts, d.id, level + 1)]);
+  };
+
   return (
     <div className="card bg-base-100 shadow-sm">
       <div className="card-body">
         <div className="flex items-center justify-between">
           <p className="text-sm text-base-content/60">Office / departments that file requisitions.</p>
-          <button className="btn btn-primary btn-sm" onClick={() => { setEditing(null); setForm({ name: '', code: '', headName: '' }); setOpen(true); }}>Add department</button>
+          <div className="flex gap-2">
+            <button className={`btn btn-sm ${showTree ? 'btn-primary' : 'btn-outline'}`} onClick={() => setShowTree(!showTree)}>
+              {showTree ? '☰ Table' : '🌳 Tree'}
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={() => { setEditing(null); setForm({ name: '', code: '', headName: '', parentId: '' }); setOpen(true); }}>Add department</button>
+          </div>
         </div>
-        {!data ? <Spinner /> : data.length === 0 ? <EmptyState message="No departments yet." /> : (
+        {!data ? <Spinner /> : data.length === 0 ? <EmptyState message="No departments yet." /> : showTree ? (
+          <div className="space-y-1 mt-2">
+            {buildTree(data).map((d) => (
+              <div key={d.id} className="flex items-center gap-2 py-1 px-2 rounded hover:bg-base-200" style={{ paddingLeft: `${d.level * 24 + 8}px` }}>
+                <span className="text-base-content/40">{d.level > 0 ? '└─' : ''}</span>
+                <span className="font-medium">{d.name}</span>
+                <span className="badge badge-ghost font-mono text-xs">{d.code}</span>
+                {d.headName && <span className="text-xs text-base-content/60">· {d.headName}</span>}
+                <span className="ml-auto">
+                  <button className="btn btn-ghost btn-xs" onClick={() => { setEditing(d); setForm({ name: d.name, code: d.code, headName: d.headName || '', parentId: d.parentId || '' }); setOpen(true); }}>Edit</button>
+                  <button className="btn btn-ghost btn-xs text-error" onClick={() => remove(d)}>Delete</button>
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
           <div className="overflow-x-auto">
             <table className="table table-sm">
-              <thead><tr><th>Name</th><th>Code</th><th>Head</th><th>Users</th><th className="text-right">Actions</th></tr></thead>
+              <thead><tr><th>Name</th><th>Code</th><th>Head</th><th>Parent</th><th>Users</th><th className="text-right">Actions</th></tr></thead>
               <tbody>
                 {data.map((d) => (
                   <tr key={d.id} className="hover">
                     <td className="font-medium">{d.name}</td>
                     <td><span className="badge badge-ghost font-mono">{d.code}</span></td>
                     <td className="text-sm opacity-70">{d.headName || '—'}</td>
+                    <td className="text-sm text-base-content/60">{d.parent?.name || '—'}</td>
                     <td><span className="badge badge-ghost">{d._count.users}</span></td>
                     <td className="text-right">
-                      <button className="btn btn-ghost btn-xs" onClick={() => { setEditing(d); setForm({ name: d.name, code: d.code, headName: d.headName || '' }); setOpen(true); }}>Edit</button>
+                      <button className="btn btn-ghost btn-xs" onClick={() => { setEditing(d); setForm({ name: d.name, code: d.code, headName: d.headName || '', parentId: d.parentId || '' }); setOpen(true); }}>Edit</button>
                       <button className="btn btn-ghost btn-xs text-error" onClick={() => remove(d)}>Delete</button>
                     </td>
                   </tr>
@@ -184,10 +214,19 @@ function DepartmentTab() {
                   <input className="input" required value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="GSO" />
                 </fieldset>
               </div>
-              <fieldset className="fieldset">
-                <legend className="fieldset-legend">Head of office</legend>
-                <input className="input" value={form.headName} onChange={(e) => setForm({ ...form, headName: e.target.value })} placeholder="Optional" />
-              </fieldset>
+              <div className="grid grid-cols-2 gap-3">
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Head of office</legend>
+                  <input className="input" value={form.headName} onChange={(e) => setForm({ ...form, headName: e.target.value })} placeholder="Optional" />
+                </fieldset>
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Parent department</legend>
+                  <select className="select" value={form.parentId} onChange={(e) => setForm({ ...form, parentId: e.target.value })}>
+                    <option value="">None (top-level)</option>
+                    {data.filter((d) => d.id !== editing?.id).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </fieldset>
+              </div>
               <div className="modal-action">
                 <button type="button" className="btn" onClick={() => setOpen(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">{editing ? 'Save changes' : 'Create'}</button>

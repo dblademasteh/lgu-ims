@@ -477,7 +477,7 @@ eportController.js | COA compliance | FIXED |
 | P3-9 | Demo credentials exposure | ? FIXED — build flag | ? FIXED |
 | P3-10 | No keyboard shortcuts | Add hotkeys | ? FIXED |
 | P3-11 | No import for users/suppliers | Extend import pattern | ? FIXED |
-| P3-12 | No LGU hierarchy | Add organizational tree | ? MISSING |
+| P3-12 | No LGU hierarchy | Add organizational tree | ? FIXED |
 
 ---
 
@@ -489,7 +489,7 @@ eportController.js | COA compliance | FIXED |
 | RIS Workflow | 7.5/10 | Silent stock short issuance, no bulk creation |
 | Receiving & Suppliers | 6/10 | No PO creation UI, no 3-way matching, no IAS |
 | User & Role Management | 9/10 | No profile self-service |
-| Notifications | 6.5/10 | Email digest implemented; no push notifications, limited preferences |
+| Notifications | 7/10 | No push notifications, limited preferences |
 | Reporting | 8/10 | ICS/APP and variance report implemented |
 | Audit & Compliance | 8/10 | Immutable + tamper-evident + COA compliance dashboard |
 | System Administration | 6/10 | No migration UI, no feature flags |

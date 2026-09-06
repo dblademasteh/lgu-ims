@@ -14,16 +14,20 @@ function sanitizeBody(body, fields = []) {
 async function listDepartments(req, res) {
   const departments = await prisma.department.findMany({
     orderBy: { name: 'asc' },
-    include: { _count: { select: { users: true } } },
+    include: { _count: { select: { users: true } }, parent: { select: { id: true, name: true } } },
   });
   res.json({ data: departments });
 }
 
 async function createDepartment(req, res) {
   const body = sanitizeBody(req.body, ['name', 'code', 'headName']);
-  const { name, code, headName } = body;
+  const { name, code, headName, parentId } = body;
   if (!name || !code) throw new ApiError(400, 'Department name and code are required.');
-  const department = await prisma.department.create({ data: { name, code, headName } });
+  if (parentId) {
+    const parent = await prisma.department.findUnique({ where: { id: parentId } });
+    if (!parent) throw new ApiError(400, 'Parent department not found.');
+  }
+  const department = await prisma.department.create({ data: { name, code, headName, parentId: parentId || null } });
   await writeAudit(req, 'CREATE', 'Department', department.id, null, { name, code });
   res.status(201).json({ data: department });
 }
@@ -33,13 +37,19 @@ async function updateDepartment(req, res) {
   const existing = await prisma.department.findUnique({ where: { id } });
   if (!existing) throw new ApiError(404, 'Department not found.');
   const body = sanitizeBody(req.body, ['name', 'code', 'headName']);
-  const { name, code, headName } = body;
+  const { name, code, headName, parentId } = body;
+  if (parentId !== undefined && parentId === id) throw new ApiError(400, 'A department cannot be its own parent.');
+  if (parentId) {
+    const parent = await prisma.department.findUnique({ where: { id: parentId } });
+    if (!parent) throw new ApiError(400, 'Parent department not found.');
+  }
   const department = await prisma.department.update({
     where: { id },
     data: {
       name: name ?? existing.name,
       code: code ?? existing.code,
       headName: headName !== undefined ? headName : existing.headName,
+      parentId: parentId !== undefined ? (parentId || null) : existing.parentId,
     },
   });
   await writeAudit(req, 'UPDATE', 'Department', id, { name: existing.name }, { name: department.name });

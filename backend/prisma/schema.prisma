@@ -39,6 +39,9 @@ model Department {
   name      String    @unique
   code      String    @unique
   headName  String?
+  parentId  String?   @db.Uuid
+  parent    Department? @relation("DeptHierarchy", fields: [parentId], references: [id])
+  children  Department[] @relation("DeptHierarchy")
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
