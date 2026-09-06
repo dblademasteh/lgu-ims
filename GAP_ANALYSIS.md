@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-### Overall Readiness Score: 7.2 / 10
+### Overall Readiness Score: 7.3 / 10
 
 The system has a **solid core** — it covers the fundamental inventory loop (items ? receiving ? RIS ? ledger ? reports) with role-based access control, 2FA, audit logging, COA-compliant ledger cards, and PDF/Excel reporting. Several critical gaps identified in the original analysis have been addressed, including JWT secret enforcement, security headers (Helmet + CSP), CSRF protection, RIS number race condition mitigation, audit log immutability, and tamper-evident hashing.
 
@@ -449,7 +449,8 @@ All downloaded reports are named `report` regardless of `Content-Disposition` he
 
 | ID | Gap | File(s) | Risk | Status |
 |----|-----|---------|------|--------|
-| P2-1 | No physical count variance reports | eportController.js | COA compliance | FIXED |
+| P2-1 | No physical count variance reports | 
+eportController.js | COA compliance | FIXED |
 | P2-2 | No ICS / APP reports | `reportController.js` | COA compliance | ? MISSING |
 | P2-3 | No budget / appropriation tracking | New models | Overspending | ?? PARTIAL — Budget model exists |
 | P2-4 | No item condition field | `schema.prisma` | COA PPE reporting | ? FIXED |
@@ -488,11 +489,11 @@ All downloaded reports are named `report` regardless of `Content-Disposition` he
 | RIS Workflow | 7.5/10 | Silent stock short issuance, no bulk creation |
 | Receiving & Suppliers | 6/10 | No PO creation UI, no 3-way matching, no IAS |
 | User & Role Management | 8/10 | No concurrent session limit, no profile self-service |
-| Notifications | 5.5/10 | No email digest, no push, limited preferences |
-| Reporting | 7/10 | ICS/APP implemented; no variance report |
+| Notifications | 6.5/10 | Email digest implemented; no push notifications, limited preferences |
+| Reporting | 8/10 | ICS/APP and variance report implemented |
 | Audit & Compliance | 8/10 | Immutable + tamper-evident + COA compliance dashboard |
 | System Administration | 4/10 | No backup UI, no migration UI, no feature flags |
 | Mobile/Offline/Integration | 2/10 | Web-only, no offline, no integrations |
-| Security & Access Control | 7.5/10 | JWT enforced (P0-2), CSRF+CSP (P0-8), immutable+tamper-evident audit (P0-9/10); no refresh token rotation, no concurrent session limit |
+| Security & Access Control | 8.5/10 | JWT enforced, CSRF+CSP, immutable+tamper-evident audit, refresh token rotation, concurrent session limit, password history |
 
-**Overall: 7.2/10 — Functional for a small LGU pilot; audit trail and security hardening now production-grade; procurement governance and COA compliance still incomplete.**
+**Overall: 7.3/10 — Functional for a small LGU pilot; audit trail and security hardening now production-grade; procurement governance and COA compliance still incomplete.**

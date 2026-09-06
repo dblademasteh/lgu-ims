@@ -28,9 +28,12 @@ async function sendMailDirect({ to, subject, text, html }) {
 
 const POLL_INTERVAL = 5000;
 const DEFAULT_MAX_ATTEMPTS = 5;
+const DIGEST_INTERVAL_MS = (Number(process.env.DIGEST_INTERVAL_HOURS) || 24) * 60 * 60 * 1000;
 
 let isProcessing = false;
 let intervalId = null;
+let digestIntervalId = null;
+let lastDigestRun = null;
 
 function startProcessor() {
   if (intervalId) return;
@@ -39,14 +42,25 @@ function startProcessor() {
   }, POLL_INTERVAL);
   intervalId.unref();
   console.log('[queue] Email job processor started');
+  if (!digestIntervalId) {
+    digestIntervalId = setInterval(() => {
+      processDigests().catch((err) => console.error('[queue] digest error:', err.message));
+    }, 60 * 60 * 1000);
+    digestIntervalId.unref();
+    console.log('[queue] Digest scheduler started (runs every hour)');
+  }
 }
 
 function stopProcessor() {
   if (intervalId) {
     clearInterval(intervalId);
     intervalId = null;
-    console.log('[queue] Email job processor stopped');
   }
+  if (digestIntervalId) {
+    clearInterval(digestIntervalId);
+    digestIntervalId = null;
+  }
+  console.log('[queue] Email job processor stopped');
 }
 
 async function enqueueEmail({ to, subject, text, html, maxAttempts = DEFAULT_MAX_ATTEMPTS, delayMs = 0 }) {
@@ -123,6 +137,50 @@ async function sendMailWithRetry({ to, subject, text, html }) {
   }
 }
 
+async function processDigests() {
+  if (!config.email.enabled) return;
+  if (lastDigestRun && (Date.now() - lastDigestRun) < DIGEST_INTERVAL_MS) return;
+
+  const since = lastDigestRun ? new Date(lastDigestRun) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const usersWithEmailPrefs = await prisma.user.findMany({
+    where: {
+      isActive: true,
+      email: { not: null },
+      notificationPreferences: {
+        some: { email: true },
+      },
+    },
+    include: { notificationPreferences: true },
+  });
+
+  let sent = 0;
+  for (const user of usersWithEmailPrefs) {
+    const unread = await prisma.notification.findMany({
+      where: {
+        userId: user.id,
+        isRead: false,
+        createdAt: { gte: since },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+    if (unread.length === 0) continue;
+    try {
+      const lines = unread.map((n) => '- [' + n.type + '] ' + n.title + ': ' + n.message).join('\n');
+      const subject = 'Daily notification digest (' + unread.length + ')';
+      const text = 'Hello ' + user.fullName + ',\n\nYou have ' + unread.length + ' unread notification(s):\n\n' + lines + '\n\nSign in to the LGU IMS to review.\n';
+      await enqueueEmail({ to: user.email, subject, text });
+      sent++;
+    } catch (err) {
+      console.error('[digest] failed for', user.email, err.message);
+    }
+  }
+
+  lastDigestRun = Date.now();
+  if (sent > 0) console.log(`[queue] Digest emails enqueued for ${sent} user(s)`);
+}
+
 async function getStats() {
   const [total, pending, sent, failed] = await Promise.all([
     prisma.emailJob.count(),
@@ -133,4 +191,4 @@ async function getStats() {
   return { total, pending, sent, failed };
 }
 
-module.exports = { enqueueEmail, sendMailWithRetry, processQueue, startProcessor, stopProcessor, getStats };
+module.exports = { enqueueEmail, sendMailWithRetry, processQueue, processDigests, startProcessor, stopProcessor, getStats };
