@@ -46,6 +46,9 @@ export default function DashboardPage() {
   if (!data) return <Spinner label="Loading dashboard..." />;
 
   const { stats, lowStock, recentLedger } = data;
+  const monthLabels = data.monthLabels || [];
+  const maxRis = Math.max(...(stats.monthlyRis || [1]), 1);
+  const maxFlow = Math.max(...(stats.monthlyMovements?.inflow || [1]), ...(stats.monthlyMovements?.outflow || [1]), 1);
 
   return (
     <div>
@@ -71,6 +74,49 @@ export default function DashboardPage() {
         <StatCard icon="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" label="Low Stock Items" value={stats.lowStockItems} accent="bg-warning/10 text-warning" />
         <StatCard icon="M8 7h12m0 0l-4-4m4 4l-4 4M12 17H4m0 0l4 4m-4-4l4-4" label="Issued this Month" value={stats.issuedThisMonth} accent="bg-success/10 text-success" />
       </section>
+
+      {stats.monthlyRis && stats.monthlyRis.length > 0 && (
+        <section className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body">
+              <h2 className="card-title text-base">RIS Trend (Last 12 Months)</h2>
+              <div className="flex items-end gap-1 h-32 mt-2">
+                {stats.monthlyRis.map((val, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                    <div className="w-full bg-primary rounded-t" style={{ height: Math.max(4, Math.round((val / maxRis) * 110)) }} title={val + ' RIS'}>
+                      {val > 0 && <span className="text-xs">{val}</span>}
+                    </div>
+                    <span className="text-xs opacity-60 rotate-0" style={{ fontSize: '9px' }}>{monthLabels[i]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body">
+              <h2 className="card-title text-base">Stock Movement (Last 12 Months)</h2>
+              <div className="flex items-end gap-1 h-32 mt-2">
+                {stats.monthlyMovements.inflow.map((val, i) => {
+                  const outVal = stats.monthlyMovements.outflow[i] || 0;
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                      <div className="w-full flex flex-col-reverse" style={{ height: 120 }}>
+                        <div className="w-full bg-success rounded-t" style={{ height: Math.max(2, Math.round((val / maxFlow) * 110)) }} title={'In: ' + val} />
+                        <div className="w-full bg-error rounded-t" style={{ height: Math.max(2, Math.round((outVal / maxFlow) * 110)) }} title={'Out: ' + outVal} />
+                      </div>
+                      <span className="text-xs opacity-60" style={{ fontSize: '9px' }}>{monthLabels[i]}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex gap-4 mt-2 text-xs">
+                <span className="flex items-center gap-1"><span className="w-3 h-2 bg-success rounded-t inline-block" />Inflow</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-2 bg-error rounded-t inline-block" />Outflow</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section className="card overflow-hidden">

@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-### Overall Readiness Score: 7.4 / 10
+### Overall Readiness Score: 7.5 / 10
 
 The system has a **solid core** — it covers the fundamental inventory loop (items ? receiving ? RIS ? ledger ? reports) with role-based access control, 2FA, audit logging, COA-compliant ledger cards, and PDF/Excel reporting. Several critical gaps identified in the original analysis have been addressed, including JWT secret enforcement, security headers (Helmet + CSP), CSRF protection, RIS number race condition mitigation, audit log immutability, and tamper-evident hashing.
 
@@ -460,7 +460,7 @@ eportController.js | COA compliance | FIXED |
 | P2-8 | `openReport` hardcodes filename | `frontend/src/api/client.js` | UX | ?? UNCHANGED |
 | P2-9 | No item serial/asset tag barcode | `schema.prisma` | Property tracking | ?? PARTIAL — stockNumber exists |
 | P2-10 | No supplier performance tracking | New model/report | Procurement governance | ? MISSING |
-| P2-11 | No dashboard trend charts | Frontend | User analytics | ? MISSING |
+| P2-11 | No dashboard trend charts | userController.js + DashboardPage | User analytics | FIXED |
 
 ### P3 — Low (Backlog)
 
@@ -496,4 +496,4 @@ eportController.js | COA compliance | FIXED |
 | Mobile/Offline/Integration | 2/10 | Web-only, no offline, no integrations |
 | Security & Access Control | 8.5/10 | JWT enforced, CSRF+CSP, immutable+tamper-evident audit, refresh token rotation, concurrent session limit, password history |
 
-**Overall: 7.4/10 — Functional for a small LGU pilot; audit trail and security hardening now production-grade; procurement governance and COA compliance still incomplete.**
+**Overall: 7.5/10 — Functional for a small LGU pilot; audit trail and security hardening now production-grade; procurement governance and COA compliance still incomplete.**

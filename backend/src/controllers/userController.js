@@ -217,6 +217,46 @@ async function dashboardStats(req, res) {
     orderBy: { department: { name: 'asc' } },
   });
 
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+  twelveMonthsAgo.setDate(1);
+
+  const risTrendRaw = await prisma.$queryRaw`
+    SELECT DATE_TRUNC('month', "createdAt") AS month, COUNT(*) AS count
+    FROM "Ris"
+    WHERE "createdAt" >= ${twelveMonthsAgo}
+    GROUP BY DATE_TRUNC('month', "createdAt")
+    ORDER BY month ASC
+  `;
+
+  const movementTrendRaw = await prisma.$queryRaw`
+    SELECT DATE_TRUNC('month', "date") AS month,
+      COALESCE(SUM("inflow"), 0) AS totalInflow,
+      COALESCE(SUM("outflow"), 0) AS totalOutflow
+    FROM "LedgerEntry"
+    WHERE "date" >= ${twelveMonthsAgo}
+    GROUP BY DATE_TRUNC('month', "date")
+    ORDER BY month ASC
+  `;
+
+  const monthLabels = [];
+  const risTrendData = [];
+  const inflowData = [];
+  const outflowData = [];
+
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = d.toISOString().slice(0, 7);
+    const label = d.toLocaleString('default', { month: 'short', year: '2-digit' });
+    monthLabels.push(label);
+    const ris = risTrendRaw.find((r) => r.month && r.month.toISOString().slice(0, 7) === key);
+    const mov = movementTrendRaw.find((r) => r.month && r.month.toISOString().slice(0, 7) === key);
+    risTrendData.push(ris ? Number(ris.count) : 0);
+    inflowData.push(mov ? Number(mov.totalInflow) : 0);
+    outflowData.push(mov ? Number(mov.totalOutflow) : 0);
+  }
+
   res.json({
     stats: {
       totalItems,
@@ -236,6 +276,9 @@ async function dashboardStats(req, res) {
         available: Math.max(0, b.amount - b.spent),
         utilizationPct: b.amount > 0 ? Math.round((b.spent / b.amount) * 100) : 0,
       })),
+      monthlyRis: risTrendData,
+      monthlyMovements: { inflow: inflowData, outflow: outflowData },
+      monthLabels,
     },
     lowStock,
     recentLedger,
