@@ -914,4 +914,93 @@ async function supplierPerformanceReport(req, res) {
   }, 'Supplier_Performance_' + new Date().toISOString().slice(0, 10) + '.pdf');
 }
 
-module.exports = { rsmiReport, inventoryReport, movementsReport, ledgerCardReport, parReport, agingReport, acknowledgmentSlipReport, icsReport, appReport, varianceReport, supplierPerformanceReport };
+async function iasReport(req, res) {
+  const { from, to, format = 'pdf' } = req.query;
+  if (!from || !to) throw new ApiError(400, 'from and to (dates) are required.');
+
+  const receivings = await prisma.receiving.findMany({
+    where: {
+      receiptDate: { gte: new Date(`${from}T00:00:00.000Z`), lte: new Date(`${to}T23:59:59.999Z`) },
+    },
+    include: {
+      supplier: true,
+      purchaseOrder: { select: { poNumber: true, date: true } },
+      createdBy: { select: { fullName: true } },
+      items: { include: { item: { include: { category: true } } } },
+    },
+    orderBy: { receiptDate: 'desc' },
+  });
+
+  if (receivings.length === 0) {
+    throw new ApiError(404, 'No receiving records found for the selected period.');
+  }
+
+  const rows = [];
+  let totalValue = 0;
+  for (const rec of receivings) {
+    for (const line of rec.items) {
+      const lineTotal = line.quantity * (line.unitCost || 0);
+      totalValue += lineTotal;
+      rows.push({
+        date: rec.receiptDate ? new Date(rec.receiptDate).toLocaleDateString() : '—',
+        receivingNo: rec.receivingNo,
+        poNo: rec.purchaseOrder?.poNumber || rec.poNumber || '—',
+        supplier: rec.supplier?.name || '—',
+        item: line.item.name,
+        stockNumber: line.item.stockNumber || '—',
+        unit: line.item.unit,
+        qty: line.quantity,
+        unitCost: line.unitCost || 0,
+        total: lineTotal,
+        inspector: rec.createdBy?.fullName || '—',
+        remarks: line.remarks || rec.remarks || '—',
+      });
+    }
+  }
+
+  const startDate = new Date(from).toLocaleDateString();
+  const endDate = new Date(to).toLocaleDateString();
+
+  if (format === 'excel') {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('IAS Report');
+    addTableStyle(ws, [
+      { header: 'Date', key: 'date', width: 14 },
+      { header: 'Rec. No.', key: 'receivingNo', width: 20 },
+      { header: 'PO No.', key: 'poNo', width: 20 },
+      { header: 'Supplier', key: 'supplier', width: 26 },
+      { header: 'Item', key: 'item', width: 30 },
+      { header: 'Stock No.', key: 'stockNumber', width: 20 },
+      { header: 'Unit', key: 'unit', width: 10 },
+      { header: 'Qty', key: 'qty', width: 10 },
+      { header: 'Unit Cost', key: 'unitCost', width: 14 },
+      { header: 'Total', key: 'total', width: 14 },
+      { header: 'Inspector', key: 'inspector', width: 26 },
+    ], rows.map((r) => ({ ...r, unitCost: money(r.unitCost), total: money(r.total) })));
+    return renderExcel(res, wb, `IAS_Report_${startDate}_to_${endDate}.xlsx`);
+  }
+
+  const body = [
+    [{ text: 'INSPECTION AND ACCEPTANCE REPORT (IAS)', style: 'title' }, {}, {}, {}, {}],
+    [{ text: `Period: ${startDate} to ${endDate}`, colSpan: 5, alignment: 'center' }],
+    [{ text: 'Item', style: 'th' }, { text: 'Stock No.', style: 'th' }, { text: 'Unit', style: 'th' }, { text: 'Qty', style: 'th' }, { text: 'Unit Cost', style: 'th' }, { text: 'Total', style: 'th' }, { text: 'PO No.', style: 'th' }, { text: 'Rec. No.', style: 'th' }, { text: 'Date', style: 'th' }, { text: 'Supplier', style: 'th' }, { text: 'Inspector', style: 'th' }],
+    ...rows.map((r) => [r.item, r.stockNumber, r.unit, r.qty, money(r.unitCost), money(r.total), r.poNo, r.receivingNo, r.date, r.supplier, r.inspector]),
+    [{ text: `TOTAL: ${money(totalValue)}`, colSpan: 6, bold: true }, {}, {}, {}, {}],
+  ];
+
+  renderPdf(res, {
+    ...pdfHeader('INSPECTION AND ACCEPTANCE REPORT (IAS)', `Period: ${startDate} to ${endDate}`),
+    content: [
+      {
+        table: {
+          headerRows: 2,
+          widths: ['*', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', '*', 'auto'],
+          body,
+        },
+        layout: { fillColor: (rowIndex) => (rowIndex % 2 === 0 ? null : '#F3F4F6') },
+      },
+    ],
+  }, `IAS_Report_${startDate}_to_${endDate}.pdf`);
+}
+
+module.exports = { rsmiReport, inventoryReport, movementsReport, ledgerCardReport, parReport, agingReport, acknowledgmentSlipReport, icsReport, appReport, iasReport, varianceReport, supplierPerformanceReport };

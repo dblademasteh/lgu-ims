@@ -30,6 +30,7 @@ export default function ReportsPage() {
   const [movement, setMovement] = useState({ itemId: '', from: '', to: '', useRange: false });
   const [ledgerItemId, setLedgerItemId] = useState('');
   const [ics, setIcs] = useState({ from: monthStart, to: today });
+  const [ias, setIas] = useState({ from: monthStart, to: today });
   const [appYear, setAppYear] = useState(new Date().getFullYear());
   const [variance, setVariance] = useState({ from: monthStart, to: today, departmentId: '' });
   const [supplier, setSupplier] = useState({ from: '', to: '' });
@@ -170,6 +171,29 @@ export default function ReportsPage() {
             <button className="btn btn-outline flex-1" onClick={() => {
               if (!ics.from || !ics.to) return toast.error('Select a date range.');
               run('/reports/icing?from=' + ics.from + '&to=' + ics.to + '&format=excel', true);
+            }}>Excel</button>
+          </div>
+        </ReportCard>
+
+        <ReportCard title="Inspection and Acceptance Report (IAS)" description="Records all received goods inspected and accepted within a date range for procurement compliance.">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <fieldset className="fieldset">
+              <legend className="fieldset-legend">From</legend>
+              <input className="input" type="date" value={ias.from} onChange={(e) => setIas({ ...ias, from: e.target.value })} />
+            </fieldset>
+            <fieldset className="fieldset">
+              <legend className="fieldset-legend">To</legend>
+              <input className="input" type="date" value={ias.to} onChange={(e) => setIas({ ...ias, to: e.target.value })} />
+            </fieldset>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button className="btn btn-primary flex-1" onClick={() => {
+              if (!ias.from || !ias.to) return toast.error('Select a date range.');
+              run('/reports/ias?from=' + ias.from + '&to=' + ias.to);
+            }}>PDF</button>
+            <button className="btn btn-outline flex-1" onClick={() => {
+              if (!ias.from || !ias.to) return toast.error('Select a date range.');
+              run('/reports/ias?from=' + ias.from + '&to=' + ias.to + '&format=excel', true);
             }}>Excel</button>
           </div>
         </ReportCard>
