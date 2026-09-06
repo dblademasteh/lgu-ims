@@ -251,8 +251,9 @@ export default function SettingsPage() {
         <button role="tab" className={`tab ${tab === 'departments' ? 'tab-active' : ''}`} onClick={() => setTab('departments')}>Departments</button>
         <button role="tab" className={`tab ${tab === 'security' ? 'tab-active' : ''}`} onClick={() => setTab('security')}>Security</button>
         <button role="tab" className={`tab ${tab === 'backup' ? 'tab-active' : ''}`} onClick={() => setTab('backup')}>Backup</button>
+        {user.role === 'ADMIN' && <button role="tab" className={`tab ${tab === 'flags' ? 'tab-active' : ''}`} onClick={() => setTab('flags')}>Flags</button>}
       </div>
-      {tab === 'categories' ? <CategoryTab /> : tab === 'departments' ? <DepartmentTab /> : tab === 'security' ? <SecurityTab /> : <BackupTab />}
+      {tab === 'categories' ? <CategoryTab /> : tab === 'departments' ? <DepartmentTab /> : tab === 'security' ? <SecurityTab /> : tab === 'backup' ? <BackupTab /> : <FlagsTab />}
     </div>
   );
 }
@@ -481,6 +482,45 @@ function BackupTab() {
             {busy ? <span className="loading loading-spinner loading-xs" /> : <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>}
             Download Backup
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FlagsTab() {
+  const toast = useToast();
+  const [flags, setFlags] = useState([]);
+
+  useEffect(() => {
+    api.get('/flags').then((r) => setFlags(r.data.data)).catch(() => {});
+  }, []);
+
+  const toggle = async (f) => {
+    const newVal = !f.currentValue;
+    try {
+      await api.patch(`/flags/${f.key}`, { value: newVal });
+      setFlags((prev) => prev.map((fl) => fl.key === f.key ? { ...fl, currentValue: newVal, overridden: true } : fl));
+    } catch (err) {
+      toast.error('Failed to update flag.');
+    }
+  };
+
+  return (
+    <div className="card bg-base-100 shadow-sm">
+      <div className="card-body">
+        <h2 className="card-title text-base">Feature Flags</h2>
+        <p className="text-sm text-base-content/60 mt-1">Toggle system features. Overrides are runtime-only and reset on server restart. Set env vars for persistent changes.</p>
+        <div className="mt-4 space-y-2">
+          {flags.length === 0 ? <p className="text-sm opacity-60">Loading...</p> : flags.map((f) => (
+            <div key={f.key} className="flex items-center justify-between py-2 px-3 rounded-lg bg-base-200">
+              <div>
+                <div className="font-mono text-sm font-medium">{f.key}</div>
+                <div className="text-xs text-base-content/60">Default: {String(f.defaultValue)} {f.overridden ? '(runtime override)' : ''}</div>
+              </div>
+              <input type="checkbox" className="toggle toggle-primary" checked={f.currentValue} onChange={() => toggle(f)} />
+            </div>
+          ))}
         </div>
       </div>
     </div>

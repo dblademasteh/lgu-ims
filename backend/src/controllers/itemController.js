@@ -88,7 +88,7 @@ async function getItem(req, res) {
 
 async function createItem(req, res) {
   const body = sanitizeBody(req.body, ['sku', 'name', 'description', 'unit', 'stockNumber', 'fundCluster']);
-  const { sku, name, description, categoryId, unit, reorderThreshold, currentStock, unitCost, stockNumber, fundCluster, isAccountable, condition, expiryDate, warrantyExpiry } = body;
+  const { sku, name, description, categoryId, unit, reorderThreshold, maxStock, currentStock, unitCost, stockNumber, fundCluster, isAccountable, condition, expiryDate, warrantyExpiry } = body;
   if (!sku || !name || !categoryId || !unit) {
     throw new ApiError(400, 'sku, name, categoryId and unit are required.');
   }
@@ -101,6 +101,7 @@ async function createItem(req, res) {
       categoryId,
       unit,
       reorderThreshold: Number(reorderThreshold) || 0,
+      maxStock: Number(maxStock) || 0,
       currentStock: Number(currentStock) || 0,
       unitCost: Number(unitCost) || 0,
       stockNumber: stockNumber || null,
@@ -143,12 +144,12 @@ async function updateItem(req, res) {
   const existing = await prisma.item.findUnique({ where: { id } });
   if (!existing) throw new ApiError(404, 'Item not found.');
 
-  const fields = ['name', 'description', 'categoryId', 'unit', 'reorderThreshold', 'unitCost', 'stockNumber', 'fundCluster', 'isAccountable', 'condition', 'expiryDate', 'warrantyExpiry'];
+  const fields = ['name', 'description', 'categoryId', 'unit', 'reorderThreshold', 'maxStock', 'unitCost', 'stockNumber', 'fundCluster', 'isAccountable', 'condition', 'expiryDate', 'warrantyExpiry'];
   const body = sanitizeBody(req.body, ['name', 'description', 'unit', 'stockNumber', 'fundCluster', 'condition']);
   const data = {};
   for (const f of fields) {
     if (body[f] !== undefined) {
-      if (f === 'reorderThreshold' || f === 'unitCost') {
+      if (f === 'reorderThreshold' || f === 'maxStock' || f === 'unitCost') {
         data[f] = Number(body[f]) || 0;
       } else if (f === 'isAccountable') {
         data[f] = Boolean(body[f]);
@@ -311,6 +312,7 @@ async function importItems(req, res) {
   const iUnit = idx('unit');
   const iDescription = idx('description');
   const iReorder = idx('reorderthreshold');
+  const iMaxStock = idx('maxstock');
   const iQty = idx('currentstock');
   const iCost = idx('unitcost');
   const iStockNumber = idx('stocknumber');
@@ -353,6 +355,7 @@ async function importItems(req, res) {
           categoryId: category.id,
           unit,
           reorderThreshold: iReorder >= 0 ? Number(row[iReorder]) || 0 : 0,
+          maxStock: iMaxStock >= 0 ? Number(row[iMaxStock]) || 0 : 0,
           currentStock: iQty >= 0 ? Number(row[iQty]) || 0 : 0,
           unitCost: iCost >= 0 ? Number(row[iCost]) || 0 : 0,
           stockNumber: iStockNumber >= 0 ? row[iStockNumber] || null : null,

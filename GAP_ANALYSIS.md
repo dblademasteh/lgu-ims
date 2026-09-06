@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-### Overall Readiness Score: 7.6 / 10
+### Overall Readiness Score: 7.9 / 10
 
 The system has a **solid core** — it covers the fundamental inventory loop (items ? receiving ? RIS ? ledger ? reports) with role-based access control, 2FA, audit logging, COA-compliant ledger cards, and PDF/Excel reporting. Several critical gaps identified in the original analysis have been addressed, including JWT secret enforcement, security headers (Helmet + CSP), CSRF protection, RIS number race condition mitigation, audit log immutability, and tamper-evident hashing.
 
@@ -468,7 +468,7 @@ eportController.js | COA compliance | FIXED |
 |----|-----|-------|--------|
 | P3-1 | No mobile app / offline mode | Web-only | ?? PARTIAL — PWA exists |
 | P3-2 | No webhook/event hooks | Add event emitter | ? FIXED |
-| P3-3 | No feature flags | Add gradual rollout | ? MISSING |
+| P3-3 | No feature flags | Add gradual rollout | ? FIXED |
 | P3-4 | No multi-LGU / tenant isolation | Schema refactor | ? MISSING |
 | P3-5 | No document digital signing | Integrate DTI/DICT | ? MISSING |
 | P3-6 | No HRIS/SSO integration | SAML2/OIDC | ? MISSING |
@@ -485,15 +485,15 @@ eportController.js | COA compliance | FIXED |
 
 | Domain | Score | Key Gap |
 |--------|-------|--------|
-| Core Inventory | 7.5/10 | No max stock, no serial tracking, no decommissioning |
-| RIS Workflow | 7.5/10 | Silent stock short issuance, no bulk creation |
+| Core Inventory | 8.5/10 | No serial tracking, no decommissioning |
+| RIS Workflow | 8/10 | No bulk creation |
 | Receiving & Suppliers | 6/10 | No PO creation UI, no 3-way matching, no IAS |
 | User & Role Management | 9/10 | No profile self-service |
 | Notifications | 7/10 | No push notifications, limited preferences |
 | Reporting | 8/10 | ICS/APP and variance report implemented |
 | Audit & Compliance | 8/10 | Immutable + tamper-evident + COA compliance dashboard |
-| System Administration | 6/10 | No migration UI, no feature flags |
+| System Administration | 8/10 | No migration UI |
 | Mobile/Offline/Integration | 2/10 | Web-only, no offline, no integrations |
 | Security & Access Control | 8.5/10 | JWT enforced, CSRF+CSP, immutable+tamper-evident audit, refresh token rotation, concurrent session limit, password history |
 
-**Overall: 7.6/10 — Functional for a small LGU pilot; audit trail and security hardening now production-grade; procurement governance and COA compliance still incomplete.**
+**Overall: 7.9/10 — Functional for a small LGU pilot; audit trail and security hardening now production-grade; procurement governance and COA compliance still incomplete.**

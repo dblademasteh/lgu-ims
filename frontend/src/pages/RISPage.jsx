@@ -61,8 +61,14 @@ export default function RISPage() {
   const act = async (id, action, body = {}, actLabel) => {
     setConfirm(null);
     try {
-      await api[action === 'issue' || action === 'return' ? 'post' : 'patch'](`/ris/${id}/${action}`, body);
+      const res = action === 'issue' || action === 'return'
+        ? await api.post(`/ris/${id}/${action}`, body)
+        : await api.patch(`/ris/${id}/${action}`, body);
       toast.success(`RIS ${actLabel}.`);
+      if (res.data.shortfalls?.length) {
+        const lines = res.data.shortfalls.map((s) => `${s.itemName}: issued ${s.issued} of ${s.requested} (only ${s.available} in stock)`).join('\n');
+        toast.warn(`Stock shortfall:\n${lines}`);
+      }
       setDetail(null);
       setReturnOpen(false);
       setApproveOpen(false);

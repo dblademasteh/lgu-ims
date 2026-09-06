@@ -109,6 +109,7 @@ model Item {
   categoryId       String   @db.Uuid
   unit             String
   reorderThreshold Float    @default(0)
+  maxStock        Float    @default(0)
   currentStock     Float    @default(0)
   unitCost         Float    @default(0)
   imageUrl         String?

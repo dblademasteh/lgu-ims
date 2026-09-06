@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const { authenticate, authorize, ROLES } = require('../middleware/auth');
 const { getStats: getEmailStats } = require('../services/queue');
+const { listFlags, setFlag, getFlag } = require('../services/featureFlags');
 
 const authRoutes = require('./auth.routes');
 const userRoutes = require('./user.routes');
@@ -52,6 +53,17 @@ router.get('/roles', (req, res) => {
 router.get('/queue/stats', authorize('ADMIN'), async (req, res) => {
   const stats = await getEmailStats();
   res.json({ data: stats });
+});
+
+router.get('/flags', authenticate, authorize('ADMIN'), (req, res) => {
+  res.json({ data: listFlags() });
+});
+
+router.patch('/flags/:key', authenticate, authorize('ADMIN'), (req, res) => {
+  const { key } = req.params;
+  const { value } = req.body;
+  setFlag(key, value);
+  res.json({ data: { key, value: getFlag(key) } });
 });
 
 module.exports = router;

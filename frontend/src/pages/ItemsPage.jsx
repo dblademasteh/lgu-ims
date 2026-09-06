@@ -300,6 +300,7 @@ export default function ItemsPage() {
                     <th>Unit</th>
                     <th className="text-right">On Hand</th>
                     <th className="text-right">Reorder</th>
+                    <th className="text-right">Max</th>
                     <th className="text-right">Unit Cost</th>
                     <th>Stock No.</th>
                     <th>Fund</th>
@@ -333,6 +334,7 @@ export default function ItemsPage() {
                       <td>{i.unit}</td>
                       <td className="text-right font-semibold">{fmt(i.currentStock)}</td>
                       <td className="text-right">{fmt(i.reorderThreshold)}</td>
+                      <td className="text-right">{i.maxStock > 0 ? fmt(i.maxStock) : '—'}</td>
                       <td className="text-right"><Money value={i.unitCost} /></td>
                       <td className="font-mono text-xs">{i.stockNumber || '—'}</td>
                       <td className="font-mono text-xs">{i.fundCluster || '—'}</td>
@@ -435,7 +437,7 @@ function ItemFormModal({ open, onClose, item, categories, onSaved }) {
 
   const [form, setForm] = useState({
     sku: '', name: '', description: '', categoryId: '', unit: '',
-    reorderThreshold: 0, currentStock: 0, unitCost: 0, stockNumber: '', fundCluster: '', isAccountable: false,
+    reorderThreshold: 0, maxStock: 0, currentStock: 0, unitCost: 0, stockNumber: '', fundCluster: '', isAccountable: false,
     expiryDate: '', warrantyExpiry: '', condition: 'SERVICEABLE',
   });
 
@@ -444,12 +446,12 @@ function ItemFormModal({ open, onClose, item, categories, onSaved }) {
       setForm(item ? {
         sku: item.sku, name: item.name, description: item.description || '',
         categoryId: item.categoryId, unit: item.unit,
-        reorderThreshold: item.reorderThreshold, currentStock: item.currentStock, unitCost: item.unitCost,
+        reorderThreshold: item.reorderThreshold, maxStock: item.maxStock || 0, currentStock: item.currentStock, unitCost: item.unitCost,
         stockNumber: item.stockNumber || '', fundCluster: item.fundCluster || '', isAccountable: item.isAccountable || false,
         expiryDate: item.expiryDate ? item.expiryDate.slice(0, 10) : '',
         warrantyExpiry: item.warrantyExpiry ? item.warrantyExpiry.slice(0, 10) : '',
         condition: item.condition || 'SERVICEABLE',
-      } : { sku: '', name: '', description: '', categoryId: categories[0]?.id || '', unit: '', reorderThreshold: 0, currentStock: 0, unitCost: 0, stockNumber: '', fundCluster: '', isAccountable: false, expiryDate: '', warrantyExpiry: '', condition: 'SERVICEABLE' });
+      } : { sku: '', name: '', description: '', categoryId: categories[0]?.id || '', unit: '', reorderThreshold: 0, maxStock: 0, currentStock: 0, unitCost: 0, stockNumber: '', fundCluster: '', isAccountable: false, expiryDate: '', warrantyExpiry: '', condition: 'SERVICEABLE' });
     }
   }, [open, item]);
 
@@ -508,6 +510,11 @@ function ItemFormModal({ open, onClose, item, categories, onSaved }) {
             <legend className="fieldset-legend">Reorder threshold</legend>
             <input className="input" type="number" min="0" step="any" value={form.reorderThreshold}
               onChange={(e) => setForm({ ...form, reorderThreshold: e.target.value })} />
+          </fieldset>
+          <fieldset className="fieldset">
+            <legend className="fieldset-legend">Max stock (0 = no limit)</legend>
+            <input className="input" type="number" min="0" step="any" value={form.maxStock || ''}
+              onChange={(e) => setForm({ ...form, maxStock: e.target.value })} />
           </fieldset>
           <fieldset className="fieldset">
             <legend className="fieldset-legend">Unit cost (₱)</legend>

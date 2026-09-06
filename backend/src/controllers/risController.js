@@ -375,9 +375,10 @@ async function issueRis(req, res) {
 
   const overrides = (req.body.items || []).length > 0 ? req.body.items : null;
 
+  const shortfalls = [];
+
   await prisma.$transaction(async (tx) => {
     const lines = await tx.risItem.findMany({ where: { risId: ris.id }, include: { item: true } });
-    let anyShort = false;
 
     for (const line of lines) {
       const override = overrides ? overrides.find((i) => i.itemId === line.itemId || i.risItemId === line.id) : null;
@@ -393,7 +394,7 @@ async function issueRis(req, res) {
       }
 
       if (toIssue > line.item.currentStock) {
-        anyShort = true;
+        shortfalls.push({ itemId: line.itemId, itemName: line.item.name, requested: toIssue, available: line.item.currentStock, issued: line.item.currentStock });
         toIssue = line.item.currentStock;
       }
       if (toIssue <= 0) continue;
@@ -457,7 +458,7 @@ async function issueRis(req, res) {
     await sendMail({ to: requester.email, subject: tpl.subject, text: tpl.text, html: tpl.html }).catch(() => {});
   }
 
-  res.json({ data: updated });
+  res.json({ data: updated, shortfalls: shortfalls.length > 0 ? shortfalls : undefined });
 }
 
 function linesWithItems(ris) {

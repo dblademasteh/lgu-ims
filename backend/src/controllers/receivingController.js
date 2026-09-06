@@ -124,6 +124,9 @@ async function createReceiving(req, res) {
       const item = await tx.item.findUnique({ where: { id: ri.itemId } });
       if (!item) continue;
       const newBalance = item.currentStock + ri.quantity;
+      if (item.maxStock > 0 && newBalance > item.maxStock) {
+        throw new ApiError(400, `Receiving "${item.name}" would exceed max stock (${item.maxStock}). Resulting stock: ${newBalance}. Adjust quantity or max stock limit.`);
+      }
       await tx.item.update({ where: { id: item.id }, data: { currentStock: newBalance, unitCost: ri.unitCost ? Number(ri.unitCost) : item.unitCost } });
       await tx.ledgerEntry.create({
         data: {
@@ -248,6 +251,9 @@ async function updateReceiving(req, res) {
       const item = await tx.item.findUnique({ where: { id: ri.itemId } });
       if (!item) continue;
       const newBalance = item.currentStock + ri.quantity;
+      if (item.maxStock > 0 && newBalance > item.maxStock) {
+        throw new ApiError(400, `Receiving "${item.name}" would exceed max stock (${item.maxStock}). Resulting stock: ${newBalance}. Adjust quantity or max stock limit.`);
+      }
       await tx.item.update({ where: { id: item.id }, data: { currentStock: newBalance, unitCost: ri.unitCost ? Number(ri.unitCost) : item.unitCost } });
       await tx.ledgerEntry.create({
         data: {
