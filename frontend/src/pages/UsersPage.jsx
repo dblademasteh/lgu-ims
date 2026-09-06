@@ -43,7 +43,7 @@ export default function UsersPage() {
     api.get(`/users?${q}`).then((r) => setData(r.data)).catch((e) => toast.error(e.response?.data?.message || 'Unable to load users.'));
   };
 
-  useEffect(load, [page, roleFilter, statusFilter]);
+  useEffect(load, [page, search, roleFilter, statusFilter]);
   useEffect(() => { api.get('/departments').then((r) => setDepartments(r.data.data)).catch(() => {}); }, []);
 
   return (
@@ -69,7 +69,7 @@ export default function UsersPage() {
         <div className="card-body">
           <div className="flex flex-col md:flex-row gap-3 mb-4">
             <label className="input flex-1 md:max-w-xs">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 0 0114 0z" /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
               <input type="search" className="flex-1" placeholder="Search users..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
             </label>
             <select className="select md:w-48" value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}>
@@ -90,7 +90,7 @@ export default function UsersPage() {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="table table-sm">
+                <table className="table table-sm" aria-label="User accounts table">
                   <thead>
                     <tr>
                       <th>User</th>

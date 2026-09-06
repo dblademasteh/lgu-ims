@@ -8,11 +8,13 @@ export default function SuppliersPage() {
   const toast = useToast();
   const canManage = useCan('ADMIN', 'WAREHOUSE_STAFF');
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
   const [form, setForm] = useState({ name: '', contact: '', phone: '', email: '', address: '' });
+  const [busy, setBusy] = useState(false);
+  const [confirm, setConfirm] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -22,6 +24,7 @@ export default function SuppliersPage() {
 
   const submit = async (e) => {
     e.preventDefault();
+    setBusy(true);
     try {
       if (editing) {
         await api.patch(`/inventory/suppliers/${editing.id}`, form);
@@ -36,11 +39,15 @@ export default function SuppliersPage() {
       load();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Unable to save supplier.');
+    } finally {
+      setBusy(false);
     }
   };
 
-  const deactivate = async (s) => {
-    if (!window.confirm(`Deactivate supplier "${s.name}"?`)) return;
+  const deactivate = async () => {
+    if (!confirm) return;
+    const s = confirm;
+    setConfirm(null);
     try {
       await api.patch(`/inventory/suppliers/${s.id}/deactivate`);
       toast.success('Supplier deactivated.');
@@ -73,7 +80,7 @@ export default function SuppliersPage() {
         <div className="card-body">
           {loading ? <Spinner /> : data.length === 0 ? <EmptyState message="No suppliers yet." /> : (
             <div className="overflow-x-auto">
-              <table className="table table-sm">
+              <table className="table table-sm" aria-label="Suppliers table">
                 <thead><tr><th>Name</th><th>Contact</th><th>Phone</th><th>Email</th><th>Address</th><th className="text-right">Actions</th></tr></thead>
                 <tbody>
                   {data.map((s) => (
@@ -85,7 +92,7 @@ export default function SuppliersPage() {
                       <td className="max-w-64 truncate">{s.address || '—'}</td>
                       <td className="text-right">
                         {canManage && <button className="btn btn-ghost btn-xs" onClick={() => openEdit(s)}>Edit</button>}
-                        {canManage && <button className="btn btn-ghost btn-xs text-error" onClick={() => deactivate(s)}>Deactivate</button>}
+                        {canManage && <button className="btn btn-ghost btn-xs text-error" onClick={() => setConfirm(s)}>Deactivate</button>}
                       </td>
                     </tr>
                   ))}
@@ -124,7 +131,7 @@ export default function SuppliersPage() {
               </fieldset>
               <div className="modal-action">
                 <button type="button" className="btn" onClick={() => { setOpen(false); setEditing(null); }}>Cancel</button>
-                <button type="submit" className="btn btn-primary">{editing ? 'Save changes' : 'Create'}</button>
+                <button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}{editing ? 'Save changes' : 'Create'}</button>
               </div>
             </form>
           </div>
@@ -139,6 +146,20 @@ export default function SuppliersPage() {
             <ImportSuppliersForm onClose={() => setImportOpen(false)} onImported={load} />
           </div>
           <form method="dialog" className="modal-backdrop"><button onClick={() => setImportOpen(false)}>close</button></form>
+        </dialog>
+      )}
+
+      {confirm && (
+        <dialog className="modal modal-open">
+          <div className="modal-box max-w-sm">
+            <h3 className="font-bold text-lg">Deactivate supplier</h3>
+            <p className="text-sm text-base-content/60 mt-2">Deactivate "{confirm.name}"? The supplier will no longer appear in lists but existing records are preserved.</p>
+            <div className="modal-action">
+              <button type="button" className="btn" onClick={() => setConfirm(null)}>Cancel</button>
+              <button type="button" className="btn btn-error" onClick={deactivate}>Deactivate</button>
+            </div>
+          </div>
+          <form method="dialog" className="modal-backdrop"><button onClick={() => setConfirm(null)}>close</button></form>
         </dialog>
       )}
     </div>

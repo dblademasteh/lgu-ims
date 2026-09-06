@@ -32,7 +32,7 @@ export default function AuditLogPage() {
     api.get(`/audit-logs?${q}`).then((r) => setData(r.data)).catch((e) => toast.error(e.response?.data?.message || 'Unable to load audit logs.'));
   };
 
-  useEffect(load, [page, action]);
+  useEffect(load, [page, action, search]);
 
   return (
     <div>
@@ -48,8 +48,8 @@ export default function AuditLogPage() {
               if (search) q.set('entityType', search);
               openReport(`/audit-logs/export?${q}`);
             }}>PDF</button>
-            <button className="btn btn-outline btn-sm" onClick={() => {
-              const q = new URLSearchParams({ format: 'xlsx' });
+<button className="btn btn-outline btn-sm" onClick={() => {
+              const q = new URLSearchParams({ format: 'excel' });
               if (action) q.set('action', action);
               if (search) q.set('entityType', search);
               openReport(`/audit-logs/export?${q}`, true);
@@ -66,7 +66,7 @@ export default function AuditLogPage() {
               {['CREATE', 'UPDATE', 'DELETE', 'ADJUST', 'APPROVE', 'REJECT', 'ISSUE', 'CANCEL', 'LOGIN', 'PASSWORD_CHANGE'].map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
             <label className="input flex-1 md:max-w-xs">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="10" cy="10" r="6" strokeWidth="2"/><path strokeLinecap="round" strokeWidth="2" d="M21 21l-4.35-4.35"/></svg>
               <input type="search" className="flex-1" placeholder="Entity type (Item, Ris, User...)" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
             </label>
           </div>
@@ -78,7 +78,7 @@ export default function AuditLogPage() {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="table table-sm">
+                <table className="table table-sm" aria-label="Audit log table">
                   <thead>
                     <tr>
                       <th>When</th>

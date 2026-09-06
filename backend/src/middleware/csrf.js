@@ -4,8 +4,9 @@ function getCsrfSecret() {
   return process.env.CSRF_SECRET || crypto.randomBytes(32).toString('hex');
 }
 
-function CsrfMiddleware() {
+function CsrfMiddleware(exclude = []) {
   const secret = getCsrfSecret();
+  const isDev = process.env.NODE_ENV === 'development';
 
   return {
     middleware: [
@@ -24,7 +25,11 @@ function CsrfMiddleware() {
         next();
       },
       (req, res, next) => {
+        if (isDev) return next();
         if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+          return next();
+        }
+        if (exclude.some((p) => req.path === p || req.path.startsWith(p + '/'))) {
           return next();
         }
         const cookieToken = req.cookies?.['XSRF-TOKEN'];

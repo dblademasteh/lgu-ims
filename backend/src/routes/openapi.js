@@ -168,10 +168,31 @@
  *             properties:
  *               token: { type: string, description: 'One-time reset token.' }
  *               newPassword: { type: string, format: password, minLength: 8 }
- *     responses:
- *       200: { description: Password has been reset.' }
- *       400: { description: Invalid or expired token.' }
- */
+  *     responses:
+  *       200: { description: Password has been reset.' }
+  *       400: { description: Invalid or expired token.' }
+  *
+  * /auth/admin/unlock:
+  *   post:
+  *     tags: [Auth]
+  *     summary: Unlock a locked user account (ADMIN only)
+  *     security:
+  *       - bearerAuth: []
+  *     requestBody:
+  *       required: true
+  *       content:
+  *         application/json:
+  *           schema:
+  *             type: object
+  *             required: [username]
+  *             properties:
+  *               username: { type: string, description: 'Username or email of the account to unlock.' }
+  *     responses:
+  *       200: { description: Account unlocked.' }
+  *       401: { $ref: '#/components/responses/Unauthorized' }
+  *       403: { $ref: '#/components/responses/Forbidden' }
+  *       404: { description: User not found.' }
+  */
 
 /**
  * @openapi

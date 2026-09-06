@@ -3,7 +3,7 @@ const ApiError = require('../utils/ApiError');
 const { paginate } = require('../utils/paginate');
 const { writeAudit } = require('../utils/audit');
 const { generateRisNumber } = require('../utils/risNumber');
-const { notifyLowStock } = require('../services/notificationService');
+const { notifyLowStock, notifyInApp, emailAllowed } = require('../services/notificationService');
 const { sendMail } = require('../services/mailer');
 const { risCreated, risStatusChange } = require('../services/templates');
 const config = require('../config');
@@ -179,8 +179,105 @@ async function createRis(req, res) {
   res.status(201).json({ data: ris });
 }
 
+async function bulkCreateRis(req, res) {
+  const { risList } = req.body;
+  if (!Array.isArray(risList) || risList.length === 0) {
+    throw new ApiError(400, 'risList (array) is required with at least one item.');
+  }
+
+  let deptId = req.body.departmentId;
+  if (req.user.role === 'DEPARTMENT_HEAD') {
+    if (!req.user.departmentId) throw new ApiError(400, 'Your account is not linked to a department. Contact an administrator.');
+    deptId = req.user.departmentId;
+  }
+
+  const department = deptId ? await prisma.department.findUnique({ where: { id: deptId } }) : null;
+  if (deptId && !department) throw new ApiError(400, 'Department not found.');
+
+  const results = [];
+  const errors = [];
+
+  await prisma.$transaction(async (tx) => {
+    for (let i = 0; i < risList.length; i++) {
+      const { purpose, items, remarks } = risList[i];
+      if (!purpose) { errors.push({ index: i, message: 'purpose is required' }); continue; }
+      if (!Array.isArray(items) || items.length === 0) { errors.push({ index: i, message: 'at least one item is required' }); continue; }
+
+      const theDept = department;
+      const risNumber = await generateRisNumber();
+      try {
+        const doc = await tx.ris.create({
+          data: {
+            risNumber,
+            departmentId: deptId || theDept?.id,
+            purpose,
+            requestedById: req.user.id,
+            remarks,
+            items: {
+              create: items.map((it) => ({
+                itemId: it.itemId,
+                quantityRequested: Number(it.quantityRequested) || 0,
+                unitCost: round2(it.unitCost) || 0,
+                remarks: it.remarks,
+              })),
+            },
+          },
+          include: RIS_INCLUDE,
+        });
+        for (const it of items) {
+          await tx.item.update({
+            where: { id: it.itemId },
+            data: { unitCost: round2(it.unitCost) || undefined },
+          });
+        }
+        results.push(doc);
+      } catch (err) {
+        errors.push({ index: i, message: err.message });
+      }
+    }
+  });
+
+  await writeAudit(req, 'CREATE', 'Ris', null, null, { created: results.length, attempted: risList.length });
+
+  if (results.length > 0) {
+    const notification = {
+      type: 'RIS',
+      title: `${results.length} new requisition(s) pending approval`,
+      message: `Bulk-created ${results.length} RIS: ${results.map((r) => r.risNumber).join(', ')}.`,
+    };
+    const approvers = await prisma.user.findMany({
+      where: { isActive: true, role: { in: ['ADMIN', 'PROPERTY_CUSTODIAN'] } },
+    });
+    if (approvers.length > 0) {
+      await prisma.notification.createMany({
+        data: approvers.map((u) => ({ ...notification, userId: u.id })),
+      });
+      const appUrl = (config.appUrl || '').replace(/\/$/, '');
+      const url = `${appUrl}/ris`;
+      const tpl = risCreated(
+        `${results.length} RIS created`,
+        department?.name || 'Multiple departments',
+        `Bulk requisition (${results.length} slips)`,
+        url
+      );
+      await sendMail({ to: approvers.map((u) => u.email).filter(Boolean).join(', '), subject: `Bulk RIS Created: ${results.length} slips`, text: tpl.text, html: tpl.html }).catch(() => {});
+    }
+    for (const ris of results) {
+      dispatch('ris.created', { risId: ris.id, risNumber: ris.risNumber, purpose: ris.purpose, department: department?.name, requestedBy: req.user.fullName });
+    }
+  }
+
+  res.status(201).json({
+    data: { created: results, errors },
+    message: `Bulk create: ${results.length} RIS created, ${errors.length} failed.`,
+  });
+}
+
 async function approveRis(req, res) {
-  const ris = await prisma.ris.findUnique({ where: { id: req.params.id }, include: { items: true, department: true } });
+  const ris = await prisma.ris.findUnique({
+    where: { id: req.params.id },
+    include: { items: { include: { item: true } }, department: true },
+  });
   if (!ris) throw new ApiError(404, 'RIS not found.');
   if (!['PENDING', 'REJECTED'].includes(ris.status)) {
     throw new ApiError(400, `Only pending or rejected RIS can be approved (current: ${ris.status}).`);
@@ -189,26 +286,59 @@ async function approveRis(req, res) {
     throw new ApiError(400, 'You cannot approve your own requisition.');
   }
 
-  const currentYear = new Date().getFullYear();
-  const budget = await prisma.budget.findFirst({
-    where: { departmentId: ris.departmentId, year: currentYear },
-  });
-  if (budget) {
-    const totalCost = ris.items.reduce((sum, line) => {
-      const qty = approvedItems ? (approvedItems.find((i) => i.itemId === line.itemId || i.risItemId === line.id)?.quantityApproved || line.quantityRequested) : line.quantityRequested;
-      return sum + qty * (line.unitCost || line.item.unitCost);
-    }, 0);
-    const remaining = budget.amount - budget.spent;
-    if (totalCost > remaining) {
-      throw new ApiError(400, `Insufficient budget. Requested: ₱${totalCost.toFixed(2)}, Remaining: ₱${remaining.toFixed(2)}.`);
-    }
-  }
-
   const approvedItems = (req.body.items || []).length > 0 ? req.body.items : null;
   const remarks = sanitizeString(req.body.remarks);
 
+  const approvals = ris.items.map((line) => {
+    const override = approvedItems ? approvedItems.find((i) => i.itemId === line.itemId || i.risItemId === line.id) : null;
+    let qtyApproved = line.quantityRequested;
+    if (override && override.quantityApproved !== undefined && override.quantityApproved !== null && override.quantityApproved !== '') {
+      qtyApproved = Number(override.quantityApproved);
+    }
+    if (!Number.isFinite(qtyApproved) || qtyApproved < 0) {
+      throw new ApiError(400, `Invalid approved quantity for "${line.item?.name || line.itemId}".`);
+    }
+    if (qtyApproved > line.quantityRequested) {
+      throw new ApiError(400, `Approved quantity cannot exceed requested (${line.quantityRequested}).`);
+    }
+    return { line, qtyApproved };
+  });
+
+  const totalCost = approvals.reduce((sum, a) => sum + a.qtyApproved * (a.line.unitCost || a.line.item?.unitCost || 0), 0);
+
   const updated = await prisma.$transaction(async (tx) => {
-    const doc = await tx.ris.update({
+    const budget = await tx.budget.findFirst({
+      where: { departmentId: ris.departmentId, year: new Date().getFullYear() },
+    });
+    if (budget) {
+      await tx.$queryRaw`SELECT "id" FROM "Budget" WHERE "id" = ${budget.id} FOR UPDATE`;
+    }
+    const budgetLocked = budget ? await tx.budget.findUnique({ where: { id: budget.id } }) : null;
+    if (budgetLocked) {
+      const remaining = budgetLocked.amount - budgetLocked.spent;
+      if (totalCost > remaining) {
+        throw new ApiError(400, `Insufficient budget. Requested: ₱${totalCost.toFixed(2)}, Remaining: ₱${remaining.toFixed(2)}.`);
+      }
+    }
+
+    for (const a of approvals) {
+      await tx.risItem.update({
+        where: { id: a.line.id },
+        data: {
+          quantityApproved: a.qtyApproved,
+          unitCost: round2(a.line.unitCost || a.line.item?.unitCost || 0),
+        },
+      });
+    }
+
+    if (budgetLocked) {
+      await tx.budget.update({
+        where: { id: budgetLocked.id },
+        data: { spent: { increment: totalCost } },
+      });
+    }
+
+    return tx.ris.update({
       where: { id: ris.id },
       data: {
         status: 'APPROVED',
@@ -218,52 +348,22 @@ async function approveRis(req, res) {
       },
       include: RIS_INCLUDE,
     });
-
-    for (const line of ris.items) {
-      const override = approvedItems ? approvedItems.find((i) => i.itemId === line.itemId || i.risItemId === line.id) : null;
-      let qtyApproved = override ? Number(override.quantityApproved) : line.quantityRequested;
-      if (qtyApproved > line.quantityRequested) {
-        throw new ApiError(400, `Approved quantity cannot exceed requested (${line.quantityRequested}).`);
-      }
-      await tx.risItem.update({
-        where: { id: line.id },
-        data: {
-          quantityApproved: qtyApproved,
-          unitCost: round2(line.unitCost || line.item.unitCost),
-        },
-      });
-    }
-
-    if (budget) {
-      const totalCost = ris.items.reduce((sum, line) => {
-        const qty = approvedItems ? (approvedItems.find((i) => i.itemId === line.itemId || i.risItemId === line.id)?.quantityApproved || line.quantityRequested) : line.quantityRequested;
-        return sum + qty * (line.unitCost || line.item.unitCost);
-      }, 0);
-      await tx.budget.update({
-        where: { id: budget.id },
-        data: { spent: { increment: totalCost } },
-      });
-    }
-
-    return tx.ris.findUnique({ where: { id: ris.id }, include: RIS_INCLUDE });
   });
 
   await writeAudit(req, 'APPROVE', 'Ris', ris.id, { status: ris.status }, { status: 'APPROVED' });
 
-  await prisma.notification.create({
-    data: {
-      userId: ris.requestedById,
-      type: 'RIS',
-      title: 'Requisition approved',
-      message: `${ris.risNumber} has been approved.`,
-    },
+  await notifyInApp({
+    userId: ris.requestedById,
+    type: 'RIS',
+    title: 'Requisition approved',
+    message: `${ris.risNumber} has been approved.`,
   });
 
   const appUrl = (config.appUrl || '').replace(/\/$/, '');
   const url = `${appUrl}/ris`;
   const tpl = risStatusChange(ris.risNumber, 'APPROVED', url);
   const requester = await prisma.user.findUnique({ where: { id: ris.requestedById } });
-  if (requester?.email) {
+  if (requester?.email && (await emailAllowed(requester.id, 'RIS'))) {
     await sendMail({ to: requester.email, subject: tpl.subject, text: tpl.text, html: tpl.html }).catch(() => {});
   }
 
@@ -271,7 +371,10 @@ async function approveRis(req, res) {
 }
 
 async function rejectRis(req, res) {
-  const ris = await prisma.ris.findUnique({ where: { id: req.params.id }, include: { items: true } });
+  const ris = await prisma.ris.findUnique({
+    where: { id: req.params.id },
+    include: { items: { include: { item: true } } },
+  });
   if (!ris) throw new ApiError(404, 'RIS not found.');
   if (!['PENDING', 'APPROVED'].includes(ris.status)) {
     throw new ApiError(400, `Only pending or approved RIS can be rejected (current: ${ris.status}).`);
@@ -296,7 +399,7 @@ async function rejectRis(req, res) {
         where: { departmentId: ris.departmentId, year: currentYear },
       });
       if (budget) {
-        const totalCost = ris.items.reduce((sum, line) => sum + line.quantityApproved * (line.unitCost || line.item.unitCost), 0);
+        const totalCost = ris.items.reduce((sum, line) => sum + line.quantityApproved * (line.unitCost || line.item?.unitCost || 0), 0);
         await tx.budget.update({
           where: { id: budget.id },
           data: { spent: { decrement: totalCost } },
@@ -308,20 +411,18 @@ async function rejectRis(req, res) {
   });
 
   await writeAudit(req, 'REJECT', 'Ris', ris.id, { status: ris.status }, { status: 'REJECTED' });
-  await prisma.notification.create({
-    data: {
-      userId: ris.requestedById,
-      type: 'RIS',
-      title: 'Requisition rejected',
-      message: `${ris.risNumber} was rejected. Reason: ${reason}`,
-    },
+  await notifyInApp({
+    userId: ris.requestedById,
+    type: 'RIS',
+    title: 'Requisition rejected',
+    message: `${ris.risNumber} was rejected. Reason: ${reason}`,
   });
 
   const appUrl = (config.appUrl || '').replace(/\/$/, '');
   const url = `${appUrl}/ris`;
   const tpl = risStatusChange(ris.risNumber, 'REJECTED', url);
   const requester = await prisma.user.findUnique({ where: { id: ris.requestedById } });
-  if (requester?.email) {
+  if (requester?.email && (await emailAllowed(requester.id, 'RIS'))) {
     await sendMail({ to: requester.email, subject: tpl.subject, text: tpl.text, html: tpl.html }).catch(() => {});
   }
 
@@ -333,6 +434,9 @@ async function certifyRis(req, res) {
   if (!ris) throw new ApiError(404, 'RIS not found.');
   if (ris.status !== 'APPROVED') {
     throw new ApiError(400, `Only approved RIS can be certified (current: ${ris.status}).`);
+  }
+  if (req.user.id === ris.requestedById) {
+    throw new ApiError(400, 'You cannot certify your own requisition.');
   }
 
   const updated = await prisma.ris.update({
@@ -346,20 +450,18 @@ async function certifyRis(req, res) {
   });
 
   await writeAudit(req, 'CERTIFY', 'Ris', ris.id, { status: ris.status }, { status: 'CERTIFIED' });
-  await prisma.notification.create({
-    data: {
-      userId: ris.requestedById,
-      type: 'RIS',
-      title: 'Requisition certified',
-      message: `${ris.risNumber} has been certified and is ready for issuance.`,
-    },
+  await notifyInApp({
+    userId: ris.requestedById,
+    type: 'RIS',
+    title: 'Requisition certified',
+    message: `${ris.risNumber} has been certified and is ready for issuance.`,
   });
 
   const appUrl = (config.appUrl || '').replace(/\/$/, '');
   const url = `${appUrl}/ris`;
   const tpl = risStatusChange(ris.risNumber, 'CERTIFIED', url);
   const requester = await prisma.user.findUnique({ where: { id: ris.requestedById } });
-  if (requester?.email) {
+  if (requester?.email && (await emailAllowed(requester.id, 'RIS'))) {
     await sendMail({ to: requester.email, subject: tpl.subject, text: tpl.text, html: tpl.html }).catch(() => {});
   }
 
@@ -378,7 +480,7 @@ async function issueRis(req, res) {
   const shortfalls = [];
 
   await prisma.$transaction(async (tx) => {
-    const lines = await tx.risItem.findMany({ where: { risId: ris.id }, include: { item: true } });
+    const lines = await tx.risItem.findMany({ where: { risId: ris.id } });
 
     for (const line of lines) {
       const override = overrides ? overrides.find((i) => i.itemId === line.itemId || i.risItemId === line.id) : null;
@@ -386,20 +488,27 @@ async function issueRis(req, res) {
       if (remaining <= 0) continue;
 
       let toIssue = remaining;
-      if (override && Number.isFinite(Number(override.quantityIssued))) {
+      if (override && override.quantityIssued !== undefined && override.quantityIssued !== null && override.quantityIssued !== '') {
         toIssue = Number(override.quantityIssued);
+        if (!Number.isFinite(toIssue) || toIssue < 0) {
+          throw new ApiError(400, `Invalid issue quantity for line ${line.itemId}.`);
+        }
         if (toIssue > remaining) {
           throw new ApiError(400, `Cannot issue more than approved (requested ${line.quantityApproved}, already issued ${line.quantityIssued}, remaining ${remaining}).`);
         }
       }
 
-      if (toIssue > line.item.currentStock) {
-        shortfalls.push({ itemId: line.itemId, itemName: line.item.name, requested: toIssue, available: line.item.currentStock, issued: line.item.currentStock });
-        toIssue = line.item.currentStock;
+      await tx.$queryRaw`SELECT "id" FROM "Item" WHERE "id" = ${line.itemId} FOR UPDATE`;
+      const item = await tx.item.findUnique({ where: { id: line.itemId } });
+      if (!item) continue;
+
+      if (toIssue > item.currentStock) {
+        shortfalls.push({ itemId: line.itemId, itemName: item.name, requested: toIssue, available: item.currentStock, issued: item.currentStock });
+        toIssue = item.currentStock;
       }
       if (toIssue <= 0) continue;
 
-      const newBalance = line.item.currentStock - toIssue;
+      const newBalance = item.currentStock - toIssue;
       const newIssued = line.quantityIssued + toIssue;
 
       await tx.item.update({ where: { id: line.itemId }, data: { currentStock: newBalance } });
@@ -419,7 +528,7 @@ async function issueRis(req, res) {
         where: { id: line.id },
         data: {
           quantityIssued: newIssued,
-          unitCost: round2(line.unitCost || line.item.unitCost),
+          unitCost: round2(line.unitCost || 0),
         },
       });
     }
@@ -441,20 +550,18 @@ async function issueRis(req, res) {
     await notifyLowStock(line.item);
   }
 
-  await prisma.notification.create({
-    data: {
-      userId: ris.requestedById,
-      type: 'RIS',
-      title: 'Requisition issued',
-      message: `${ris.risNumber} was issued (${updated.status.toLowerCase().replace('_', ' ')}).`,
-    },
+  await notifyInApp({
+    userId: ris.requestedById,
+    type: 'RIS',
+    title: 'Requisition issued',
+    message: `${ris.risNumber} was issued (${updated.status.toLowerCase().replace('_', ' ')}).`,
   });
 
   const appUrl = (config.appUrl || '').replace(/\/$/, '');
   const url = `${appUrl}/ris`;
   const tpl = risStatusChange(ris.risNumber, updated.status, url);
   const requester = await prisma.user.findUnique({ where: { id: ris.requestedById } });
-  if (requester?.email) {
+  if (requester?.email && (await emailAllowed(requester.id, 'RIS'))) {
     await sendMail({ to: requester.email, subject: tpl.subject, text: tpl.text, html: tpl.html }).catch(() => {});
   }
 
@@ -477,6 +584,7 @@ async function cancelRis(req, res) {
     if (['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status)) {
       for (const line of ris.items) {
         if (line.quantityIssued > 0) {
+          await tx.$queryRaw`SELECT "id" FROM "Item" WHERE "id" = ${line.itemId} FOR UPDATE`;
           const item = await tx.item.findUnique({ where: { id: line.itemId } });
           if (!item) continue;
           const newStock = item.currentStock + line.quantityIssued;
@@ -512,7 +620,7 @@ async function cancelRis(req, res) {
         where: { departmentId: ris.departmentId, year: currentYear },
       });
       if (budget) {
-        const totalCost = ris.items.reduce((sum, line) => sum + line.quantityApproved * (line.unitCost || line.item.unitCost), 0);
+        const totalCost = ris.items.reduce((sum, line) => sum + line.quantityApproved * (line.unitCost || line.item?.unitCost || 0), 0);
         await tx.budget.update({
           where: { id: budget.id },
           data: { spent: { decrement: totalCost } },
@@ -524,6 +632,12 @@ async function cancelRis(req, res) {
   });
 
   await writeAudit(req, 'CANCEL', 'Ris', ris.id, { status: ris.status }, { status: 'CANCELLED', restored: ['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status) });
+  await notifyInApp({
+    userId: ris.requestedById,
+    type: 'RIS',
+    title: 'Requisition cancelled',
+    message: `${ris.risNumber} was cancelled. Reason: ${remarks}`,
+  });
   res.json({ data: updated });
 }
 
@@ -582,13 +696,11 @@ async function returnRisItems(req, res) {
 
   await writeAudit(req, 'RETURN', 'Ris', ris.id, { status: ris.status }, { status: updated.status, returns: returns.length });
 
-  await prisma.notification.create({
-    data: {
-      userId: ris.requestedBy.id,
-      type: 'RIS',
-      title: 'Items returned to stock',
-      message: `${ris.risNumber} — returned items have been restocked.`,
-    },
+  await notifyInApp({
+    userId: ris.requestedById,
+    type: 'RIS',
+    title: 'Items returned to stock',
+    message: `${ris.risNumber} — returned items have been restocked.`,
   });
 
   res.json({ data: updated });
@@ -598,6 +710,7 @@ module.exports = {
   listRis,
   getRis,
   createRis,
+  bulkCreateRis,
   approveRis,
   rejectRis,
   certifyRis,

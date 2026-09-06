@@ -10,6 +10,7 @@ const { authLimiter, strictAuthLimiter, writeLimiter } = require('./middleware/r
 const { apiKeyAuth } = require('./middleware/apiKey');
 const { uploadDir } = require('./middleware/upload');
 const CsrfMiddleware = require('./middleware/csrf');
+const { tenantMiddleware } = require('./middleware/tenant');
 
 const app = express();
 
@@ -19,7 +20,15 @@ if (process.env.SENTRY_DSN) {
   app.use(Sentry.Handlers.requestHandler());
 }
 
-const csrf = CsrfMiddleware();
+const csrf = CsrfMiddleware([
+  '/auth/login',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/2fa/login',
+  '/auth/refresh-token',
+  '/auth/logout',
+  '/auth/logout-all',
+]);
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {

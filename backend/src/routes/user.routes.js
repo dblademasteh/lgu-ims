@@ -4,8 +4,9 @@ const userController = require('../controllers/userController');
 
 const router = Router();
 
-router.get('/stats/dashboard', userController.dashboardStats);
-
+router.get('/stats/dashboard', authenticate, userController.dashboardStats);
+router.get('/me', authenticate, userController.getMe);
+router.patch('/me', authenticate, userController.updateMe);
 router.get('/', authenticate, authorize('ADMIN', 'AUDITOR', 'PROPERTY_CUSTODIAN'), userController.listUsers);
 router.post('/', authenticate, authorize('ADMIN'), userController.createUser);
 router.post('/import', authenticate, authorize('ADMIN'), userController.importUsers);

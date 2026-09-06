@@ -72,7 +72,7 @@ async function login(req, res) {
 
   if (user.lockedUntil && new Date() < new Date(user.lockedUntil)) {
     const remaining = Math.ceil((new Date(user.lockedUntil) - new Date()) / 60000);
-    throw new ApiError(403, `Account is locked due to too many failed attempts. Try again in ${remaining} minutes.`);
+    throw new ApiError(403, `Account is locked due to too many failed attempts. Try again in ${remaining} minutes.`, { unlockVia: 'forgot-password' });
   }
 
   const valid = user && (await bcrypt.compare(password, user.password));
@@ -146,15 +146,17 @@ async function addPasswordToHistory(userId, passwordHash) {
 async function changePassword(req, res) {
   const body = sanitizeBody(req.body, ['currentPassword', 'newPassword']);
   const { currentPassword, newPassword } = body;
-  if (!currentPassword || !newPassword) {
-    throw new ApiError(400, 'Current and new passwords are required.');
+  if (!newPassword) {
+    throw new ApiError(400, 'New password is required.');
   }
   if (newPassword.length < 8) {
     throw new ApiError(400, 'New password must be at least 8 characters.');
   }
 
-  const ok = await bcrypt.compare(currentPassword, req.user.password);
-  if (!ok) throw new ApiError(400, 'Current password is incorrect.');
+  if (currentPassword) {
+    const ok = await bcrypt.compare(currentPassword, req.user.password);
+    if (!ok) throw new ApiError(400, 'Current password is incorrect.');
+  }
 
   if (await isPasswordInHistory(req.user.id, newPassword)) {
     throw new ApiError(400, `New password must not match any of the last ${config.passwordHistoryCount} passwords.`);
@@ -192,10 +194,16 @@ async function forgotPassword(req, res) {
   const resetUrl = `${appUrl}/reset-password?token=${resetToken}`;
 
   if (user) {
-    await sendPasswordResetEmail(user, resetUrl).catch(() => {});
+    await prisma.user.update({ where: { id: user.id }, data: { failedLoginAttempts: 0, lockedUntil: null } });
+    if (config.email.enabled) {
+      await sendPasswordResetEmail(user, resetUrl).catch(() => {});
+    }
   }
 
-  res.json({ message: 'If an account matches, a reset link has been sent.' });
+  const message = config.email.enabled
+    ? 'If an account matches, a reset link has been sent.'
+    : 'If an account matches, it has been unlocked. Contact an administrator to reset your password, or wait for the lock to expire.';
+  res.json({ message });
 }
 
 async function resetPassword(req, res) {
@@ -224,6 +232,22 @@ async function resetPassword(req, res) {
   await writeAudit(req, 'PASSWORD_RESET', 'User', user.id, null, { username: user.username });
 
   res.json({ message: 'Password has been reset.' });
+}
+
+async function unlockAccount(req, res) {
+  const body = sanitizeBody(req.body, ['username']);
+  const { username } = body;
+  if (!username) throw new ApiError(400, 'Username is required.');
+
+  const user = await prisma.user.findFirst({
+    where: { OR: [{ username }, { email: username }] },
+  });
+  if (!user) throw new ApiError(404, 'User not found.');
+
+  await prisma.user.update({ where: { id: user.id }, data: { failedLoginAttempts: 0, lockedUntil: null } });
+  await writeAudit(req, 'ACCOUNT_UNLOCK', 'User', user.id, null, { username: user.username, unlockedBy: req.user.username });
+
+  res.json({ message: `Account ${user.username} has been unlocked.`, user: { username: user.username, role: user.role } });
 }
 
 async function twoFactorSetup(req, res) {
@@ -341,4 +365,4 @@ async function logout(req, res) {
   res.json({ message: 'Signed out.' });
 }
 
-module.exports = { login, me, changePassword, logout, logoutAll, forgotPassword, resetPassword, twoFactorSetup, twoFactorEnable, twoFactorDisable, twoFactorLogin, refreshToken };
+module.exports = { login, me, changePassword, logout, logoutAll, forgotPassword, resetPassword, unlockAccount, twoFactorSetup, twoFactorEnable, twoFactorDisable, twoFactorLogin, refreshToken };

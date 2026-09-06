@@ -18,6 +18,11 @@ const useAuthStore = create((set, get) => ({
     localStorage.removeItem('lgu_user');
     set({ token: null, refreshToken: null, user: null });
   },
+
+  setUser: (user) => {
+    localStorage.setItem('lgu_user', JSON.stringify(user));
+    set({ user });
+  },
 }));
 
 export function useCan(...roles) {

@@ -21,6 +21,7 @@ export function ToastProvider({ children }) {
       success: (m) => push(m, 'success'),
       error: (m) => push(m, 'error'),
       info: (m) => push(m, 'info'),
+      warning: (m) => push(m, 'warning'),
     },
     [push]
   );
@@ -30,9 +31,9 @@ export function ToastProvider({ children }) {
       {children}
       <div className="toast toast-end toast-bottom z-[100]">
         {toasts.map((t) => (
-          <div key={t.id} role="alert" className={`alert ${t.type === 'success' ? 'alert-success' : t.type === 'error' ? 'alert-error' : 'alert-info'}`}>
+          <div key={t.id} role="alert" className={`alert ${t.type === 'success' ? 'alert-success' : t.type === 'error' ? 'alert-error' : t.type === 'warning' ? 'alert-warning' : 'alert-info'}`}>
             <span>{t.message}</span>
-            <button className="btn btn-ghost btn-sm" onClick={() => dismiss(t.id)}>✕</button>
+            <button className="btn btn-ghost btn-sm" aria-label="Dismiss notification" onClick={() => dismiss(t.id)}>✕</button>
           </div>
         ))}
       </div>

@@ -4,12 +4,12 @@ import { useToast } from '../components/Toast';
 import PageHeader, { EmptyState, Spinner } from '../components/ui';
 
 const TYPE_BADGE = {
-  OPENING_BALANCE: 'bg-neutral/10 text-neutral',
-  RECEIPT: 'bg-success/10 text-success',
-  ISSUANCE: 'bg-error/10 text-error',
-  ADJUSTMENT_IN: 'bg-success/10 text-success',
-  ADJUSTMENT_OUT: 'bg-error/10 text-error',
-  RETURN: 'bg-info/10 text-info',
+  OPENING_BALANCE: 'badge-ghost',
+  RECEIPT: 'badge-success',
+  ISSUANCE: 'badge-error',
+  ADJUSTMENT_IN: 'badge-success',
+  ADJUSTMENT_OUT: 'badge-error',
+  RETURN: 'badge-info',
 };
 
 const TYPE_LABEL = {
@@ -105,7 +105,7 @@ export default function LedgerPage() {
                 <EmptyState message="No ledger entries for this item yet." />
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="table table-sm">
+                  <table className="table table-sm" aria-label={`Ledger entries for ${card?.item?.name || 'selected item'}`}>
                     <thead>
                       <tr>
                         <th>Date</th>

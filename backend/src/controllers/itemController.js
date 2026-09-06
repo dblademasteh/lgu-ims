@@ -92,42 +92,52 @@ async function createItem(req, res) {
   if (!sku || !name || !categoryId || !unit) {
     throw new ApiError(400, 'sku, name, categoryId and unit are required.');
   }
-
-  const item = await prisma.item.create({
-    data: {
-      sku,
-      name,
-      description,
-      categoryId,
-      unit,
-      reorderThreshold: Number(reorderThreshold) || 0,
-      maxStock: Number(maxStock) || 0,
-      currentStock: Number(currentStock) || 0,
-      unitCost: Number(unitCost) || 0,
-      stockNumber: stockNumber || null,
-      fundCluster: fundCluster || null,
-      isAccountable: Boolean(isAccountable),
-      condition: condition || 'SERVICEABLE',
-      expiryDate: expiryDate ? new Date(expiryDate) : null,
-      warrantyExpiry: warrantyExpiry ? new Date(warrantyExpiry) : null,
-      isActive: true,
-    },
-    include: { category: true },
-  });
-
-  if (item.currentStock > 0) {
-    await prisma.ledgerEntry.create({
-      data: {
-        itemId: item.id,
-        referenceType: 'OPENING_BALANCE',
-        remarks: 'Initial stock on item creation',
-        inflow: item.currentStock,
-        runningBalance: item.currentStock,
-        createdById: req.user.id,
-      },
-    });
+  const startingStock = Number(currentStock) || 0;
+  const reorder = Number(reorderThreshold) || 0;
+  const cap = Number(maxStock) || 0;
+  if (startingStock < 0 || reorder < 0 || cap < 0) {
+    throw new ApiError(400, 'Stock quantities cannot be negative.');
   }
 
+  const result = await prisma.$transaction(async (tx) => {
+    const item = await tx.item.create({
+      data: {
+        sku,
+        name,
+        description,
+        categoryId,
+        unit,
+        reorderThreshold: reorder,
+        maxStock: cap,
+        currentStock: startingStock,
+        unitCost: Number(unitCost) || 0,
+        stockNumber: stockNumber || null,
+        fundCluster: fundCluster || null,
+        isAccountable: Boolean(isAccountable),
+        condition: condition || 'SERVICEABLE',
+        expiryDate: expiryDate ? new Date(expiryDate) : null,
+        warrantyExpiry: warrantyExpiry ? new Date(warrantyExpiry) : null,
+        isActive: true,
+      },
+      include: { category: true },
+    });
+
+    if (item.currentStock > 0) {
+      await tx.ledgerEntry.create({
+        data: {
+          itemId: item.id,
+          referenceType: 'OPENING_BALANCE',
+          remarks: 'Initial stock on item creation',
+          inflow: item.currentStock,
+          runningBalance: item.currentStock,
+          createdById: req.user.id,
+        },
+      });
+    }
+    return item;
+  });
+
+  const item = result;
   await writeAudit(req, 'CREATE', 'Item', item.id, null, {
     sku: item.sku, name: item.name, currentStock: item.currentStock,
   });
@@ -208,22 +218,27 @@ async function adjustStock(req, res) {
     type = referenceType === 'RETURN' ? 'RETURN' : 'ADJUSTMENT_OUT';
   }
 
-  const item = await prisma.item.findUnique({ where: { id } });
-  if (!item) throw new ApiError(404, 'Item not found.');
+  const result = await prisma.$transaction(async (tx) => {
+    const item = await tx.$queryRaw`SELECT * FROM "Item" WHERE "id" = ${id} FOR UPDATE`;
+    if (!item || item.length === 0) throw new ApiError(404, 'Item not found.');
+    const currentItem = item[0];
 
-  if (operation === 'OUT' && qty > item.currentStock) {
-    throw new ApiError(400, `Insufficient stock. Available: ${item.currentStock} ${item.unit}.`);
-  }
+    if (operation === 'OUT' && qty > currentItem.currentStock) {
+      throw new ApiError(400, `Insufficient stock. Available: ${currentItem.currentStock} ${currentItem.unit}.`);
+    }
 
-  const inflow = operation === 'IN' ? qty : 0;
-  const outflow = operation === 'OUT' ? qty : 0;
-  const newBalance = item.currentStock + (operation === 'IN' ? qty : -qty);
+    const inflow = operation === 'IN' ? qty : 0;
+    const outflow = operation === 'OUT' ? qty : 0;
+    const newBalance = currentItem.currentStock + (operation === 'IN' ? qty : -qty);
 
-  const [updated] = await Promise.all([
-    prisma.item.update({ where: { id }, data: { currentStock: newBalance } }),
-    prisma.ledgerEntry.create({
+    const updated = await tx.item.update({
+      where: { id },
+      data: { currentStock: newBalance },
+    });
+
+    await tx.ledgerEntry.create({
       data: {
-        itemId: item.id,
+        itemId: currentItem.id,
         referenceType: type,
         referenceId,
         date: new Date(),
@@ -233,10 +248,13 @@ async function adjustStock(req, res) {
         remarks: reason,
         createdById: req.user.id,
       },
-    }),
-  ]);
+    });
 
-  await writeAudit(req, 'ADJUST', 'Item', item.id, { currentStock: item.currentStock }, { currentStock: newBalance, operation, quantity: qty, referenceType: type });
+    return updated;
+  });
+
+  const updated = result;
+  await writeAudit(req, 'ADJUST', 'Item', id, { currentStock: (await prisma.item.findUnique({where:{id}})).currentStock }, { currentStock: updated.currentStock, operation, quantity: qty, referenceType: type });
   await notifyLowStock(updated);
 
   res.json({ data: { ...updated, lowStock: updated.currentStock <= updated.reorderThreshold }, message: 'Stock adjusted.' });
@@ -330,10 +348,19 @@ async function importItems(req, res) {
     const categoryCache = new Map();
     const getCategory = async (name) => {
       if (!name) throw new Error('category is required');
-      if (categoryCache.has(name)) return categoryCache.get(name);
-      let cat = await tx.category.findUnique({ where: { name } });
-      if (!cat) cat = await tx.category.create({ data: { name } });
-      categoryCache.set(name, cat);
+      const normalized = name.trim();
+      if (categoryCache.has(normalized)) return categoryCache.get(normalized);
+      let cat = await tx.category.findFirst({
+        where: { name: { equals: normalized, mode: 'insensitive' } },
+      });
+      if (!cat) {
+        const titleName = normalized.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
+        cat = await tx.category.findFirst({
+          where: { name: { equals: titleName, mode: 'insensitive' } },
+        });
+      }
+      if (!cat) cat = await tx.category.create({ data: { name: normalized } });
+      categoryCache.set(normalized, cat);
       return cat;
     };
 
@@ -348,6 +375,11 @@ async function importItems(req, res) {
       }
       try {
         const category = await getCategory(row[iCategory]);
+        const qty = iQty >= 0 ? Number(row[iQty]) || 0 : 0;
+        if (qty < 0) {
+          errors.push(`Row ${r + 1} (${sku}): currentStock cannot be negative — skipped.`);
+          continue;
+        }
         const existing = await tx.item.findUnique({ where: { sku } });
         const data = {
           name,
@@ -356,13 +388,33 @@ async function importItems(req, res) {
           unit,
           reorderThreshold: iReorder >= 0 ? Number(row[iReorder]) || 0 : 0,
           maxStock: iMaxStock >= 0 ? Number(row[iMaxStock]) || 0 : 0,
-          currentStock: iQty >= 0 ? Number(row[iQty]) || 0 : 0,
+          currentStock: qty,
           unitCost: iCost >= 0 ? Number(row[iCost]) || 0 : 0,
           stockNumber: iStockNumber >= 0 ? row[iStockNumber] || null : null,
           fundCluster: iFundCluster >= 0 ? row[iFundCluster] || null : null,
         };
         if (existing) {
           await tx.item.update({ where: { sku }, data: { ...data, sku } });
+          const priorBalance = await tx.ledgerEntry.aggregate({
+            where: { itemId: existing.id },
+            _sum: { inflow: true, outflow: true },
+          });
+          const ledgerPrev = (priorBalance._sum.inflow || 0) - (priorBalance._sum.outflow || 0);
+          if (Math.abs(qty - ledgerPrev) > 0.001) {
+            const diff = qty - ledgerPrev;
+            await tx.ledgerEntry.create({
+              data: {
+                itemId: existing.id,
+                referenceType: diff > 0 ? 'ADJUSTMENT_IN' : 'ADJUSTMENT_OUT',
+                date: new Date(),
+                inflow: diff > 0 ? diff : 0,
+                outflow: diff < 0 ? Math.abs(diff) : 0,
+                runningBalance: qty,
+                remarks: 'CSV import stock adjustment',
+                createdById: req.user.id,
+              },
+            });
+          }
           updated += 1;
         } else {
           const item = await tx.item.create({ data: { ...data, sku, isActive: true } });

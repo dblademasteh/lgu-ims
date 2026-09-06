@@ -6,7 +6,7 @@ const config = require('../config');
 
 const router = Router();
 
-router.get('/backup', authenticate, authorize('ADMIN'), async (req, res) => {
+router.get('/', authenticate, authorize('ADMIN'), async (req, res) => {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) throw new Error('DATABASE_URL not set.');
 

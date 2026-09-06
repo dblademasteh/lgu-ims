@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const { authenticate, authorize, ROLES } = require('../middleware/auth');
+const { tenantMiddleware } = require('../middleware/tenant');
 const { getStats: getEmailStats } = require('../services/queue');
 const { listFlags, setFlag, getFlag } = require('../services/featureFlags');
 
@@ -21,6 +22,7 @@ const budgetRoutes = require('./budget.routes');
 const physicalCountRoutes = require('./physicalCount.routes');
 const apiKeyRoutes = require('./apiKey.routes');
 const backupRoutes = require('./backup.routes');
+const tenantRoutes = require('./tenant.routes');
 
 const router = Router();
 
@@ -28,6 +30,8 @@ router.use('/auth', authRoutes);
 
 // Everything below requires authentication
 router.use(authenticate);
+router.use(tenantMiddleware);
+router.use('/tenants', tenantRoutes);
 router.use('/users', userRoutes);
 router.use('/items', itemRoutes);
 router.use('/categories', categoryRoutes);

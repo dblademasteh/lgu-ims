@@ -4,38 +4,50 @@ import useAuthStore, { useCan } from '../stores/authStore';
 import { useToast } from '../components/Toast';
 import PageHeader, { Spinner, Pagination } from '../components/ui';
 
+function todayLocal() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export default function ReceivingPage() {
   const toast = useToast();
   const canManage = useCan('ADMIN', 'WAREHOUSE_STAFF');
   const [suppliers, setSuppliers] = useState([]);
   const [items, setItems] = useState([]);
   const [receivings, setReceivings] = useState([]);
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
+  const [poId, setPoId] = useState('');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [supplierOpen, setSupplierOpen] = useState(false);
   const [supplierForm, setSupplierForm] = useState({ name: '', contact: '', phone: '', email: '', address: '' });
-  const [form, setForm] = useState({ supplierId: '', receivingNo: '', receiptDate: new Date().toISOString().slice(0,10), poNumber: '', drNumber: '', remarks: '', lines: [{ itemId: '', quantity: 1, unitCost: 0, remarks: '' }] });
+  const [form, setForm] = useState({ supplierId: '', receivingNo: '', receiptDate: todayLocal(), poNumber: '', drNumber: '', remarks: '', purchaseOrderId: '', lines: [{ itemId: '', quantity: 1, unitCost: 0, remarks: '' }] });
   const [printRec, setPrintRec] = useState(null);
   const [editRec, setEditRec] = useState(null);
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState(null);
   const [detailRec, setDetailRec] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [supplierBusy, setSupplierBusy] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
       const q = new URLSearchParams({ page: String(page), limit: '20' });
       if (search) q.set('search', search);
-      const [sup, itm, rec] = await Promise.all([
+      const [sup, itm, rec, po] = await Promise.all([
         api.get('/inventory/suppliers'),
         api.get('/items?limit=200&isActive=true'),
         api.get(`/inventory/receivings?${q}`),
+        api.get('/purchase-orders?limit=200'),
       ]);
       setSuppliers(sup.data.data);
       setItems(itm.data.data);
       setReceivings(rec.data);
+      setPurchaseOrders(po.data.data || []);
     } catch (e) {
       toast.error(e.response?.data?.message || 'Unable to load.');
     } finally {
@@ -52,6 +64,10 @@ export default function ReceivingPage() {
 
   const submit = async (e) => {
     e.preventDefault();
+    const valid = form.lines.filter(l => l.itemId && Number(l.quantity) > 0);
+    if (!form.supplierId) { toast.error('Select a supplier.'); return; }
+    if (valid.length === 0) { toast.error('Add at least one line with a quantity greater than zero.'); return; }
+    setBusy(true);
     try {
       await api.post('/inventory/receivings', {
         supplierId: form.supplierId,
@@ -60,19 +76,24 @@ export default function ReceivingPage() {
         poNumber: form.poNumber,
         drNumber: form.drNumber,
         remarks: form.remarks,
-        items: form.lines.filter(l => l.itemId).map(l => ({ itemId: l.itemId, quantity: Number(l.quantity), unitCost: Number(l.unitCost) || 0, remarks: l.remarks })),
+        purchaseOrderId: form.purchaseOrderId || undefined,
+        items: valid.map(l => ({ itemId: l.itemId, quantity: Number(l.quantity), unitCost: Number(l.unitCost) || 0, remarks: l.remarks })),
       });
       toast.success('Receiving recorded.');
       setOpen(false);
+      setPoId('');
       setPage(1);
       load();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Unable to save.');
+    } finally {
+      setBusy(false);
     }
   };
 
   const createSupplier = async (e) => {
     e.preventDefault();
+    setSupplierBusy(true);
     try {
       const res = await api.post('/inventory/suppliers', supplierForm);
       toast.success('Supplier created.');
@@ -82,20 +103,48 @@ export default function ReceivingPage() {
       setForm(f => ({ ...f, supplierId: res.data.data.id }));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Unable to create supplier.');
+    } finally {
+      setSupplierBusy(false);
     }
+  };
+
+  const selectPo = (id) => {
+    const po = purchaseOrders.find((p) => p.id === id);
+    if (!po) {
+      setPoId('');
+      return;
+    }
+    const remainingLines = (po.items || [])
+      .filter((pi) => pi.item && pi.quantity > (pi.receivedQuantity || 0))
+      .map((pi) => ({
+        itemId: pi.itemId,
+        quantity: Number((pi.quantity - (pi.receivedQuantity || 0)).toFixed(2)),
+        unitCost: Number(pi.unitCost) || 0,
+        remarks: `PO ${po.poNumber}`,
+      }));
+    setPoId(po.id);
+    setForm((f) => ({
+      ...f,
+      purchaseOrderId: po.id,
+      supplierId: f.supplierId || po.supplierId,
+      poNumber: po.poNumber,
+      lines: remainingLines.length > 0 ? remainingLines : f.lines,
+    }));
   };
 
   const openEdit = async (r) => {
     const res = await api.get(`/inventory/receivings/${r.id}`);
     const rec = res.data.data;
     setEditRec(rec);
+    setPoId(rec.purchaseOrderId || '');
     setForm({
       supplierId: rec.supplierId,
       receivingNo: rec.receivingNo,
-      receiptDate: new Date(rec.receiptDate).toISOString().slice(0,10),
+      receiptDate: String(rec.receiptDate).slice(0,10),
       poNumber: rec.poNumber || '',
       drNumber: rec.drNumber || '',
       remarks: rec.remarks || '',
+      purchaseOrderId: rec.purchaseOrderId || '',
       lines: rec.items.map(ri => ({ itemId: ri.itemId, quantity: Number(ri.quantity), unitCost: Number(ri.unitCost) || 0, remarks: ri.remarks || '' })),
     });
   };
@@ -103,6 +152,7 @@ export default function ReceivingPage() {
   const submitEdit = async (e) => {
     e.preventDefault();
     if (!editRec) return;
+    setBusy(true);
     try {
       await api.patch(`/inventory/receivings/${editRec.id}`, {
         supplierId: form.supplierId,
@@ -111,14 +161,18 @@ export default function ReceivingPage() {
         poNumber: form.poNumber,
         drNumber: form.drNumber,
         remarks: form.remarks,
+        purchaseOrderId: form.purchaseOrderId || undefined,
         items: form.lines.filter(l => l.itemId).map(l => ({ itemId: l.itemId, quantity: Number(l.quantity), unitCost: Number(l.unitCost) || 0, remarks: l.remarks })),
       });
       toast.success('Receiving updated.');
       setEditRec(null);
       setOpen(false);
+      setPoId('');
       load();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Unable to update receiving.');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -138,40 +192,121 @@ export default function ReceivingPage() {
     <div>
       <PageHeader title="Receiving / Purchases" subtitle="Record stock receipts from suppliers" actions={
         <>
-          {canManage && <button className="btn btn-outline" onClick={() => setSupplierOpen(true)}>Add Supplier</button>}
-          {canManage && <button className="btn btn-primary" onClick={() => { setEditRec(null); setForm({ supplierId: '', receivingNo: '', receiptDate: new Date().toISOString().slice(0,10), poNumber: '', drNumber: '', remarks: '', lines: [{ itemId: '', quantity: 1, unitCost: 0, remarks: '' }] }); setOpen(true); }}>New Receiving</button>}
+          {canManage && (
+            <button className="btn btn-outline btn-sm gap-2" onClick={() => setSupplierOpen(true)}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Add Supplier
+            </button>
+          )}
+          {canManage && (
+            <button className="btn btn-primary btn-sm gap-2" onClick={() => { setEditRec(null); setPoId(''); setForm({ supplierId: '', receivingNo: '', receiptDate: todayLocal(), poNumber: '', drNumber: '', remarks: '', purchaseOrderId: '', lines: [{ itemId: '', quantity: 1, unitCost: 0, remarks: '' }] }); setOpen(true); }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              New Receiving
+            </button>
+          )}
         </>
       } />
-      <div className="card bg-base-100 shadow-sm">
-        <div className="card-body">
-          <div className="flex flex-col md:flex-row gap-3 mb-4">
-            <label className="input flex-1 md:max-w-xs">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 0 0114 0z" /></svg>
-              <input type="search" className="flex-1" placeholder="Search receiving no, PO, supplier..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
-            </label>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="stat bg-base-100 shadow-sm border border-base-200">
+          <div className="stat-title">Total Receipts</div>
+          <div className="stat-value text-primary">{receivings.data?.length || 0}</div>
+          <div className="stat-desc">Current page</div>
+        </div>
+        <div className="stat bg-base-100 shadow-sm border border-base-200">
+          <div className="stat-title">Total Items Received</div>
+          <div className="stat-value text-secondary">
+            {receivings.data?.reduce((acc, r) => acc + (r.items?.length || 0), 0)}
           </div>
+          <div className="stat-desc">Sum of items across receipts</div>
+        </div>
+        <div className="stat bg-base-100 shadow-sm border border-base-200">
+          <div className="stat-title">Active Suppliers</div>
+          <div className="stat-value text-accent">{suppliers.length}</div>
+          <div className="stat-desc">Registered vendors</div>
+        </div>
+        <div className="stat bg-base-100 shadow-sm border border-base-200">
+          <div className="stat-title">Pending POs</div>
+          <div className="stat-value text-warning">
+            {purchaseOrders.filter(p => ['PENDING', 'APPROVED'].includes(p.status)).length}
+          </div>
+          <div className="stat-desc">Awaiting receipt</div>
+        </div>
+      </div>
+
+      <div className="card bg-base-100 shadow-sm border border-base-200">
+        <div className="card-body p-4">
+          <div className="flex flex-col md:flex-row gap-3 mb-6">
+            <div className="relative flex-1 md:max-w-xs">
+              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-base-content/40">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              </div>
+              <input 
+                type="search" 
+                className="input input-bordered w-full pl-10" 
+                placeholder="Search receiving no, PO, supplier..." 
+                value={search} 
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }} 
+              />
+            </div>
+          </div>
+
           {loading ? <Spinner /> : (
             <div className="overflow-x-auto">
-              <table className="table table-sm">
-                <thead><tr><th>Receiving No.</th><th>Supplier</th><th>Date</th><th>PO No.</th><th>Items</th><th className="text-right">Actions</th></tr></thead>
+              <table className="table table-zebra table-sm" aria-label="Receiving records table">
+                <thead>
+                  <tr className="bg-base-200/50">
+                    <th className="font-semibold">Receiving No.</th>
+                    <th className="font-semibold">Supplier</th>
+                    <th className="font-semibold">Date</th>
+                    <th className="font-semibold">PO No.</th>
+                    <th className="font-semibold text-center">Items</th>
+                    <th className="font-semibold text-right">Actions</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {receivings.data?.map(r => (
-                    <tr key={r.id} className="hover">
-                      <td className="font-mono">{r.receivingNo}</td>
-                      <td>{r.supplier?.name}</td>
-                      <td>{new Date(r.receiptDate).toLocaleDateString()}</td>
-                      <td>{r.poNumber || '—'}</td>
-                      <td>{r.items?.length || 0}</td>
+                    <tr key={r.id} className="hover:bg-base-200/30 transition-colors">
+                      <td className="font-mono font-medium">{r.receivingNo}</td>
+                      <td>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{r.supplier?.name}</span>
+                        </div>
+                      </td>
+                      <td className="opacity-80">{new Date(r.receiptDate).toLocaleDateString()}</td>
+                      <td>
+                        {r.poNumber ? (
+                          <span className="badge badge-ghost badge-sm font-mono">{r.poNumber}</span>
+                        ) : '—'}
+                      </td>
+                      <td className="text-center">
+                        <span className="badge badge-outline badge-sm">{r.items?.length || 0}</span>
+                      </td>
                       <td className="text-right">
-                        <button className="btn btn-ghost btn-xs" onClick={async () => { const res = await api.get(`/inventory/receivings/${r.id}`); setDetailRec(res.data.data); }}>View</button>
-                        <button className="btn btn-ghost btn-xs" onClick={async () => { const res = await api.get(`/inventory/receivings/${r.id}`); setPrintRec(res.data.data); }}>Print</button>
-                        {canManage && <button className="btn btn-ghost btn-xs text-error" onClick={() => setDeleteId(r.id)}>Delete</button>}
+                        <div className="flex justify-end gap-1">
+                          <button className="btn btn-ghost btn-xs gap-1" onClick={async () => { const res = await api.get(`/inventory/receivings/${r.id}`); setDetailRec(res.data.data); }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                            View
+                          </button>
+                          <button className="btn btn-ghost btn-xs gap-1" onClick={async () => { const res = await api.get(`/inventory/receivings/${r.id}`); setPrintRec(res.data.data); }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                            Print
+                          </button>
+                          {canManage && (
+                            <button className="btn btn-ghost btn-xs text-error gap-1" onClick={() => setDeleteId(r.id)}>
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                              Delete
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <Pagination meta={{ page, limit: 20, total: receivings.meta?.total || 0, totalPages: receivings.meta?.totalPages || receivings.meta?.pages || 1 }} onPage={setPage} />
+              <div className="mt-4">
+                <Pagination meta={{ page, limit: 20, total: receivings.meta?.total || 0, totalPages: receivings.meta?.totalPages || receivings.meta?.pages || 1 }} onPage={setPage} />
+              </div>
             </div>
           )}
         </div>
@@ -193,7 +328,16 @@ export default function ReceivingPage() {
               <fieldset className="fieldset"><legend className="fieldset-legend">Receipt Date *</legend>
                 <input className="input" type="date" required value={form.receiptDate} onChange={e => setForm({...form, receiptDate: e.target.value})} />
               </fieldset>
-              <fieldset className="fieldset"><legend className="fieldset-legend">PO No.</legend>
+              <fieldset className="fieldset"><legend className="fieldset-legend">Purchase Order (optional link)</legend>
+                <select className="select" value={poId} onChange={(e) => selectPo(e.target.value)}>
+                  <option value="">Standalone (no PO link)</option>
+                  {purchaseOrders.filter(p => ['PENDING', 'APPROVED'].includes(p.status) && (p.items || []).some(pi => pi.quantity > (pi.receivedQuantity || 0))).map(p => {
+                    const remaining = (p.items || []).reduce((s, pi) => s + (pi.quantity - (pi.receivedQuantity || 0)), 0);
+                    return <option key={p.id} value={p.id}>{p.poNumber} — {p.supplier?.name} (remaining {Number(remaining.toFixed(2))})</option>;
+                  })}
+                </select>
+              </fieldset>
+              <fieldset className="fieldset"><legend className="fieldset-legend">PO No. (manual)</legend>
                 <input className="input" value={form.poNumber} onChange={e => setForm({...form, poNumber: e.target.value})} />
               </fieldset>
               <fieldset className="fieldset sm:col-span-2"><legend className="fieldset-legend">DR No.</legend>
@@ -219,7 +363,7 @@ export default function ReceivingPage() {
               </div>
               <div className="modal-action col-span-full">
                 <button type="button" className="btn" onClick={() => setOpen(false)}>Cancel</button>
-                <button className="btn btn-primary">Save Receiving</button>
+                <button className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}Save Receiving</button>
               </div>
             </form>
           </div>
@@ -250,7 +394,7 @@ export default function ReceivingPage() {
               </fieldset>
               <div className="modal-action">
                 <button type="button" className="btn" onClick={() => setSupplierOpen(false)}>Cancel</button>
-                <button className="btn btn-primary">Create Supplier</button>
+                <button className="btn btn-primary" disabled={supplierBusy}>{supplierBusy && <span className="loading loading-spinner loading-xs" />}Create Supplier</button>
               </div>
             </form>
           </div>
@@ -280,7 +424,7 @@ export default function ReceivingPage() {
 
           {printRec.remarks && <p className="text-sm mb-4"><span className="opacity-60">Remarks:</span> {printRec.remarks}</p>}
 
-          <table className="table table-sm mb-6">
+          <table className="table table-sm mb-6" aria-label="Receiving record items table">
             <thead>
               <tr>
                 <th>#</th>
@@ -343,7 +487,7 @@ export default function ReceivingPage() {
               <div><span className="opacity-60">Remarks:</span> {detailRec.remarks || '—'}</div>
             </div>
             <div className="mt-4">
-              <table className="table table-sm">
+              <table className="table table-sm" aria-label="Receiving records table">
                 <thead><tr><th>Item</th><th>SKU</th><th className="text-right">Qty</th><th className="text-right">Unit Cost</th></tr></thead>
                 <tbody>
                   {detailRec.items?.map(ri => (

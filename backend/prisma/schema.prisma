@@ -34,6 +34,15 @@ enum LedgerReferenceType {
   RETURN
 }
 
+model Tenant {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @unique
+  code      String    @unique
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
 model Department {
   id        String    @id @default(uuid()) @db.Uuid
   name      String    @unique
@@ -64,8 +73,9 @@ model Category {
 
 model User {
   id           String      @id @default(uuid()) @db.Uuid
-  username     String      @unique
-  email        String      @unique
+  tenantId     String      @default("default") @db.Text
+  username     String
+  email        String
   password     String
   fullName     String
   role         Role        @default(WAREHOUSE_STAFF)
@@ -96,11 +106,16 @@ model User {
   previousPasswords PreviousPassword[]
   physicalCounts PhysicalCount[]
   notificationPreferences NotificationPreference[]
+
+  @@unique([tenantId, username])
+  @@unique([tenantId, email])
+  @@index([tenantId])
 }
 
 model Item {
   id               String   @id @default(uuid()) @db.Uuid
-  sku              String   @unique
+  tenantId         String   @default("default") @db.Text
+  sku              String
   stockNumber      String?
   fundCluster      String?
   name             String
@@ -127,10 +142,14 @@ model Item {
   receivingItems ReceivingItem[]
   purchaseOrderItems PurchaseOrderItem[]
   physicalCountItems PhysicalCountItem[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId])
 }
 
 model LedgerEntry {
   id             String               @id @default(uuid()) @db.Uuid
+  tenantId       String               @default("default") @db.Text
   item           Item                 @relation(fields: [itemId], references: [id])
   itemId         String               @db.Uuid
   referenceType  LedgerReferenceType
@@ -146,11 +165,13 @@ model LedgerEntry {
 
   @@index([itemId, date])
   @@index([referenceType])
+  @@index([tenantId])
 }
 
 model Ris {
   id            String    @id @default(uuid()) @db.Uuid
-  risNumber     String    @unique
+  tenantId      String    @default("default") @db.Text
+  risNumber     String
   department    Department @relation(fields: [departmentId], references: [id])
   departmentId  String    @db.Uuid
   purpose       String
@@ -171,10 +192,14 @@ model Ris {
   updatedAt     DateTime  @updatedAt
 
   items         RisItem[]
+
+  @@unique([tenantId, risNumber])
+  @@index([tenantId])
 }
 
 model RisItem {
   id                String @id @default(uuid()) @db.Uuid
+  tenantId          String @default("default") @db.Text
   ris               Ris    @relation(fields: [risId], references: [id], onDelete: Cascade)
   risId             String @db.Uuid
   item              Item   @relation(fields: [itemId], references: [id])
@@ -186,6 +211,7 @@ model RisItem {
 
   @@index([risId])
   @@index([itemId])
+  @@index([tenantId])
 }
 
 model EmailJob {
@@ -212,7 +238,8 @@ enum EmailJobStatus {
 }
 
 model Notification {
-  id        String    @id @default(uuid()) @db.Uuid
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @default("default") @db.Text
   user      User?     @relation(fields: [userId], references: [id])
   userId    String?   @db.Uuid
   type      String
@@ -221,13 +248,15 @@ model Notification {
   isRead    Boolean   @default(false)
   item      Item?     @relation(fields: [itemId], references: [id])
   itemId    String?   @db.Uuid
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   @@index([userId, isRead])
+  @@index([tenantId])
 }
 
 model NotificationPreference {
   id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @default("default") @db.Text
   userId    String   @db.Uuid
   user      User     @relation(fields: [userId], references: [id])
   type      String
@@ -235,10 +264,12 @@ model NotificationPreference {
   inApp     Boolean  @default(true)
 
   @@unique([userId, type])
+  @@index([tenantId])
 }
 
 model AuditLog {
   id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @default("default") @db.Text
   user         User?    @relation(fields: [userId], references: [id])
   userId       String?  @db.Uuid
   action       String
@@ -253,10 +284,12 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([action])
+  @@index([tenantId])
 }
 
 model ApiKey {
   id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @default("default") @db.Text
   name        String
   keyPrefix   String
   keyHash     String
@@ -267,11 +300,13 @@ model ApiKey {
   createdById String   @db.Uuid
 
   @@index([keyPrefix])
+  @@index([tenantId])
 }
 
 model Supplier {
   id        String   @id @default(uuid()) @db.Uuid
-  name      String   @unique
+  tenantId  String   @default("default") @db.Text
+  name      String
   contact   String?
   phone     String?
   email     String?
@@ -282,11 +317,15 @@ model Supplier {
 
   receivings Receiving[]
   purchaseOrders PurchaseOrder[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
 }
 
 model Receiving {
   id           String   @id @default(uuid()) @db.Uuid
-  receivingNo  String   @unique
+  tenantId     String   @default("default") @db.Text
+  receivingNo  String
   supplier     Supplier @relation(fields: [supplierId], references: [id])
   supplierId   String   @db.Uuid
   receiptDate  DateTime @default(now())
@@ -299,16 +338,18 @@ model Receiving {
   updatedAt    DateTime @updatedAt
 
   purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
-  purchaseOrderId String? @db.Uuid
+  purchaseOrderId String?   @db.Uuid
 
   items ReceivingItem[]
 
-  @@index([receivingNo])
+  @@unique([tenantId, receivingNo])
+  @@index([tenantId])
   @@index([supplierId])
 }
 
 model ReceivingItem {
   id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @default("default") @db.Text
   receiving    Receiving @relation(fields: [receivingId], references: [id], onDelete: Cascade)
   receivingId  String    @db.Uuid
   item         Item      @relation(fields: [itemId], references: [id])
@@ -319,14 +360,16 @@ model ReceivingItem {
 
   @@index([receivingId])
   @@index([itemId])
+  @@index([tenantId])
 }
 
 model PurchaseOrder {
-  id            String    @id @default(uuid()) @db.Uuid
-  poNumber      String    @unique
-  departmentId  String    @db.Uuid
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @default("default") @db.Text
+  poNumber      String
+  departmentId  String   @db.Uuid
   department    Department @relation(fields: [departmentId], references: [id])
-  supplierId    String    @db.Uuid
+  supplierId    String   @db.Uuid
   supplier      Supplier @relation(fields: [supplierId], references: [id])
   date          DateTime @default(now())
   status        String @default("PENDING")
@@ -340,16 +383,18 @@ model PurchaseOrder {
   items         PurchaseOrderItem[]
   receivings    Receiving[]
 
-  @@index([poNumber])
+  @@unique([tenantId, poNumber])
+  @@index([tenantId])
   @@index([departmentId])
   @@index([supplierId])
 }
 
 model PurchaseOrderItem {
-  id              String    @id @default(uuid()) @db.Uuid
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @default("default") @db.Text
   purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  purchaseOrderId String @db.Uuid
-  itemId          String @db.Uuid
+  purchaseOrderId String   @db.Uuid
+  itemId          String   @db.Uuid
   item            Item @relation(fields: [itemId], references: [id])
   quantity        Float
   unitCost        Float @default(0)
@@ -357,20 +402,24 @@ model PurchaseOrderItem {
 
   @@index([purchaseOrderId])
   @@index([itemId])
+  @@index([tenantId])
 }
 
 model PreviousPassword {
   id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @default("default") @db.Text
   userId    String   @db.Uuid
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   hash      String
   createdAt DateTime @default(now())
 
   @@index([userId])
+  @@index([tenantId])
 }
 
 model RefreshToken {
   id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @default("default") @db.Text
   userId       String   @db.Uuid
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   token        String   @unique
@@ -383,10 +432,12 @@ model RefreshToken {
 
   @@index([userId])
   @@index([token])
+  @@index([tenantId])
 }
 
 model Budget {
   id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @default("default") @db.Text
   departmentId String    @db.Uuid
   department   Department @relation(fields: [departmentId], references: [id])
   amount       Float
@@ -396,31 +447,35 @@ model Budget {
   updatedAt    DateTime  @updatedAt
 
   @@unique([departmentId, year])
+  @@index([tenantId])
 }
 
 model PhysicalCount {
-  id           String    @id @default(uuid()) @db.Uuid
-  departmentId String    @db.Uuid
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @default("default") @db.Text
+  departmentId String   @db.Uuid
   department   Department @relation(fields: [departmentId], references: [id])
-  countDate    DateTime  @default(now())
-  status       String    @default("DRAFT")
+  countDate    DateTime @default(now())
+  status       String   @default("DRAFT")
   remarks      String?
   createdBy    User      @relation(fields: [createdById], references: [id])
-  createdById  String    @db.Uuid
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdById  String   @db.Uuid
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   items        PhysicalCountItem[]
 
   @@index([departmentId])
   @@index([countDate])
+  @@index([tenantId])
 }
 
 model PhysicalCountItem {
-  id             String    @id @default(uuid()) @db.Uuid
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @default("default") @db.Text
   physicalCount  PhysicalCount @relation(fields: [physicalCountId], references: [id], onDelete: Cascade)
   physicalCountId String   @db.Uuid
-  itemId         String    @db.Uuid
+  itemId         String   @db.Uuid
   item           Item      @relation(fields: [itemId], references: [id])
   systemQuantity Float
   countedQuantity Float
@@ -429,6 +484,7 @@ model PhysicalCountItem {
 
   @@index([physicalCountId])
   @@index([itemId])
+  @@index([tenantId])
 }
 
 

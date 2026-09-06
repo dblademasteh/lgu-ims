@@ -60,11 +60,28 @@ async function deleteDepartment(req, res) {
   const { id } = req.params;
   const department = await prisma.department.findUnique({
     where: { id },
-    include: { _count: { select: { users: true, ris: true } } },
+    include: {
+      _count: {
+        select: {
+          users: true,
+          ris: true,
+          purchaseOrders: true,
+          budgets: true,
+          physicalCounts: true,
+        },
+      },
+    },
   });
   if (!department) throw new ApiError(404, 'Department not found.');
-  if (department._count.users > 0 || department._count.ris > 0) {
-    throw new ApiError(400, 'Cannot delete a department that has users or RIS records.');
+  const refs = [
+    department._count.users > 0 ? `${department._count.users} user(s)` : null,
+    department._count.ris > 0 ? `${department._count.ris} RIS record(s)` : null,
+    department._count.purchaseOrders > 0 ? `${department._count.purchaseOrders} PO(s)` : null,
+    department._count.budgets > 0 ? `${department._count.budgets} budget(s)` : null,
+    department._count.physicalCounts > 0 ? `${department._count.physicalCounts} physical count(s)` : null,
+  ].filter(Boolean);
+  if (refs.length > 0) {
+    throw new ApiError(400, `Cannot delete department. It has: ${refs.join(', ')}.`);
   }
   await prisma.department.delete({ where: { id } });
   await writeAudit(req, 'DELETE', 'Department', id, { name: department.name }, null);

@@ -10,5 +10,6 @@ router.get('/:id', authorize('ADMIN', 'WAREHOUSE_STAFF', 'PROPERTY_CUSTODIAN', '
 router.patch('/:id', authorize('ADMIN', 'WAREHOUSE_STAFF', 'PROPERTY_CUSTODIAN'), ctrl.updatePhysicalCount);
 router.post('/:id/submit', authorize('ADMIN', 'WAREHOUSE_STAFF', 'PROPERTY_CUSTODIAN'), ctrl.submitPhysicalCount);
 router.post('/:id/approve', authorize('ADMIN', 'PROPERTY_CUSTODIAN'), ctrl.approvePhysicalCount);
+router.post('/:id/reject', authorize('ADMIN', 'PROPERTY_CUSTODIAN'), ctrl.rejectPhysicalCount);
 
 module.exports = router;

@@ -5,6 +5,7 @@ const { writeAudit } = require('../utils/audit');
 const { generatePoNumber } = require('../utils/poNumber');
 const { sanitizeString } = require('../utils/sanitize');
 const { round2 } = require('../utils/money');
+const { notifyInApp } = require('../services/notificationService');
 
 function sanitizeBody(body, fields = []) {
   const out = { ...body };
@@ -96,6 +97,12 @@ async function updatePurchaseOrder(req, res) {
   if (existing.status !== 'PENDING') {
     throw new ApiError(400, `Cannot update a ${existing.status} purchase order.`);
   }
+  const hasReceived = await prisma.purchaseOrderItem.findFirst({
+    where: { purchaseOrderId: existing.id, receivedQuantity: { gt: 0 } },
+  });
+  if (hasReceived) {
+    throw new ApiError(400, 'Cannot edit a purchase order that already has received stock. Cancel it instead.');
+  }
 
   const body = sanitizeBody(req.body, ['remarks']);
   const { departmentId, supplierId, date, items, remarks } = body;
@@ -143,6 +150,14 @@ async function approvePurchaseOrder(req, res) {
   });
 
   await writeAudit(req, 'APPROVE', 'PurchaseOrder', po.id, { status: po.status }, { status: 'APPROVED' });
+  if (po.createdById && po.createdById !== req.user.id) {
+    await notifyInApp({
+      userId: po.createdById,
+      type: 'SYSTEM',
+      title: 'Purchase order approved',
+      message: `${po.poNumber} has been approved. You can now receipt stock against it.`,
+    });
+  }
   res.json({ data: updated });
 }
 

@@ -35,8 +35,10 @@ export default function RISPage() {
   const [data, setData] = useState(null);
   const [detail, setDetail] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [returnOpen, setReturnOpen] = useState(false);
+  const [issueOpen, setIssueOpen] = useState(false);
   const [approveOpen, setApproveOpen] = useState(false);
   const [approvalItems, setApprovalItems] = useState([]);
 
@@ -47,7 +49,7 @@ export default function RISPage() {
     api.get(`/ris?${q}`).then((r) => setData(r.data)).catch((e) => toast.error(e.response?.data?.message || 'Unable to load RIS.'));
   };
 
-  useEffect(load, [page, status]);
+  useEffect(load, [page, status, search]);
 
   const openDetail = async (id) => {
     try {
@@ -67,7 +69,7 @@ export default function RISPage() {
       toast.success(`RIS ${actLabel}.`);
       if (res.data.shortfalls?.length) {
         const lines = res.data.shortfalls.map((s) => `${s.itemName}: issued ${s.issued} of ${s.requested} (only ${s.available} in stock)`).join('\n');
-        toast.warn(`Stock shortfall:\n${lines}`);
+        toast.warning(`Stock shortfall:\n${lines}`);
       }
       setDetail(null);
       setReturnOpen(false);
@@ -84,10 +86,16 @@ export default function RISPage() {
         title="Requisitions & Issue Slips"
         subtitle="COA-compliant Requisition and Issue Slips — request, approve and issue."
         actions={canRequest && (
-          <button className="btn btn-primary" onClick={() => setCreateOpen(true)}>
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-            New requisition
-          </button>
+          <div className="flex gap-2">
+            <button className="btn btn-outline" onClick={() => setBulkOpen(true)}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              Bulk Create
+            </button>
+            <button className="btn btn-primary" onClick={() => setCreateOpen(true)}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+              New requisition
+            </button>
+          </div>
         )}
       />
 
@@ -95,7 +103,7 @@ export default function RISPage() {
         <div className="card-body">
           <div className="flex flex-col md:flex-row gap-3 mb-4">
             <label className="input flex-1 md:max-w-xs">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
               <input type="search" className="flex-1" placeholder="Search RIS number..." value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
             </label>
@@ -112,7 +120,7 @@ export default function RISPage() {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="table table-sm">
+                <table className="table table-sm" aria-label="RIS list table">
                   <thead>
                     <tr>
                       <th>RIS No.</th>
@@ -164,7 +172,7 @@ export default function RISPage() {
             setApproveOpen(true);
           }}
           onReject={() => setConfirm({ id: detail.id, action: 'reject', label: 'rejected', kind: 'rem' })}
-          onIssue={() => setConfirm({ id: detail.id, action: 'issue', label: 'issued', kind: 'issue' })}
+          onIssue={() => setIssueOpen(true)}
           onCancel={() => setConfirm({ id: detail.id, action: 'cancel', label: 'cancelled', kind: 'rem' })}
           onReturn={() => setReturnOpen(true)}
         />
@@ -174,6 +182,13 @@ export default function RISPage() {
         <CreateRisModal
           onClose={() => setCreateOpen(false)}
           onSaved={() => { setCreateOpen(false); load(); }}
+        />
+      )}
+
+      {bulkOpen && (
+        <BulkCreateModal
+          onClose={() => setBulkOpen(false)}
+          onSaved={() => { setBulkOpen(false); load(); }}
         />
       )}
 
@@ -198,6 +213,17 @@ export default function RISPage() {
         />
       )}
 
+      {issueOpen && detail && (
+        <IssueModal
+          ris={detail}
+          onClose={() => setIssueOpen(false)}
+          onIssue={(items) => {
+            setIssueOpen(false);
+            act(detail.id, 'issue', { items }, 'issued');
+          }}
+        />
+      )}
+
       {approveOpen && detail && (
         <dialog className="modal modal-open">
           <div className="modal-box max-w-3xl">
@@ -210,7 +236,7 @@ export default function RISPage() {
               setApproveOpen(false);
             }} className="mt-4">
               <div className="overflow-x-auto">
-                <table className="table table-sm">
+                <table className="table table-sm" aria-label="RIS list table">
                   <thead><tr><th>Item</th><th>Requested</th><th>Approved Qty</th></tr></thead>
                   <tbody>
                     {detail.items.map((it) => {
@@ -323,7 +349,7 @@ function RisDetail({ ris, user, canManage, canIssue, canCancel, canReturn, onClo
           </div>
 
           <div className="overflow-x-auto">
-            <table className="table table-sm">
+            <table className="table table-sm" aria-label="RIS list table">
               <thead>
                 <tr>
                   <th>Stock No.</th>
@@ -586,6 +612,163 @@ function CreateRisModal({ onClose, onSaved }) {
   );
 }
 
+function BulkCreateModal({ onClose, onSaved }) {
+  const toast = useToast();
+  const user = useAuthStore((s) => s.user);
+  const isDeptHead = user.role === 'DEPARTMENT_HEAD';
+
+  const [departments, setDepartments] = useState([]);
+  const [items, setItems] = useState([]);
+  const [busy, setBusy] = useState(false);
+
+  const emptyLine = { itemId: '', quantityRequested: '', unitCost: '' };
+  const emptyRis = { departmentId: '', purpose: '', remarks: '', lines: [{ ...emptyLine }] };
+  const [risList, setRisList] = useState([{ ...emptyRis }]);
+
+  useEffect(() => {
+    api.get('/departments').then((r) => setDepartments(r.data.data)).catch(() => {});
+    api.get('/items?limit=200&isActive=true').then((r) => setItems(r.data.data)).catch(() => {});
+    if (isDeptHead && user.departmentId) {
+      setRisList([{ ...emptyRis, departmentId: user.departmentId }]);
+    }
+  }, []);
+
+  const addRis = () => setRisList((prev) => [...prev, { ...emptyRis, departmentId: isDeptHead ? user.departmentId : '' }]);
+  const removeRis = (idx) => setRisList((prev) => prev.filter((_, i) => i !== idx));
+
+  const updateRisField = (idx, field, value) => {
+    setRisList((prev) => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+  };
+
+  const updateLine = (risIdx, lineIdx, field, value) => {
+    setRisList((prev) => prev.map((r, ri) => {
+      if (ri !== risIdx) return r;
+      const lines = r.lines.map((l, li) => li === lineIdx ? { ...l, [field]: value } : l);
+      return { ...r, lines };
+    }));
+  };
+
+  const addLine = (risIdx) => {
+    setRisList((prev) => prev.map((r, i) => i === risIdx ? { ...r, lines: [...r.lines, { ...emptyLine }] } : r));
+  };
+
+  const removeLine = (risIdx, lineIdx) => {
+    setRisList((prev) => prev.map((r, i) => {
+      if (i !== risIdx) return r;
+      return { ...r, lines: r.lines.filter((_, li) => li !== lineIdx) };
+    }));
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      departmentId: isDeptHead ? user.departmentId : undefined,
+      risList: risList.map((r) => ({
+        departmentId: r.departmentId,
+        purpose: r.purpose,
+        remarks: r.remarks || undefined,
+        items: r.lines.filter((l) => l.itemId && Number(l.quantityRequested) > 0)
+          .map((l) => ({ itemId: l.itemId, quantityRequested: Number(l.quantityRequested), unitCost: Number(l.unitCost) || undefined })),
+      })).filter((r) => r.purpose && r.items.length > 0),
+    };
+    if (payload.risList.length === 0) {
+      toast.error('Add at least one complete RIS with a purpose and items.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await api.post('/ris/bulk', payload);
+      const result = res.data.data || {};
+      const createdCount = result.created?.length ?? 0;
+      const errors = result.errors ?? [];
+      if (errors.length > 0) {
+        if (createdCount > 0) toast.warning(`${createdCount} RIS created, ${errors.length} failed.`);
+        else toast.error(`Bulk creation failed: ${errors.map((e) => e.message).join('; ')}`);
+      } else {
+        toast.success(`${createdCount} requisition(s) created.`);
+      }
+      onSaved();
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Bulk creation failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <dialog className="modal modal-open">
+      <div className="modal-box max-w-5xl max-h-[90vh] overflow-y-auto">
+        <h3 className="font-bold text-lg mb-4">Bulk Create Requisitions</h3>
+        <form onSubmit={submit} className="flex flex-col gap-6">
+          {risList.map((ris, risIdx) => (
+            <div key={risIdx} className="border border-base-300 rounded-lg p-4 relative">
+              <div className="absolute top-2 right-2">
+                {risList.length > 1 && (
+                  <button type="button" className="btn btn-ghost btn-xs text-error" onClick={() => removeRis(risIdx)}>Remove</button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Department *</legend>
+                  <select className="select select-sm" required disabled={isDeptHead} value={ris.departmentId}
+                    onChange={(e) => updateRisField(risIdx, 'departmentId', e.target.value)}>
+                    <option value="">Select...</option>
+                    {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </fieldset>
+                <fieldset className="fieldset col-span-2">
+                  <legend className="fieldset-legend">Purpose *</legend>
+                  <input className="input input-sm" required value={ris.purpose}
+                    onChange={(e) => updateRisField(risIdx, 'purpose', e.target.value)} placeholder="e.g. Office supplies" />
+                </fieldset>
+              </div>
+              <div className="text-xs font-semibold text-base-content/60 mb-2">Items</div>
+              {ris.lines.map((line, lineIdx) => (
+                <div key={lineIdx} className="grid grid-cols-[1fr_80px_80px_auto] gap-2 mb-2 items-end">
+                  <select className="select select-sm" value={line.itemId}
+                    onChange={(e) => updateLine(risIdx, lineIdx, 'itemId', e.target.value)}>
+                    <option value="">Select item...</option>
+                    {items.map((i) => <option key={i.id} value={i.id}>{i.name} · {i.sku}</option>)}
+                  </select>
+                  <input className="input input-sm" type="number" min="0" step="any" placeholder="Qty" value={line.quantityRequested}
+                    onChange={(e) => updateLine(risIdx, lineIdx, 'quantityRequested', e.target.value)} />
+                  <input className="input input-sm" type="number" min="0" step="0.01" placeholder="₱" value={line.unitCost}
+                    onChange={(e) => updateLine(risIdx, lineIdx, 'unitCost', e.target.value)} />
+                  <div className="flex gap-1">
+                    {ris.lines.length > 1 && (
+                      <button type="button" className="btn btn-ghost btn-xs btn-square text-error" onClick={() => removeLine(risIdx, lineIdx)}>✕</button>
+                    )}
+                    {lineIdx === ris.lines.length - 1 && (
+                      <button type="button" className="btn btn-ghost btn-xs" onClick={() => addLine(risIdx)}>+</button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <fieldset className="fieldset mt-2">
+                <legend className="fieldset-legend text-xs">Remarks (optional)</legend>
+                <input className="input input-sm" value={ris.remarks}
+                  onChange={(e) => updateRisField(risIdx, 'remarks', e.target.value)} placeholder="Optional notes" />
+              </fieldset>
+            </div>
+          ))}
+          <div className="flex gap-2">
+            <button type="button" className="btn btn-outline btn-sm" onClick={addRis}>+ Add another RIS</button>
+          </div>
+          <div className="modal-action">
+            <button type="button" className="btn" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>
+              {busy && <span className="loading loading-spinner loading-xs" />}
+              Create {risList.length} requisition{risList.length !== 1 ? 's' : ''}
+            </button>
+          </div>
+        </form>
+      </div>
+      <form method="dialog" className="modal-backdrop"><button onClick={onClose}>close</button></form>
+    </dialog>
+  );
+}
+
 function ConfirmModal({ message, placeholder, onClose, onConfirm }) {
   const [remarks, setRemarks] = useState('');
   const [busy, setBusy] = useState(false);
@@ -619,6 +802,104 @@ function ConfirmModal({ message, placeholder, onClose, onConfirm }) {
           </div>
         </form>
       </div>
+    </dialog>
+  );
+}
+
+function IssueModal({ ris, onClose, onIssue }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const [items, setItems] = useState(
+    ris.items
+      .filter((it) => (it.quantityApproved || 0) > (it.quantityIssued || 0))
+      .map((it) => ({
+        risItemId: it.id,
+        itemId: it.itemId,
+        remaining: (it.quantityApproved || 0) - (it.quantityIssued || 0),
+        stock: it.item?.currentStock ?? 0,
+        quantity: '',
+        name: it.item?.name || '—',
+        sku: it.item?.sku || '—',
+        unit: it.item?.unit || '',
+      }))
+  );
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (items.length === 0) {
+      toast.info('Nothing left to issue.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await onIssue(
+        items.map((it) => ({ risItemId: it.risItemId, quantityIssued: it.quantity === '' ? it.remaining : Number(it.quantity) }))
+      );
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to issue RIS.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const setQty = (idx, value) => {
+    const next = [...items];
+    next[idx].quantity = value === '' ? '' : Math.min(Number(value) || 0, next[idx].remaining);
+    setItems(next);
+  };
+
+  return (
+    <dialog className="modal modal-open">
+      <div className="modal-box max-w-3xl">
+        <h3 className="font-bold text-lg">Issue items</h3>
+        <p className="text-sm text-base-content/60 mt-1">{ris.risNumber} — leave blank to issue the full remaining quantity.</p>
+        <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
+          <div className="overflow-x-auto">
+            <table className="table table-sm" aria-label="Issue items table">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th className="text-right">Stock</th>
+                  <th className="text-right">Remaining</th>
+                  <th className="text-right">Issue qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((it, idx) => (
+                  <tr key={it.risItemId}>
+                    <td>
+                      <div className="font-medium">{it.name}</div>
+                      <div className="text-xs opacity-60 font-mono">{it.sku} · {it.unit}</div>
+                    </td>
+                    <td className="text-right">{Number(it.stock).toLocaleString()}</td>
+                    <td className="text-right">{Number(it.remaining).toLocaleString()}</td>
+                    <td className="text-right">
+                      <input
+                        className="input input-sm w-24 text-right"
+                        type="number"
+                        min="0"
+                        max={it.remaining}
+                        step="any"
+                        value={it.quantity}
+                        placeholder={String(it.remaining)}
+                        onChange={(e) => setQty(idx, e.target.value)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="modal-action">
+            <button type="button" className="btn" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>
+              {busy && <span className="loading loading-spinner loading-xs" />}
+              Issue stock
+            </button>
+          </div>
+        </form>
+      </div>
+      <form method="dialog" className="modal-backdrop"><button onClick={onClose}>close</button></form>
     </dialog>
   );
 }
@@ -670,7 +951,7 @@ function ReturnModal({ ris, onClose, onReturn }) {
         <p className="text-sm text-base-content/60 mt-1">{ris.risNumber} — enter quantities to return.</p>
         <form onSubmit={submit} className="mt-4 flex flex-col gap-3">
           <div className="overflow-x-auto">
-            <table className="table table-sm">
+            <table className="table table-sm" aria-label="RIS list table">
               <thead>
                 <tr>
                   <th>Item</th>

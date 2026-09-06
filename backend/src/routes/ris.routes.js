@@ -8,6 +8,7 @@ const { MANAGE_ROLES } = risController;
 
 router.get('/', authorize('ADMIN', 'WAREHOUSE_STAFF', 'PROPERTY_CUSTODIAN', 'AUDITOR', 'DEPARTMENT_HEAD'), risController.listRis);
 router.post('/', authorize('ADMIN', 'WAREHOUSE_STAFF', 'PROPERTY_CUSTODIAN', 'DEPARTMENT_HEAD'), risController.createRis);
+router.post('/bulk', authorize('ADMIN', 'WAREHOUSE_STAFF'), risController.bulkCreateRis);
 router.get('/:id', authorize('ADMIN', 'WAREHOUSE_STAFF', 'PROPERTY_CUSTODIAN', 'AUDITOR', 'DEPARTMENT_HEAD'), risController.getRis);
 router.patch('/:id/approve', authorize(...MANAGE_ROLES), risController.approveRis);
 router.patch('/:id/reject', authorize(...MANAGE_ROLES), risController.rejectRis);

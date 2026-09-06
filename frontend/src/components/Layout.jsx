@@ -1,43 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  Package,
-  Landmark,
-  ClipboardList,
-  BookOpen,
-  BarChart3,
-  Bell,
-  ShieldCheck,
-  Users,
-  Settings,
-  LogOut,
-  Sun,
-  Moon,
-  Check,
-  Menu,
-  KeyRound,
-  FileText,
+  LayoutDashboard, Package, Landmark, ClipboardList, BookOpen, BarChart3,
+  Bell, ShieldCheck, Users, Settings, LogOut, Menu, KeyRound, FileText, UserRound,
+  ChevronRight, Moon, Sun, PanelLeftClose, PanelLeftOpen, Wallet,
 } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
-import { useThemeStore, THEMES } from '../stores/themeStore';
+import { useThemeStore } from '../stores/themeStore';
 import api from '../api/client';
 import { useToast } from './Toast';
 
 const MENU = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'ops', index: null },
-  { to: '/items', label: 'Items & Stock', icon: Package, group: 'ops', index: '01' },
-  { to: '/receiving', label: 'Receiving / Purchases', icon: Landmark, group: 'ops', index: '01b' },
-  { to: '/purchase-orders', label: 'Purchase Orders', icon: FileText, group: 'ops', index: '01c' },
-  { to: '/suppliers', label: 'Suppliers', icon: Users, group: 'ops', index: '01d' },
-  { to: '/physical-counts', label: 'Physical Count', icon: ClipboardList, group: 'ops', index: '01e' },
-  { to: '/ris', label: 'Requisitions (RIS)', icon: ClipboardList, group: 'ops', index: '02' },
-  { to: '/ledger', label: 'Ledger Cards', icon: BookOpen, group: 'ops', index: '03' },
-  { to: '/reports', label: 'Reports', icon: BarChart3, group: 'oversight', index: null },
-  { to: '/notifications', label: 'Notifications', icon: Bell, group: 'oversight', index: null },
-  { to: '/audit', label: 'Audit Trail', icon: ShieldCheck, group: 'oversight', index: null },
-  { to: '/users', label: 'User Accounts', icon: Users, group: 'admin', index: null },
-  { to: '/settings', label: 'Reference Data', icon: Settings, group: 'admin', index: null },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'ops' },
+  { to: '/items', label: 'Items & Stock', icon: Package, group: 'ops' },
+  { to: '/receiving', label: 'Receiving', icon: Landmark, group: 'ops' },
+  { to: '/purchase-orders', label: 'Purchase Orders', icon: FileText, group: 'ops' },
+  { to: '/suppliers', label: 'Suppliers', icon: Users, group: 'ops' },
+  { to: '/physical-counts', label: 'Physical Count', icon: ClipboardList, group: 'ops' },
+  { to: '/ris', label: 'Requisitions (RIS)', icon: ClipboardList, group: 'ops' },
+  { to: '/ledger', label: 'Ledger Cards', icon: BookOpen, group: 'ops' },
+  { to: '/reports', label: 'Reports', icon: BarChart3, group: 'oversight' },
+  { to: '/budgets', label: 'Budgets', icon: Wallet, group: 'oversight' },
+  { to: '/notifications', label: 'Notifications', icon: Bell, group: 'oversight' },
+  { to: '/audit', label: 'Audit Trail', icon: ShieldCheck, group: 'oversight' },
+  { to: '/users', label: 'User Accounts', icon: Users, group: 'admin' },
+  { to: '/settings', label: 'Reference Data', icon: Settings, group: 'admin' },
 ];
 
 const NAV_GROUPS = [
@@ -47,26 +34,15 @@ const NAV_GROUPS = [
 ];
 
 const ROLE_MENU = {
-  ADMIN: ['dashboard', 'items', 'receiving', 'purchase-orders', 'suppliers', 'physical-counts', 'ris', 'ledger', 'reports', 'notifications', 'audit', 'users', 'settings'].map(find),
-  WAREHOUSE_STAFF: ['dashboard', 'items', 'receiving', 'purchase-orders', 'suppliers', 'physical-counts', 'ris', 'ledger', 'reports', 'notifications', 'settings'].map(find),
-  PROPERTY_CUSTODIAN: ['dashboard', 'items', 'ris', 'purchase-orders', 'physical-counts', 'ledger', 'reports', 'notifications'].map(find),
-  AUDITOR: ['dashboard', 'items', 'ris', 'purchase-orders', 'physical-counts', 'ledger', 'reports', 'notifications', 'audit'].map(find),
-  DEPARTMENT_HEAD: ['dashboard', 'items', 'ris', 'purchase-orders', 'physical-counts', 'notifications'].map(find),
+  ADMIN: ['dashboard', 'items', 'receiving', 'purchase-orders', 'suppliers', 'physical-counts', 'ris', 'ledger', 'reports', 'budgets', 'notifications', 'audit', 'users', 'settings', 'profile'],
+  WAREHOUSE_STAFF: ['dashboard', 'items', 'receiving', 'purchase-orders', 'suppliers', 'physical-counts', 'ris', 'ledger', 'reports', 'notifications', 'settings', 'profile'],
+  PROPERTY_CUSTODIAN: ['dashboard', 'items', 'ris', 'purchase-orders', 'physical-counts', 'ledger', 'reports', 'budgets', 'notifications', 'profile'],
+  AUDITOR: ['dashboard', 'items', 'ris', 'purchase-orders', 'physical-counts', 'ledger', 'reports', 'budgets', 'notifications', 'audit', 'profile'],
+  DEPARTMENT_HEAD: ['dashboard', 'items', 'ris', 'purchase-orders', 'physical-counts', 'notifications', 'profile'],
 };
 
-function find(key) {
-  return MENU.find((m) => m.to.replace('/', '') === key);
-}
-
-function RoleBadge({ role }) {
-  const labels = {
-    ADMIN: 'Admin',
-    WAREHOUSE_STAFF: 'Warehouse Staff',
-    PROPERTY_CUSTODIAN: 'Property Custodian',
-    AUDITOR: 'Auditor',
-    DEPARTMENT_HEAD: 'Department Head',
-  };
-  return <span className="badge badge-ghost badge-sm">{labels[role] || role}</span>;
+function buildMenu(role) {
+  return (ROLE_MENU[role] || []).map(k => MENU.find(m => m.to.replace('/', '') === k)).filter(Boolean);
 }
 
 export default function Layout() {
@@ -75,20 +51,39 @@ export default function Layout() {
   const location = useLocation();
   const toast = useToast();
   const [unread, setUnread] = useState(0);
-  const theme = useThemeStore((s) => s.theme);
-  const setTheme = useThemeStore((s) => s.setTheme);
-  const currentTheme = THEMES.find((t) => t.id === theme) || THEMES[0];
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('lgu_sidebar_collapsed') === '1');
+  const theme = useThemeStore(s => s.theme);
+  const setTheme = useThemeStore(s => s.setTheme);
 
-  const menu = user ? ROLE_MENU[user.role] || [] : [];
+  const [pwModalOpen, setPwModalOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+
+  const menu = user ? buildMenu(user.role) : [];
   const canAudit = user?.role === 'ADMIN' || user?.role === 'AUDITOR';
+  const current = menu.find(m => location.pathname.startsWith(m.to));
 
   useEffect(() => {
-    api.get('/notifications/unread-count').then((r) => setUnread(r.data.unreadCount)).catch(() => {});
+    api.get('/notifications/unread-count').then(r => setUnread(r.data.unreadCount)).catch(() => {});
     const id = setInterval(() => {
-      api.get('/notifications/unread-count').then((r) => setUnread(r.data.unreadCount)).catch(() => {});
+      api.get('/notifications/unread-count').then(r => setUnread(r.data.unreadCount)).catch(() => {});
     }, 60000);
     return () => clearInterval(id);
   }, [location.pathname]);
+
+  const closeDrawer = () => setDrawerOpen(false);
+  useEffect(() => { closeDrawer(); }, [location.pathname]);
+
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    localStorage.setItem('lgu_sidebar_collapsed', collapsed ? '1' : '0');
+  }, [collapsed]);
 
   const handleLogout = async () => {
     try {
@@ -100,246 +95,237 @@ export default function Layout() {
   };
 
   const handleLogoutAll = async () => {
-    try {
-      await api.post('/auth/logout-all');
-      toast.success('Signed out from all sessions');
-    } catch { /* best-effort */ }
+    try { await api.post('/auth/logout-all'); } catch { /* best-effort */ }
     logout();
     navigate('/login', { replace: true });
   };
 
-
-  const current = menu.find((m) => location.pathname.startsWith(m.to));
-
   return (
-    <div className="drawer lg:drawer-open">
-      <input id="app-drawer" type="checkbox" className="drawer-toggle" />
-      <div className="drawer-content flex flex-col min-h-screen bg-base-200">
-        <div className="navbar bg-base-200 border-b border-base-300 sticky top-0 z-40">
-          <div className="navbar-start">
-            <label htmlFor="app-drawer" className="btn btn-ghost drawer-button lg:hidden" aria-label="Open menu">
-              <Menu className="h-5 w-5" />
-            </label>
-            <span className="hidden truncate text-sm font-semibold sm:block">
-              {current?.label || 'LGU Inventory Management System'}
-            </span>
-          </div>
+    <div className={`drawer lg:drawer-open${collapsed ? ' collapsed' : ''}`}>
+      {/* ── Overlay ── */}
+      {drawerOpen && (
+        <div
+          className="drawer-overlay drawer-open"
+          onClick={closeDrawer}
+          aria-label="Close sidebar"
+        />
+      )}
 
-          <div className="navbar-end gap-2">
-            {user?.role === 'DEPARTMENT_HEAD' && <RoleBadge role={user.role} />}
-            <div className="dropdown dropdown-end">
-              <div
-                tabIndex={0}
-                role="button"
-                className="btn btn-ghost btn-circle"
-                aria-label={`Change theme (current: ${currentTheme.label})`}
-                title="Theme"
-              >
-                {currentTheme.family === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-              </div>
-              <ul tabIndex={0} className="dropdown-content menu z-50 w-56 p-1.5">
-                <li className="menu-title">
-                  <div className="text-xs">Appearance</div>
-                </li>
-                {THEMES.map((t) => (
-                  <li key={t.id}>
-                    <button
-                      className={t.id === theme ? 'bg-primary/10 text-primary font-semibold' : ''}
-                      onClick={() => setTheme(t.id)}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className="h-3 w-3 rounded-full border border-base-300"
-                        style={{ background: t.swatch }}
-                      />
-                      <span className="flex-1">{t.label}</span>
-                      {t.id === theme && <Check className="h-4 w-4" />}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+      {/* ── Sidebar ── */}
+      <aside className={`drawer-side${drawerOpen ? ' drawer-open' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--surface)' }}>
+          {/* Brand */}
+          <div className="sidebar-brand" title={collapsed ? 'LGU Inventory Management System' : undefined}>
+            <div className="sidebar-brand-icon">
+              <Landmark size={16} strokeWidth={2} />
             </div>
-
-            <NavLink to="/notifications" className="btn btn-ghost btn-circle relative" aria-label="Notifications">
-              <Bell className="h-5 w-5" strokeWidth={1.6} />
-              {unread > 0 && <span className="badge badge-error badge-sm absolute -top-1 -right-1">{unread}</span>}
-            </NavLink>
-
-            <div className="dropdown dropdown-end">
-              <div tabIndex={0} role="button" className="btn btn-ghost flex items-center gap-2 px-2">
-                <div className="avatar">
-                  <div className="bg-primary text-primary-content w-8">
-                    <span>{user?.fullName?.charAt(0) || 'U'}</span>
-                  </div>
-                </div>
-                <span className="hidden md:block max-w-40 truncate">{user?.fullName}</span>
-              </div>
-              <ul tabIndex={0} className="dropdown-content menu z-50 w-64 p-1.5">
-                <li className="menu-title">
-                  <div>
-                    <div className="font-bold">{user?.fullName}</div>
-                    <div className="text-xs opacity-60">@{user?.username} · {user?.role.replace(/_/g, ' ').toLowerCase()}</div>
-                  </div>
-                </li>
-                <li>
-                  <button
-                    onClick={() => {
-                      document.getElementById('pw-modal')?.showModal();
-                    }}
-                  >
-                    <KeyRound className="h-4 w-4" />
-                    Change password
-                  </button>
-                </li>
-                {canAudit && (
-                  <>
-                    <li>
-                      <NavLink to="/audit">
-                        <ShieldCheck className="h-4 w-4" />
-                        Audit trail
-                      </NavLink>
-                    </li>
-                    <li>
-                      <NavLink to="/coa-compliance">
-                        <ShieldCheck className="h-4 w-4" />
-                        COA compliance
-                      </NavLink>
-                    </li>
-                  </>
-                )}
-                <li><div className="divider my-1" /></li>
-                <li>
-                  <button onClick={handleLogout} className="text-error">
-                    <LogOut className="h-4 w-4" />
-                    Sign out
-                  </button>
-                </li>
-                <li>
-                  <button onClick={handleLogoutAll} className="text-error">
-                    <LogOut className="h-4 w-4" />
-                    Sign out from all sessions
-                  </button>
-                </li>
-
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <main className="flex-1 w-full max-w-[1400px] mx-auto p-4 sm:p-6">
-          <Outlet />
-        </main>
-
-        <footer className="footer footer-center bg-base-200 border-t border-base-300 p-4 font-mono text-[10px] uppercase tracking-[0.14em] text-base-content/50">
-          <div>LGU Inventory Management System · Requisition and Issue Slip · On-premise deployment · v1.0</div>
-        </footer>
-      </div>
-
-      <div className="drawer-side z-50">
-        <label htmlFor="app-drawer" aria-label="close sidebar" className="drawer-overlay" />
-        <aside className="flex min-h-full w-72 flex-col bg-base-100">
-          <div className="flex items-center gap-3 px-5 pb-5 pt-6">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary text-primary-content shadow-sm">
-              <Landmark className="h-5 w-5" strokeWidth={2} />
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold tracking-tight text-base-content">LGU Inventory</p>
-              <p className="lgu-mono text-[10px] tracking-[0.08em] text-base-content/45">MANAGEMENT SYSTEM · V1.0</p>
+            <div>
+              <div className="sidebar-brand-text">LGU Inventory</div>
+              <div className="sidebar-brand-sub">Management System</div>
             </div>
           </div>
 
-          <nav className="flex-1 overflow-y-auto px-3 pb-4">
-            {NAV_GROUPS.map((g) => {
-              const items = menu.filter((m) => m.group === g.key);
+          {/* Nav */}
+          <nav style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 0' }}>
+            {NAV_GROUPS.map(g => {
+              const items = menu.filter(m => m.group === g.key);
               if (!items.length) return null;
               return (
-                <div key={g.key} className="mt-1">
-                  <p className="px-3 pb-1.5 pt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-base-content/40">
-                    {g.label}
-                  </p>
-                  <ul className="space-y-0.5">
-                    {items.map((item) => (
-                      <li key={item.to}>
-                        <NavLink
-                          to={item.to}
-                          className={({ isActive }) =>
-                            `relative flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors ${
-                              isActive
-                                ? 'bg-primary/10 font-semibold text-primary'
-                                : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
-                            }`
-                          }
-                        >
-                          {({ isActive }) => (
-                            <>
-                              <item.icon
-                                className={`h-[18px] w-[18px] shrink-0 ${isActive ? 'text-primary' : 'text-base-content/45'}`}
-                                strokeWidth={1.8}
-                              />
-                              <span className="flex-1 truncate">{item.label}</span>
-                              {item.to === '/notifications' && unread > 0 && (
-                                <span className="badge border-0 bg-error text-error-content text-[10px] font-bold">{unread}</span>
-                              )}
-                              {isActive && (
-                                <span className="absolute inset-y-0 left-0 w-[3px] rounded-r-full bg-primary" aria-hidden="true" />
-                              )}
-                            </>
-                          )}
-                        </NavLink>
-                      </li>
+                <div key={g.key} style={{ marginBottom: '0.25rem' }}>
+                  <div className="sidebar-section-label">{g.label}</div>
+                  <div className="sidebar-section">
+                    {items.map(item => (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        title={collapsed ? item.label : undefined}
+                        className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                        onClick={closeDrawer}
+                      >
+                        <item.icon size={16} strokeWidth={1.8} />
+                        <span style={{ flex: 1 }}>{item.label}</span>
+                        {item.to === '/notifications' && unread > 0 && (
+                          <span style={{ minWidth: '1.25rem', height: '1.25rem', padding: '0 0.3125rem', background: 'var(--lgu-error)', color: '#fff', borderRadius: '9999px', fontSize: '0.5625rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {unread > 99 ? '99+' : unread}
+                          </span>
+                        )}
+                      </NavLink>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               );
             })}
           </nav>
+        </aside>
 
-          <div className="border-t border-base-300 p-3">
-            <div className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-base-200">
-              <div className="avatar">
-                <div className="bg-primary text-primary-content">
-                  <span>{user?.fullName?.charAt(0) || 'U'}</span>
+      {/* ── Main ── */}
+      <div className="drawer-content" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--surface2)' }}>
+        {/* Topbar */}
+        <header className="topbar">
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="btn btn-ghost btn-sm lg:hidden"
+            style={{ border: 'none' }}
+            aria-label="Open navigation menu"
+          >
+            <Menu size={18} />
+          </button>
+
+          {/* Sidebar collapse toggle (desktop) — leftmost */}
+          <button
+            onClick={() => setCollapsed(c => !c)}
+            className="btn btn-ghost btn-sm btn-square hidden lg:inline-flex"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            style={{ border: 'none' }}
+          >
+            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
+
+          <nav className="topbar-breadcrumb">
+            <span>LGU IMS</span>
+            {current && (
+              <>
+                <ChevronRight size={12} style={{ opacity: 0.4 }} />
+                <span className="topbar-breadcrumb-current">{current.label}</span>
+              </>
+            )}
+          </nav>
+
+          <div className="topbar-actions">
+            {/* Theme toggle */}
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="btn btn-ghost btn-sm btn-square"
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+              style={{ border: 'none' }}
+            >
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+
+            {/* Notifications */}
+            <NavLink to="/notifications" className="btn btn-ghost btn-sm btn-square" title="Notifications" style={{ border: 'none', position: 'relative' }}>
+              <Bell size={15} strokeWidth={1.8} />
+              {unread > 0 && (
+                <span style={{ position: 'absolute', top: '2px', right: '2px', width: '14px', height: '14px', background: 'var(--lgu-error)', color: '#fff', borderRadius: '9999px', fontSize: '0.5625rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              )}
+            </NavLink>
+
+            {/* User menu */}
+            <div className="dropdown">
+              <div tabIndex={0} role="button" className="avatar" style={{ cursor: 'pointer' }}>
+                <div style={{ background: 'var(--ink)', color: 'var(--on-ink)', width: '100%', height: '100%', display: 'grid', placeItems: 'center', borderRadius: '9999px' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.75rem' }}>{user?.fullName?.charAt(0) || 'U'}</span>
                 </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-base-content">{user?.fullName}</div>
-                <div className="truncate text-xs capitalize text-base-content/50">{user?.role.replace(/_/g, ' ').toLowerCase()}</div>
+              <div className="dropdown-content" style={{ width: '14rem' }}>
+                <div style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--line)', marginBottom: '0.25rem' }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.8125rem' }}>{user?.fullName}</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', letterSpacing: '0.06em', color: 'color-mix(in oklab, var(--ink) 50%, transparent)', marginTop: '0.125rem' }}>
+                    @{user?.username} · {user?.role?.replace(/_/g, ' ').toLowerCase()}
+                  </div>
+                </div>
+                <button onClick={() => setPwModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.4375rem 0.75rem', borderRadius: '6px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--ink)', transition: 'background 100ms' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  onFocus={e => e.currentTarget.style.background = 'var(--surface2)'}
+                  onBlur={e => e.currentTarget.style.background = 'none'}
+                >
+                  <KeyRound size={14} /> Change password
+                </button>
+                {canAudit && (
+                  <>
+                    <NavLink to="/audit" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4375rem 0.75rem', borderRadius: '6px', fontSize: '0.8125rem', color: 'var(--ink)', textDecoration: 'none', transition: 'background 100ms' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                      onFocus={e => e.currentTarget.style.background = 'var(--surface2)'}
+                      onBlur={e => e.currentTarget.style.background = 'none'}
+                    >
+                      <ShieldCheck size={14} /> Audit trail
+                    </NavLink>
+                    <NavLink to="/coa-compliance" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4375rem 0.75rem', borderRadius: '6px', fontSize: '0.8125rem', color: 'var(--ink)', textDecoration: 'none', transition: 'background 100ms' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                      onFocus={e => e.currentTarget.style.background = 'var(--surface2)'}
+                      onBlur={e => e.currentTarget.style.background = 'none'}
+                    >
+                      <ShieldCheck size={14} /> COA compliance
+                    </NavLink>
+                  </>
+                )}
+                <div style={{ borderTop: '1px solid var(--line)', marginTop: '0.25rem', paddingTop: '0.25rem' }}>
+                  <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.4375rem 0.75rem', borderRadius: '6px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--lgu-error)', transition: 'background 100ms' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'color-mix(in oklab, var(--lgu-error) 8%, transparent)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    onFocus={e => e.currentTarget.style.background = 'color-mix(in oklab, var(--lgu-error) 8%, transparent)'}
+                    onBlur={e => e.currentTarget.style.background = 'none'}
+                  >
+                    <LogOut size={14} /> Sign out
+                  </button>
+                  <button onClick={() => setLogoutOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.4375rem 0.75rem', borderRadius: '6px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--lgu-error)', transition: 'background 100ms' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'color-mix(in oklab, var(--lgu-error) 8%, transparent)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    onFocus={e => e.currentTarget.style.background = 'color-mix(in oklab, var(--lgu-error) 8%, transparent)'}
+                    onBlur={e => e.currentTarget.style.background = 'none'}
+                  >
+                    <LogOut size={14} /> Sign out all sessions
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={handleLogout}
-                aria-label="Sign out"
-                title="Sign out"
-                className="btn btn-ghost btn-square btn-sm text-base-content/50 hover:text-error"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
             </div>
           </div>
-        </aside>
+        </header>
+
+        {/* Page content */}
+        <main className="page-content" style={{ flex: 1 }}>
+          <div className="page-inner"><Outlet /></div>
+        </main>
+
+        {/* Footer */}
+        <footer style={{ borderTop: '1px solid var(--line)', padding: '0.875rem 1.5rem', display: 'flex', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--ink) 35%, transparent)' }}>
+          LGU Inventory Management System · On-premise · v1.0
+        </footer>
       </div>
 
-      <ChangePasswordModal />
+      {/* ── Modals ── */}
+      {pwModalOpen && <ChangePasswordModal onClose={() => setPwModalOpen(false)} />}
+
+      {logoutOpen && (
+        <dialog className="modal modal-open" aria-label="Sign out all sessions">
+          <div className="modal-box">
+            <h3 style={{ fontWeight: 600, fontSize: '1rem' }}>Sign out of all sessions?</h3>
+            <p style={{ marginTop: '0.5rem', color: 'color-mix(in oklab, var(--ink) 60%, transparent)', fontSize: '0.9375rem' }}>
+              You will be signed out from all devices.
+            </p>
+            <div className="modal-action">
+              <button className="btn" onClick={() => setLogoutOpen(false)}>Cancel</button>
+              <button className="btn btn-error" onClick={() => { setLogoutOpen(false); handleLogoutAll(); }}>Sign out all</button>
+            </div>
+          </div>
+          <form method="dialog" className="modal-backdrop"><button aria-label="Close dialog" onClick={() => setLogoutOpen(false)}>close</button></form>
+        </dialog>
+      )}
     </div>
   );
 }
 
-function ChangePasswordModal() {
+function ChangePasswordModal({ onClose }) {
   const toast = useToast();
   const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [busy, setBusy] = useState(false);
+  const dialogRef = useRef(null);
+
+  useEffect(() => { dialogRef.current?.showModal(); }, []);
 
   const submit = async (e) => {
     e.preventDefault();
-    if (form.newPassword !== form.confirm) {
-      toast.error('New passwords do not match.');
-      return;
-    }
+    if (form.newPassword !== form.confirm) { toast.error('New passwords do not match.'); return; }
     setBusy(true);
     try {
       await api.post('/auth/change-password', { currentPassword: form.currentPassword, newPassword: form.newPassword });
-      toast.success('Password updated successfully.');
-      document.getElementById('pw-modal').close();
-      setForm({ currentPassword: '', newPassword: '', confirm: '' });
+      toast.success('Password updated.');
+      onClose();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Unable to change password.');
     } finally {
@@ -348,30 +334,27 @@ function ChangePasswordModal() {
   };
 
   return (
-    <dialog id="pw-modal" className="modal">
+    <dialog ref={dialogRef} className="modal" aria-label="Change password" onClose={onClose}>
       <div className="modal-box">
-        <h3 className="font-bold text-lg">Change password</h3>
-        <form onSubmit={submit} className="mt-4 flex flex-col gap-4">
-          <label className="fieldset">
+        <h3 style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '1rem' }}>Change password</h3>
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="fieldset">
             <span className="fieldset-legend">Current password</span>
-            <input type="password" required className="input" placeholder="••••••••"
-              value={form.currentPassword} onChange={(e) => setForm({ ...form, currentPassword: e.target.value })} />
-          </label>
-          <label className="fieldset">
-            <span className="fieldset-legend">New password (min. 8 characters)</span>
-            <input type="password" required className="input" placeholder="••••••••"
-              value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} />
-          </label>
-          <label className="fieldset">
+            <input type="password" required className="input" value={form.currentPassword} onChange={e => setForm({ ...form, currentPassword: e.target.value })} />
+          </div>
+          <div className="fieldset">
+            <span className="fieldset-legend">New password (min. 8 chars)</span>
+            <input type="password" required className="input" value={form.newPassword} onChange={e => setForm({ ...form, newPassword: e.target.value })} />
+          </div>
+          <div className="fieldset">
             <span className="fieldset-legend">Confirm new password</span>
-            <input type="password" required className="input" placeholder="••••••••"
-              value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
-          </label>
+            <input type="password" required className="input" value={form.confirm} onChange={e => setForm({ ...form, confirm: e.target.value })} />
+          </div>
           <div className="modal-action">
-            <button type="button" className="btn" onClick={() => document.getElementById('pw-modal').close()}>Cancel</button>
+            <button type="button" className="btn" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={busy}>
               {busy && <span className="loading loading-spinner loading-xs" />}
-              Update password
+              Update
             </button>
           </div>
         </form>
@@ -379,8 +362,3 @@ function ChangePasswordModal() {
     </dialog>
   );
 }
-
-
-
-
-

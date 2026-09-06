@@ -5,7 +5,7 @@
 **Stack:** React 19 + Express 5 + Prisma 6 + PostgreSQL 16  
 **Scope:** Full-stack gap analysis (schema, backend, frontend, UX, compliance)
 
-> **Last updated:** 2026-09-06. This report reflects the state of the codebase after implementing audit log immutability (Prisma middleware) and tamper-evident hash chain (HMAC-SHA256).
+> **Last updated:** 2026-09-06. Recent: approveRis ReferenceError fix (`approvedItems` hoisting), bulk RIS notifications, `rejectPhysicalCount` backend+route+UI, item import case-insensitive categories, department delete all-relations check, profile self-service (`GET/PATCH /users/me`), 3-way matching UI.
 
 ---
 
@@ -21,8 +21,8 @@ However, it is **not production-ready for a provincial LGU deployment or COA aud
 
 | # | Gap | Status |
 |---|-----|--------|
-| 1 | **No Purchase Order (PO) workflow** — PO/DR numbers are text fields only; no PO creation, approval, matching, or budget control | ?? PARTIALLY ADDRESSED — `PurchaseOrder` + `PurchaseOrderItem` models and receiving?PO linkage exist, but no PO creation UI or 3-way matching |
-| 2 | **No Property Accountability (PAR/ICS/APP)** — no Property Acknowledgement Receipt, no semi-expendable/ITE tracking, no acknowledgment slip on issue | ? PAR and Acknowledgment Slip reports implemented; ICS and APP still MISSING |
+| 1 | **No Purchase Order (PO) workflow** — PO/DR numbers are text fields only; no PO creation, approval, matching, or budget control | ?? PARTIALLY ADDRESSED — `PurchaseOrder` + `PurchaseOrderItem` models, PO creation UI, and 3-way matching UI exist; budget control still missing |
+| 2 | **No Property Accountability (PAR/ICS/APP)** — no Property Acknowledgement Receipt, no semi-expendable/ITE tracking, no acknowledgment slip on issue | ? FIXED — PAR, ICS, APP, and IAS reports all implemented |
 | 3 | **Race condition in RIS number generation** (`utils/risNumber.js`) | ? FIXED — Retry loop with unique constraint fallback in `risController.js:118-155` |
 
 ### Top 3 Medium Gaps (P1) — Post-Update Status
@@ -50,13 +50,13 @@ However, it is **not production-ready for a provincial LGU deployment or COA aud
 | Stock adjustments (IN/OUT) | ? Implemented | `adjustStock` with audit trail |
 | Item image display in list | ? Implemented | Frontend |
 | Unit cost history / weighted average | ? FIXED | `ReceivingItem.unitCost` preserves per-receiving cost |
-| Max stock / capacity limits | ? MISSING | No upper bound; receiving can overfill indefinitely |
+| Max stock / capacity limits | ? FIXED | `maxStock` field on `Item` model; enforced in `itemController` and `receivingController` |
 | Item condition/status | ? FIXED | `condition` field (`SERVICEABLE / UNSERVICEABLE / CONDEMNED`) |
 | Item expiry / warranty / shelf-life | ? FIXED | `expiryDate`, `warrantyExpiry` fields on `Item` |
 | Item serial number / asset tag | ?? INCOMPLETE | `stockNumber` is free-text; no serial tracking or asset barcode generation |
 | Bulk move / transfer between locations | ? MISSING | No sub-location or warehouse concept |
 | Inventory aging / obsolescence report | ? MISSING | Aging report exists but no obsolescence flagging |
-| Physical count worksheet | ? PARTIALLY | `PhysicalCount` model exists; no variance detection workflow |
+| Physical count worksheet | ? FIXED | `PhysicalCount` model + submit/approve/reject workflow; variance report in `reportController.js` |
 | Item decommissioning / disposal | ? MISSING | No condemned/disposed status; items are only archived |
 
 ### B. Requisition & Issue Slip (RIS)
@@ -67,7 +67,7 @@ However, it is **not production-ready for a provincial LGU deployment or COA aud
 | Approval / rejection workflow | ? Implemented | `approveRis`, `rejectRis` |
 | Partial approval (override qty) | ? FIXED | Approve modal has per-item qty inputs (`RISPage.jsx:195-219`) |
 | Partial issuing (PARTIALLY_ISSUED) | ? Implemented | `issueRis` auto-detects remaining |
-| Stock short issuance (silent cap) | ?? WEAK | Still silent cap; no notification to requester |
+| Stock short issuance (silent cap) | ? FIXED | Backend returns `shortfalls[]`; frontend shows `toast.warn()` with shortfall count |
 | RIS cancellation with stock restore | ? Implemented | `cancelRis` |
 | Item return to stock | ? Implemented | `returnRisItems` |
 | RIS numbering (year-sequential) | ? FIXED | Retry loop mitigates race condition (`risController.js:118-155`) |
@@ -75,7 +75,7 @@ However, it is **not production-ready for a provincial LGU deployment or COA aud
 | Multi-level approval (e.g., budget, certifying) | ? FIXED | `certifyRis` controller + route for `CERTIFIED` status |
 | Budget / appropriation check on RIS | ? PARTIALLY | `Budget` model exists; used in cancellation |
 | RIS template for printing | ? Implemented | Frontend print modal in `RISPage.jsx` |
-| Bulk RIS creation | ? MISSING | Only one-at-a-time |
+| Bulk RIS creation | ? FIXED | `POST /ris/bulk` + `BulkCreateModal` in `RISPage.jsx` |
 
 ### C. Receiving & Supplier Management
 
@@ -87,13 +87,13 @@ However, it is **not production-ready for a provincial LGU deployment or COA aud
 | Receiving edit with reversal | ? Implemented | `updateReceiving` |
 | Receiving delete with reversal | ? Implemented | `deleteReceiving` |
 | ReceivingNo uniqueness | ? FIXED | Pre-check with friendly 409 error (`receivingController.js:67-70`) |
-| Purchase Order (PO) creation & management | ?? PARTIALLY | `PurchaseOrder`/`PurchaseOrderItem` models exist; no creation UI |
-| 3-way matching (PO vs DR vs Receiving) | ?? PARTIALLY | Receiving?PO linkage validation exists in `createReceiving` |
+| Purchase Order (PO) creation & management | ?? PARTIALLY | `PurchaseOrder`/`PurchaseOrderItem` models + PO creation UI + 3-way matching; no budget control |
+| 3-way matching (PO vs DR vs Receiving) | ? FIXED | 3-way matching UI in `PurchaseOrdersPage.jsx` with PO selection, quantity comparison, and invoice verification |
 | Supplier performance tracking | ? MISSING | No delivery timeliness, quality scoring |
 | Supplier classification (LBBB, etc.) | ? MISSING | No PhilGeps/RA 9184 supplier classification |
 | Partial receiving / backorder | ?? WEAK | No backorder tracking; receiving creates a single flat record |
 | Quotation / canvass sheet | ? MISSING | Required pre-procurement step |
-| Inspection/acceptance sheet (IAS) | ? MISSING | Required after receiving |
+| Inspection/acceptance sheet (IAS) | ? FIXED | `GET /reports/ias` with PDF/Excel in `reportController.js` |
 
 ### D. User & Role Management
 
@@ -107,10 +107,10 @@ However, it is **not production-ready for a provincial LGU deployment or COA aud
 | 2FA (TOTP) | ? Implemented | `otplib` + QR setup |
 | Password expiry policy | ? FIXED | Enforced via `passwordChangedAt` check (90 days default) |
 | Login history / last login display | ? FIXED | `lastLoginAt` tracked on successful login |
-| Concurrent session management | ?? WEAK | JWT 7-day expiry; no session revocation or limit |
-| User profile self-service (name, email, dept) | ? MISSING | Users cannot edit own profile; only ADMIN can |
+| Concurrent session management | ? FIXED | Max 5 refresh tokens per user; `MAX_SESSIONS_PER_USER` config; `POST /auth/logout-all` |
+| User profile self-service (name, email, dept) | ? FIXED | `GET /users/me`, `PATCH /users/me`; `ProfilePage.jsx` with name, email, department, password change, 2FA setup |
 | Email verification on registration | ? MISSING | Email is set but never verified |
-| Password history | ? MISSING | Cannot prevent reuse of last N passwords |
+| Password history | ? FIXED | `PreviousPassword` model + `isPasswordInHistory()` + `addPasswordToHistory()` in `authController.js`/`userController.js` |
 | Account lockout after N failed attempts | ? FIXED | 5 failures ? 15-min lock (`authController.js:64-76`) |
 | Impersonation / audit-as-user | ? MISSING | No support for ADMIN to view AS another role |
 | Bulk user operations | ? MISSING | No bulk import of users |
@@ -184,13 +184,13 @@ eportController.js) |
 | Swagger API docs | ? Implemented | `/api/docs` |
 | Theme switcher (light/dark) | ? Implemented | Zustand store |
 | System settings / configuration UI | ? MISSING | No UI for SMTP config, app URL, CORS |
-| Database backup/restore UI | ? MISSING | Only shell scripts; no scheduler, no UI |
+| Database backup/restore UI | ? FIXED | Backup/restore tab in SettingsPage; `backup.sh`/`restore.sh` scripts |
 | Database migration management | ?? WEAK | Prisma migrations exist but no migration runner UI |
 | Multi-LGU / tenant isolation | ? MISSING | Single-tenant only |
 | Maintenance mode | ? MISSING | No way to put system in read-only mode |
-| Feature flags | ? MISSING | No gradual rollout mechanism |
+| Feature flags | ? FIXED | `backend/src/services/featureFlags.js` with `GET /flags` + `PATCH /flags`; Flags tab in SettingsPage |
 | System logs viewer | ? MISSING | No access to application logs from within the app |
-| Background job queue | ? MISSING | Email sending is fire-and-forget; no retry queue |
+| Background job queue | ? FIXED | `EmailJob` model + poll-and-process queue in `backend/src/services/queue.js`; `GET /api/v1/queue/stats`; auto-starts on boot |
 
 ### I. Mobile / Offline / Integration
 
@@ -204,8 +204,8 @@ eportController.js) |
 | Accounting system integration | ? MISSING | No export to TBAS |
 | HRIS/SSO integration | ? MISSING | `externalId` column exists but no SSO logic |
 | PhilGEPS / e-procurement integration | ? MISSING | No procurement exchange format |
-| Webhook / event hooks | ? MISSING | No event emission |
-| CSV/Excel bulk import for master data | ?? PARTIAL | Items only; no bulk import for users, suppliers, departments |
+| Webhook / event hooks | ? FIXED | `backend/src/services/webhooks.js` with `dispatch()` for `ris.created` and `receiving.created`; `GET /webhooks` + `POST /webhooks`; Webhooks tab in SettingsPage |
+| CSV/Excel bulk import for master data | ? FIXED | User and supplier CSV import implemented; items already existed |
 
 ### J. Security & Access Control
 
@@ -221,12 +221,13 @@ eportController.js) |
 | Input sanitization | ?? WEAK | `sanitizeString` strips `< >` tags but does NOT escape HTML entities |
 | Content Security Policy headers | ? FIXED | Helmet with CSP, HSTS, frame-ancestors: none |
 | JWT secret fallback to dev value | ? FIXED | Throws in production; warns in dev |
-| No refresh token rotation | ?? PARTIAL | `RefreshToken` model exists but no refresh endpoint |
+| No refresh token rotation | ? FIXED | `issueRefreshToken()`, `POST /auth/refresh-token`, max 5 sessions |
 | No account lockout | ? FIXED | 5 failures ? 15-min lock |
 | No password expiry | ? FIXED | 90-day enforcement |
 | No login history | ? FIXED | `lastLoginAt` tracked |
-| No concurrent session limit | ?? WEAK | No session cap; JWTs valid for 7 days |
+| No concurrent session limit | ? FIXED | Max 5 refresh tokens per user; `MAX_SESSIONS_PER_USER` config; `POST /auth/logout-all` |
 | CORS wildcard when env misconfigured | ?? WEAK | If `corsOrigins` includes `'*'`, any origin accepted |
+| `GET /users/stats/dashboard` unauthenticated | ? FIXED | Added `authenticate` middleware to `user.routes.js` |
 | No audit log immutability | ? FIXED | Prisma middleware blocks UPDATE/DELETE |
 | Tamper-evident audit trail | ? FIXED | HMAC-SHA256 hash chain |
 | File upload path traversal prevention | ?? WEAK | Random filename (good) but no content-type verification |
@@ -351,14 +352,14 @@ RIS detail modal too wide for mobile; 13-column item table requires horizontal s
 Pages show "No records found" without linking to create action.
 
 ### 4.9 No Keyboard Shortcuts
-**Status:** ?? UNCHANGED  
-No keyboard navigation for common actions.
+**Status:** ? FIXED  
+Keyboard shortcuts implemented across the app (committed in `bb5d809`).
 
 ### 4.10 `openReport` Hardcodes Filename
-**Status:** ?? UNCHANGED  
-**File:** `frontend/src/api/client.js:28-47`
+**Status:** ? FIXED  
+**File:** `frontend/src/api/client.js` (commit `6b307c9`)
 
-All downloaded reports are named `report` regardless of `Content-Disposition` header.
+`parseFilename()` handles `filename*=UTF-8''` (RFC 5987) and `filename=`; `filenameFromPath()` fallback.
 
 ---
 
@@ -369,10 +370,10 @@ All downloaded reports are named `report` regardless of `Content-Disposition` he
 | Requirement | Status | Notes |
 |-------------|--------|-------|
 | Purchase Request (PR) creation | ? MISSING | No PR module |
-| Purchase Order (PO) issuance | ?? PARTIALLY | Models exist; no creation UI or 3-way matching |
+| Purchase Order (PO) issuance | ?? PARTIALLY | Models + creation UI + 3-way matching exist; no budget integration |
 | Canvass / Quotation sheet | ? MISSING | No pre-procurement documentation |
-| 3-way matching (PO vs DR vs Invoice) | ?? PARTIALLY | Receiving?PO linkage validation only |
-| Inspection and Acceptance Sheet (IAS) | ? MISSING | No inspection workflow |
+| 3-way matching (PO vs DR vs Invoice) | ? FIXED | 3-way matching UI in `PurchaseOrdersPage.jsx` |
+| Inspection and Acceptance Sheet (IAS) | ? FIXED | `GET /reports/ias` with PDF/Excel |
 | Supplier registry / PhilGEPS linkage | ? MISSING | No accredited supplier classification |
 | Purchase price variation check | ? MISSING | No historical price comparison |
 
@@ -381,10 +382,10 @@ All downloaded reports are named `report` regardless of `Content-Disposition` he
 | Requirement | Status | Notes |
 |-------------|--------|-------|
 | Property Acknowledgement Receipt (PAR) | ? FIXED | `parReport` in `reportController.js:337` |
-| Inventory Custodian Slip (ICS) | ? MISSING | Not generated |
-| Annual Property, Plant & Equipment (APP) | ? MISSING | Not generated |
+| Inventory Custodian Slip (ICS) | ? FIXED | `GET /reports/icing` in `reportController.js` |
+| Annual Property, Plant & Equipment (APP) | ? FIXED | `GET /reports/app` in `reportController.js` |
 | Semi-expendable property tracking | ? MISSING | No threshold-based classification |
-| Physical inventory taking | ?? PARTIALLY | Physical count workflow exists; no variance report |
+| Physical inventory taking | ? Implemented | Physical count submit/approve/reject workflow; variance report in `reportController.js` |
 | Obsolete/unserviceable property identification | ?? PARTIALLY | `condition` field exists but no obsolete flag or report |
 
 ### 5.3 COA Circular 2021-002 (Audit of Inventories)
@@ -392,7 +393,7 @@ All downloaded reports are named `report` regardless of `Content-Disposition` he
 | Requirement | Status | Notes |
 |-------------|--------|-------|
 | Stock ledger maintained per item | ? Implemented | Ledger card per item |
-| Physical count reconciliation | ?? PARTIALLY | Physical count exists; no variance reconciliation |
+| Physical count reconciliation | ? Implemented | Variance report + approve/reject workflow |
 | Inventory aging analysis | ?? PARTIALLY | Aging report exists; no obsolescence flagging |
 | Obsolescence provision | ? MISSING | No obsolete item flagging |
 | Proper classification (consumables vs PPE) | ?? PARTIALLY | `isAccountable` field exists; no formal classification report |
@@ -440,10 +441,10 @@ All downloaded reports are named `report` regardless of `Content-Disposition` he
 | P1-6 | No password expiry | `authController.js` | NIST/compliance | ? FIXED |
 | P1-7 | Audit log immutability | DB migration + Prisma middleware | Tampered audit trail | ? FIXED |
 | P1-8 | Seed script password overwrite | `prisma/seed.js` | Resets passwords | ? FIXED |
-| P1-9 | No JWT refresh tokens | `authController.js` | Session hijacking | ?? PARTIAL — model exists |
-| P1-10 | No password history | `authController.js` | Password reuse | ?? UNCHANGED |
+| P1-9 | No JWT refresh tokens | `authController.js` | Session hijacking | ? FIXED |
+| P1-10 | No password history | `authController.js` | Password reuse | ? FIXED |
 | P1-11 | No login history | `userController.js` | Forensic gap | ? FIXED (lastLoginAt) |
-| P1-12 | No concurrent session limit | `authController.js` | Shared credentials | ?? UNCHANGED |
+| P1-12 | No concurrent session limit | `authController.js` | Shared credentials | ? FIXED |
 
 ### P2 — Medium (Upcoming)
 
@@ -452,7 +453,7 @@ All downloaded reports are named `report` regardless of `Content-Disposition` he
 | P2-1 | No physical count variance reports | 
 eportController.js | COA compliance | FIXED |
 | P2-2 | No ICS / APP reports | `reportController.js` | COA compliance | FIXED |
-| P2-3 | No budget / appropriation tracking | userController.js + Dashboard | Overspending | FIXED |
+| P2-3 | No 3-way matching (PO vs DR vs Invoice) | `reportController.js` + `PurchaseOrdersPage.jsx` | Procurement governance | ? FIXED |
 | P2-4 | No item condition field | `schema.prisma` | COA PPE reporting | FIXED |
 | P2-5 | No JWT refresh token rotation | `authController.js` | Session hijacking | FIXED |
 | P2-6 | No email digest | `notificationService.js` | Email fatigue | FIXED |
@@ -461,6 +462,7 @@ eportController.js | COA compliance | FIXED |
 | P2-9 | No item serial/asset tag barcode | `schema.prisma` | Property tracking | FIXED |
 | P2-10 | No supplier performance tracking | eportController.js + ReportsPage | Procurement governance | FIXED |
 | P2-11 | No dashboard trend charts | userController.js + DashboardPage | User analytics | FIXED |
+| P2-12 | Physical count has no reject workflow | `physicalCountController.js` + routes + `PhysicalCountPage.jsx` | COA compliance | FIXED |
 
 ### P3 — Low (Backlog)
 
@@ -485,10 +487,10 @@ eportController.js | COA compliance | FIXED |
 
 | Domain | Score | Key Gap |
 |--------|-------|--------|
-| Core Inventory | 8.5/10 | No serial tracking, no decommissioning |
-| RIS Workflow | 8/10 | No bulk creation |
-| Receiving & Suppliers | 7.5/10 | No 3-way matching UI |
-| User & Role Management | 9/10 | No profile self-service |
+| Core Inventory | 9/10 | No serial tracking, no decommissioning/disposal, no bulk transfer |
+| RIS Workflow | 8.5/10 | — |
+| Receiving & Suppliers | 8.5/10 | No quotation/canvass sheet, no backorder tracking |
+| User & Role Management | 9.5/10 | No email verification, no bulk user operations |
 | Notifications | 7/10 | No push notifications, limited preferences |
 | Reporting | 9/10 | ICS, APP, IAS, variance, supplier performance |
 | Audit & Compliance | 8/10 | Immutable + tamper-evident + COA compliance dashboard |
@@ -496,4 +498,4 @@ eportController.js | COA compliance | FIXED |
 | Mobile/Offline/Integration | 2/10 | Web-only, no offline, no integrations |
 | Security & Access Control | 8.5/10 | JWT enforced, CSRF+CSP, immutable+tamper-evident audit, refresh token rotation, concurrent session limit, password history |
 
-**Overall: 8.0/10 — Functional for a small LGU pilot; audit trail and security are production-grade; COA compliance reports (ICS/APP/IAS) now complete; procurement governance (supplier performance, POs) in place.**
+**Overall: 8.0/10 — Functional for a small LGU pilot; audit trail and security are production-grade; COA compliance reports (PAR/ICS/APP/IAS) complete; procurement governance (supplier performance, POs, 3-way matching) in place; refresh token rotation, password history, session limits, user profile self-service enforced; physical count submit/approve/reject workflow implemented.**

@@ -192,6 +192,11 @@ async function dashboardStats(req, res) {
     itemsWithExpiry,
     itemsWithWarranty,
     pendingPhysicalCounts,
+    pendingRisApprovals,
+    pendingPhysicalCountsReview,
+    expiringItems,
+    totalSuppliers,
+    openPurchaseOrders,
   ] = await Promise.all([
     prisma.item.count({ where: { isActive: true } }),
     prisma.category.count(),
@@ -201,6 +206,19 @@ async function dashboardStats(req, res) {
     prisma.item.count({ where: { isActive: true, expiryDate: { not: null } } }),
     prisma.item.count({ where: { isActive: true, warrantyExpiry: { not: null } } }),
     prisma.physicalCount.count({ where: { status: 'SUBMITTED' } }),
+    prisma.ris.count({ where: { status: 'PENDING' } }),
+    prisma.physicalCount.count({ where: { status: 'SUBMITTED' } }),
+    prisma.item.findMany({
+      where: {
+        isActive: true,
+        expiryDate: { lte: new Date(Date.now() + 30 * 86400000), not: null },
+      },
+      select: { id: true, name: true, sku: true, expiryDate: true, unit: true, currentStock: true },
+      orderBy: { expiryDate: 'asc' },
+      take: 5,
+    }),
+    prisma.supplier.count({ where: { isActive: true } }),
+    prisma.purchaseOrder.count({ where: { status: { in: ['PENDING', 'APPROVED'] } } }),
   ]);
 
   const recentLedger = await prisma.ledgerEntry.findMany({
@@ -268,6 +286,10 @@ async function dashboardStats(req, res) {
       itemsWithExpiry,
       itemsWithWarranty,
       pendingPhysicalCounts,
+      pendingRisApprovals,
+      pendingPhysicalCountsReview,
+      totalSuppliers,
+      openPurchaseOrders,
       budgetUtilization: budgets.map((b) => ({
         department: b.department,
         year: b.year,
@@ -282,6 +304,7 @@ async function dashboardStats(req, res) {
     },
     lowStock,
     recentLedger,
+    expiringItems,
   });
 }
 
@@ -387,4 +410,30 @@ async function importUsers(req, res) {
   res.json({ data: { created, updated, errors }, message: `Import complete: ${created} created, ${updated} updated, ${errors.length} errors. Default password: ${defaultPassword}` });
 }
 
-module.exports = { listUsers, createUser, updateUser, dashboardStats, importUsers };
+async function getMe(req, res) {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    include: { department: true },
+  });
+  res.json({ data: publicUser(user) });
+}
+
+async function updateMe(req, res) {
+  const body = sanitizeBody(req.body, ['fullName', 'email']);
+  const { fullName, email, departmentId } = body;
+
+  const data = {};
+  if (fullName !== undefined) data.fullName = fullName;
+  if (email !== undefined) data.email = email;
+  if (departmentId !== undefined) data.departmentId = departmentId || null;
+
+  const user = await prisma.user.update({
+    where: { id: req.user.id },
+    data,
+    include: { department: true },
+  });
+
+  res.json({ data: publicUser(user) });
+}
+
+module.exports = { listUsers, createUser, updateUser, dashboardStats, importUsers, getMe, updateMe };

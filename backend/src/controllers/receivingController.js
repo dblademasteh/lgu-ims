@@ -4,6 +4,7 @@ const { writeAudit } = require('../utils/audit');
 const { sanitizeString } = require('../utils/sanitize');
 const { round2 } = require('../utils/money');
 const { dispatch } = require('../services/webhooks');
+const { notifyInApp } = require('../services/notificationService');
 
 function sanitizeBody(body, fields = []) {
   const out = { ...body };
@@ -11,6 +12,19 @@ function sanitizeBody(body, fields = []) {
     if (out[f] !== undefined) out[f] = sanitizeString(out[f]);
   }
   return out;
+}
+
+async function reconcilePoStatus(tx, purchaseOrderId) {
+  const [totalReceived, totalOrdered] = await Promise.all([
+    tx.purchaseOrderItem.aggregate({ where: { purchaseOrderId }, _sum: { receivedQuantity: true } }),
+    tx.purchaseOrderItem.aggregate({ where: { purchaseOrderId }, _sum: { quantity: true } }),
+  ]);
+  const fullyReceived = (totalReceived._sum.receivedQuantity || 0) >= (totalOrdered._sum.quantity || 0);
+  const poStatus = (await tx.purchaseOrder.findUnique({ where: { id: purchaseOrderId }, select: { status: true } }))?.status;
+  const nextStatus = fullyReceived ? 'RECEIVED' : poStatus === 'RECEIVED' ? 'APPROVED' : poStatus;
+  if (nextStatus && poStatus !== nextStatus) {
+    await tx.purchaseOrder.update({ where: { id: purchaseOrderId }, data: { status: nextStatus } });
+  }
 }
 
 async function listSuppliers(req, res) {
@@ -28,7 +42,7 @@ async function createSupplier(req, res) {
 }
 
 async function listReceivings(req, res) {
-  const { page = 1, limit = 20, search, from, to, supplierId } = req.query;
+  const { page = 1, limit = 20, search, from, to, supplierId, purchaseOrderId } = req.query;
   const where = {};
   if (search) {
     where.OR = [
@@ -38,6 +52,7 @@ async function listReceivings(req, res) {
     ];
   }
   if (supplierId) where.supplierId = supplierId;
+  if (purchaseOrderId) where.purchaseOrderId = purchaseOrderId;
   if (from || to) {
     where.receiptDate = {};
     if (from) where.receiptDate.gte = new Date(from);
@@ -84,8 +99,9 @@ async function createReceiving(req, res) {
         mismatches.push(`Item ${ri.itemId} is not in PO ${po.poNumber}.`);
         continue;
       }
-      if (Number(ri.quantity) > poItem.quantity) {
-        mismatches.push(`Quantity for ${ri.itemId} exceeds PO quantity (${ri.quantity} > ${poItem.quantity}).`);
+      const remaining = poItem.quantity - (poItem.receivedQuantity || 0);
+      if (Number(ri.quantity) > remaining) {
+        mismatches.push(`Quantity for ${ri.itemId} exceeds remaining PO quantity (${ri.quantity} > ${remaining} of ${poItem.quantity}).`);
       }
       const costDiff = Math.abs(Number(ri.unitCost || 0) - poItem.unitCost);
       if (costDiff > 0.01 && poItem.unitCost > 0) {
@@ -121,6 +137,7 @@ async function createReceiving(req, res) {
     });
 
     for (const ri of doc.items) {
+      await tx.$queryRaw`SELECT "id" FROM "Item" WHERE "id" = ${ri.itemId} FOR UPDATE`;
       const item = await tx.item.findUnique({ where: { id: ri.itemId } });
       if (!item) continue;
       const newBalance = item.currentStock + ri.quantity;
@@ -169,6 +186,14 @@ async function createReceiving(req, res) {
   });
 
   await writeAudit(req, 'CREATE', 'Receiving', receiving.id, null, { receivingNo, supplierId, itemsCount: items.length });
+  if (po?.createdById && po.createdById !== req.user.id) {
+    await notifyInApp({
+      userId: po.createdById,
+      type: 'SYSTEM',
+      title: 'Stock received against purchase order',
+      message: `Receiving ${receiving.receivingNo} was recorded against ${po.poNumber}.`,
+    });
+  }
   dispatch('receiving.created', { receivingId: receiving.id, receivingNo, supplierId, supplierName: supplier.name, itemsCount: items.length });
   res.json({ data: receiving, message: 'Receiving recorded and stock updated.' });
 }
@@ -209,8 +234,10 @@ async function updateReceiving(req, res) {
         mismatches.push(`Item ${ri.itemId} is not in PO ${po.poNumber}.`);
         continue;
       }
-      if (Number(ri.quantity) > poItem.quantity) {
-        mismatches.push(`Quantity for ${ri.itemId} exceeds PO quantity (${ri.quantity} > ${poItem.quantity}).`);
+      const alreadyReceivedHere = existing.items.find((e) => e.itemId === ri.itemId)?.quantity || 0;
+      const remaining = poItem.quantity - ((poItem.receivedQuantity || 0) - alreadyReceivedHere);
+      if (Number(ri.quantity) > remaining) {
+        mismatches.push(`Quantity for ${ri.itemId} exceeds remaining PO quantity (${ri.quantity} > ${remaining} of ${poItem.quantity}).`);
       }
       const costDiff = Math.abs(Number(ri.unitCost || 0) - poItem.unitCost);
       if (costDiff > 0.01 && poItem.unitCost > 0) {
@@ -229,6 +256,9 @@ async function updateReceiving(req, res) {
       const item = await tx.item.findUnique({ where: { id: ri.itemId } });
       if (!item) continue;
       const reversed = item.currentStock - ri.quantity;
+      if (reversed < 0) {
+        throw new ApiError(400, `Cannot update receiving: reversing "${item.name}" would make stock negative (resulting ${reversed}). Adjust quantities first.`);
+      }
       await tx.item.update({ where: { id: item.id }, data: { currentStock: reversed } });
     }
 
@@ -269,6 +299,22 @@ async function updateReceiving(req, res) {
       });
     }
 
+    if (poId) {
+      for (const ri of existing.items) {
+        await tx.purchaseOrderItem.updateMany({
+          where: { purchaseOrderId: poId, itemId: ri.itemId },
+          data: { receivedQuantity: { decrement: ri.quantity } },
+        });
+      }
+      for (const ri of doc.items) {
+        await tx.purchaseOrderItem.updateMany({
+          where: { purchaseOrderId: poId, itemId: ri.itemId },
+          data: { receivedQuantity: { increment: ri.quantity } },
+        });
+      }
+      await reconcilePoStatus(tx, poId);
+    }
+
     return doc;
   });
 
@@ -286,6 +332,9 @@ async function deleteReceiving(req, res) {
       const item = await tx.item.findUnique({ where: { id: ri.itemId } });
       if (!item) continue;
       const reversed = item.currentStock - ri.quantity;
+      if (reversed < 0) {
+        throw new ApiError(400, `Cannot delete receiving: reversing "${item.name}" would make stock negative (resulting ${reversed}).`);
+      }
       await tx.item.update({ where: { id: item.id }, data: { currentStock: reversed } });
       await tx.ledgerEntry.create({
         data: {
@@ -299,6 +348,15 @@ async function deleteReceiving(req, res) {
           createdById: req.user.id,
         },
       });
+    }
+    if (existing.purchaseOrderId) {
+      for (const ri of existing.items) {
+        await tx.purchaseOrderItem.updateMany({
+          where: { purchaseOrderId: existing.purchaseOrderId, itemId: ri.itemId },
+          data: { receivedQuantity: { decrement: ri.quantity } },
+        });
+      }
+      await reconcilePoStatus(tx, existing.purchaseOrderId);
     }
     await tx.receiving.delete({ where: { id: existing.id } });
   });

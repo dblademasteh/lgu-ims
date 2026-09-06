@@ -14,6 +14,14 @@ export default function NotificationsPage() {
   const [data, setData] = useState(null);
   const [page, setPage] = useState(1);
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [prefs, setPrefs] = useState([]);
+  const [prefsBusy, setPrefsBusy] = useState(false);
+
+  const loadPrefs = () => {
+    api.get('/notification-preferences').then((r) => setPrefs(r.data.data || [])).catch(() => {});
+  };
+
+  useEffect(() => { loadPrefs(); }, []);
 
   const load = () => {
     const q = new URLSearchParams({ page });
@@ -41,17 +49,72 @@ export default function NotificationsPage() {
     load();
   };
 
+  const togglePref = (type, key, value) => {
+    setPrefs((prev) => prev.map((p) => (p.type === type ? { ...p, [key]: value } : p)));
+  };
+
+  const savePrefs = async () => {
+    setPrefsBusy(true);
+    try {
+      await api.patch('/notification-preferences', { preferences: prefs });
+      toast.success('Notification preferences saved.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Unable to save preferences.');
+    } finally {
+      setPrefsBusy(false);
+    }
+  };
+
+  const TYPE_LABEL = {
+    LOW_STOCK: 'Low stock alerts',
+    RIS: 'Requisition (RIS) updates',
+    SYSTEM: 'System notifications',
+  };
+
   return (
     <div>
       <PageHeader
         title="Notifications"
         subtitle="Low-stock alerts and requisition updates."
         actions={
-          <button className="btn btn-outline btn-sm" onClick={markAll} disabled={!data?.data?.some((n) => !n.isRead)}>
+          <button className="btn btn-outline btn-sm" onClick={markAll} disabled={!data || ((data.unreadCount ?? data.data.filter((n) => !n.isRead).length) === 0)}>
             Mark all as read
           </button>
         }
       />
+
+      <div className="card bg-base-100 shadow-sm mb-4">
+        <div className="card-body">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h3 className="font-semibold">Preferences</h3>
+              <p className="text-sm text-base-content/60">Choose which channels receive each notification type.</p>
+            </div>
+            <button className="btn btn-primary btn-sm" disabled={prefsBusy} onClick={savePrefs}>
+              {prefsBusy && <span className="loading loading-spinner loading-xs" />}
+              Save preferences
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {prefs.map((p) => (
+              <div key={p.type} className="rounded-lg border border-base-300 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-sm">{TYPE_LABEL[p.type] || p.type.replace(/_/g, ' ')}</span>
+                </div>
+                {[
+                  { key: 'inApp', label: 'In-app alerts', hint: 'Show in the notification bell' },
+                  { key: 'email', label: 'Email notifications', hint: 'Send to your inbox' },
+                ].map((opt) => (
+                  <label key={opt.key} className="flex items-center gap-3 cursor-pointer py-1">
+                    <input type="checkbox" className="toggle toggle-primary toggle-sm" checked={Boolean(p[opt.key])} onChange={(e) => togglePref(p.type, opt.key, e.target.checked)} />
+                    <span className="text-sm">{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       <div className="card bg-base-100 shadow-sm">
         <div className="card-body">
@@ -69,9 +132,12 @@ export default function NotificationsPage() {
               <ul className="flex flex-col gap-2">
                 {data.data.map((n) => (
                   <li key={n.id}>
-                    <button
+                    <div
+                      role="button"
+                      tabIndex={0}
                       className={`w-full text-left card card-body !p-4 ${n.isRead ? 'bg-base-200/60 opacity-70' : 'bg-base-200'}`}
                       onClick={() => markRead(n)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); markRead(n); } }}
                     >
                       <div className="flex items-start gap-3">
                         <div className={`rounded-lg p-2 ${n.type === 'LOW_STOCK' ? 'bg-warning/15 text-warning' : n.type === 'RIS' ? 'bg-info/15 text-info' : 'bg-neutral/10'}`}>
@@ -87,7 +153,7 @@ export default function NotificationsPage() {
                         </div>
                         <button className="btn btn-ghost btn-xs text-error" onClick={(e) => { e.stopPropagation(); deleteNotification(n); }}>Delete</button>
                       </div>
-                    </button>
+                    </div>
                   </li>
                 ))}
               </ul>

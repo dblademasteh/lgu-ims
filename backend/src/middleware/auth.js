@@ -37,6 +37,7 @@ async function authenticate(req, res, next) {
   }
 
   req.user = user;
+  req.tenantId = user.tenantId;
   next();
 }
 
@@ -50,12 +51,13 @@ function authorize(...roles) {
 }
 
 function signToken(user) {
-  return jwt.sign({ sub: user.id }, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
+  return jwt.sign({ sub: user.id, tenantId: user.tenantId }, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
 }
 
 function publicUser(user) {
   return {
     id: user.id,
+    tenantId: user.tenantId,
     username: user.username,
     email: user.email,
     fullName: user.fullName,
@@ -64,6 +66,7 @@ function publicUser(user) {
     department: user.department ? { id: user.department.id, name: user.department.name, code: user.department.code } : null,
     externalId: user.externalId,
     isActive: user.isActive,
+    twoFactorEnabled: user.twoFactorEnabled,
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,
   };

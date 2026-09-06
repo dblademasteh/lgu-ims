@@ -14,6 +14,8 @@ let isRefreshing = false;
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('lgu_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  const user = JSON.parse(localStorage.getItem('lgu_user') || 'null');
+  if (user?.tenantId) config.headers['X-Tenant-ID'] = user.tenantId;
   return config;
 });
 
@@ -27,7 +29,7 @@ api.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem('lgu_refresh_token');
         if (!refreshToken) throw new Error('No refresh token');
-        const res = await axios.post('/api/v1/auth/refresh-token', { refreshToken });
+        const res = await api.post('/auth/refresh-token', { refreshToken });
         const { token, refreshToken: newRefreshToken } = res.data;
         localStorage.setItem('lgu_token', token);
         localStorage.setItem('lgu_refresh_token', newRefreshToken);

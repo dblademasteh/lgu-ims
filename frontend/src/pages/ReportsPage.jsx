@@ -22,8 +22,16 @@ export default function ReportsPage() {
   const [categories, setCategories] = useState([]);
   const [loadingRef, setLoadingRef] = useState(false);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+  const today = (() => {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  })();
+  const monthStart = (() => {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
+  })();
 
   const [rsmi, setRsmi] = useState({ from: monthStart, to: today, departmentId: '' });
   const [inventory, setInventory] = useState({ categoryId: '' });
@@ -105,6 +113,14 @@ export default function ReportsPage() {
           <div className="flex gap-2 mt-3">
             <button className="btn btn-primary flex-1" onClick={() => run(`/reports/inventory${inventory.categoryId ? `?categoryId=${inventory.categoryId}` : ''}`)}>PDF</button>
             <button className="btn btn-outline flex-1" onClick={() => run(`/reports/inventory${inventory.categoryId ? `?categoryId=${inventory.categoryId}` : ''}&format=excel`, true)}>Excel</button>
+          </div>
+        </ReportCard>
+
+        <ReportCard title="Stock Aging Analysis" description="Inventory age by last movement bucket (0-30, 31-90, 91-180, 181-365, &gt;365 days).">
+          <p className="text-sm text-base-content/60">Flags slow-moving and dormant stock for write-off or redistribution decisions.</p>
+          <div className="flex gap-2 mt-3">
+            <button className="btn btn-primary flex-1" onClick={() => run('/reports/aging')}>PDF</button>
+            <button className="btn btn-outline flex-1" onClick={() => run('/reports/aging?format=excel', true)}>Excel</button>
           </div>
         </ReportCard>
 

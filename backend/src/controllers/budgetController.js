@@ -38,6 +38,11 @@ async function createBudget(req, res) {
   const department = await prisma.department.findUnique({ where: { id: departmentId } });
   if (!department) throw new ApiError(404, 'Department not found.');
 
+  const existing = await prisma.budget.findUnique({
+    where: { departmentId_year: { departmentId, year: Number(year) } },
+  });
+  if (existing) throw new ApiError(409, 'A budget for this department and year already exists.');
+
   const budget = await prisma.budget.create({
     data: { departmentId, amount: Number(amount), year: Number(year) },
     include: { department: true },
