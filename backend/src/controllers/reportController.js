@@ -713,4 +713,104 @@ async function appReport(req, res) {
 }
 
 
-module.exports = { rsmiReport, inventoryReport, movementsReport, ledgerCardReport, parReport, agingReport, acknowledgmentSlipReport, icsReport, appReport };
+
+async function varianceReport(req, res) {
+  const { format = 'pdf', from, to, departmentId, status = 'SUBMITTED' } = req.query;
+  const where = { status };
+  if (from || to) {
+    where.countDate = {};
+    if (from) where.countDate.gte = new Date(from);
+    if (to) where.countDate.lte = new Date(to);
+  }
+  if (departmentId) where.departmentId = departmentId;
+
+  const counts = await prisma.physicalCount.findMany({
+    where,
+    include: {
+      department: true,
+      createdBy: { select: { fullName: true } },
+      items: { include: { item: { include: { category: true } } } },
+    },
+    orderBy: { countDate: 'desc' },
+  });
+
+  const rows = [];
+  for (const count of counts) {
+    for (const item of count.items) {
+      rows.push({
+        countNo: count.id.slice(0, 8).toUpperCase(),
+        countDate: new Date(count.countDate).toLocaleDateString(),
+        department: count.department?.name || '—',
+        submittedBy: count.createdBy?.fullName || '—',
+        status: count.status,
+        sku: item.item?.sku || '—',
+        itemName: item.item?.name || '—',
+        category: item.item?.category?.name || '—',
+        systemQty: item.systemQuantity,
+        countedQty: item.countedQuantity,
+        variance: item.variance,
+        variancePct: item.systemQuantity > 0 ? ((item.variance / item.systemQuantity) * 100).toFixed(1) + '%' : 'N/A',
+      });
+    }
+  }
+
+  const summary = {
+    totalCounts: counts.length,
+    totalItems: rows.length,
+    itemsWithVariance: rows.filter((r) => r.variance !== 0).length,
+    totalVarianceQty: rows.reduce((s, r) => s + Math.abs(r.variance), 0),
+  };
+
+  if (format === 'excel') {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Variance Report');
+    ws.columns = [
+      { header: 'Count ID', key: 'countNo', width: 12 },
+      { header: 'Date', key: 'countDate', width: 14 },
+      { header: 'Department', key: 'department', width: 20 },
+      { header: 'Submitted By', key: 'submittedBy', width: 20 },
+      { header: 'Status', key: 'status', width: 12 },
+      { header: 'SKU', key: 'sku', width: 16 },
+      { header: 'Item', key: 'itemName', width: 35 },
+      { header: 'Category', key: 'category', width: 18 },
+      { header: 'System Qty', key: 'systemQty', width: 14 },
+      { header: 'Counted Qty', key: 'countedQty', width: 14 },
+      { header: 'Variance', key: 'variance', width: 12 },
+      { header: 'Var %', key: 'variancePct', width: 10 },
+    ];
+    ws.getRow(1).font = { bold: true };
+    rows.forEach((r) => ws.addRow(r));
+    renderExcel(res, wb, Physical_Count_Variance_.xlsx);
+    return;
+  }
+
+  const body = [
+    [{ text: 'PHYSICAL COUNT VARIANCE REPORT', style: 'title' }, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}],
+    [{ text: 'Generated: ' + new Date().toLocaleString() + ' | Counts: ' + summary.totalCounts + ' | Items: ' + summary.totalItems + ' | With Variance: ' + summary.itemsWithVariance, colSpan: 12 }, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}],
+    [{ text: '', bold: true }, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}],
+    [{ text: 'ID', style: 'th' }, { text: 'Date', style: 'th' }, { text: 'Dept', style: 'th' }, { text: 'Submitted By', style: 'th' }, { text: 'Status', style: 'th' }, { text: 'SKU', style: 'th' }, { text: 'Item', style: 'th' }, { text: 'Category', style: 'th' }, { text: 'System', style: 'th' }, { text: 'Counted', style: 'th' }, { text: 'Variance', style: 'th' }, { text: '%', style: 'th' }],
+    ...rows.map((r) => [
+      r.countNo, r.countDate, r.department, r.submittedBy, r.status,
+      r.sku, r.itemName, r.category,
+      String(r.systemQty), String(r.countedQty),
+      { text: String(r.variance), color: r.variance !== 0 ? 'red' : undefined },
+      r.variancePct,
+    ]),
+  ];
+
+  renderPdf(res, {
+    ...pdfHeader('PHYSICAL COUNT VARIANCE REPORT', 'COA Circular 2021-002 — Physical count reconciliation'),
+    content: [
+      {
+        table: {
+          headerRows: 1,
+          widths: ['auto', 'auto', '*', '*', 'auto', 'auto', '*', '*', 'auto', 'auto', 'auto', 'auto'],
+          body,
+          layout: { fillColor: (rowIndex) => (rowIndex % 2 === 0 ? null : '#F3F4F6') },
+        },
+      },
+    ],
+  }, Physical_Count_Variance_.pdf);
+}
+
+module.exports = { rsmiReport, inventoryReport, movementsReport, ledgerCardReport, parReport, agingReport, acknowledgmentSlipReport, icsReport, appReport, varianceReport };

@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-### Overall Readiness Score: 7.1 / 10
+### Overall Readiness Score: 7.2 / 10
 
 The system has a **solid core** — it covers the fundamental inventory loop (items ? receiving ? RIS ? ledger ? reports) with role-based access control, 2FA, audit logging, COA-compliant ledger cards, and PDF/Excel reporting. Several critical gaps identified in the original analysis have been addressed, including JWT secret enforcement, security headers (Helmet + CSP), CSRF protection, RIS number race condition mitigation, audit log immutability, and tamper-evident hashing.
 
@@ -449,7 +449,7 @@ All downloaded reports are named `report` regardless of `Content-Disposition` he
 
 | ID | Gap | File(s) | Risk | Status |
 |----|-----|---------|------|--------|
-| P2-1 | No physical count variance reports | New module | COA compliance | ?? PARTIAL — count exists |
+| P2-1 | No physical count variance reports | eportController.js | COA compliance | FIXED |
 | P2-2 | No ICS / APP reports | `reportController.js` | COA compliance | ? MISSING |
 | P2-3 | No budget / appropriation tracking | New models | Overspending | ?? PARTIAL — Budget model exists |
 | P2-4 | No item condition field | `schema.prisma` | COA PPE reporting | ? FIXED |
@@ -495,4 +495,4 @@ All downloaded reports are named `report` regardless of `Content-Disposition` he
 | Mobile/Offline/Integration | 2/10 | Web-only, no offline, no integrations |
 | Security & Access Control | 7.5/10 | JWT enforced (P0-2), CSRF+CSP (P0-8), immutable+tamper-evident audit (P0-9/10); no refresh token rotation, no concurrent session limit |
 
-**Overall: 7.1/10 — Functional for a small LGU pilot; audit trail and security hardening now production-grade; procurement governance and COA compliance still incomplete.**
+**Overall: 7.2/10 — Functional for a small LGU pilot; audit trail and security hardening now production-grade; procurement governance and COA compliance still incomplete.**

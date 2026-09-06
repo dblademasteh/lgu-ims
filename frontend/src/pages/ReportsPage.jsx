@@ -31,6 +31,7 @@ export default function ReportsPage() {
   const [ledgerItemId, setLedgerItemId] = useState('');
   const [ics, setIcs] = useState({ from: monthStart, to: today });
   const [appYear, setAppYear] = useState(new Date().getFullYear());
+  const [variance, setVariance] = useState({ from: monthStart, to: today, departmentId: '' });
 
   useEffect(() => {
     api.get('/items?limit=200').then((r) => setItems(r.data.data)).catch(() => {});
@@ -180,6 +181,34 @@ export default function ReportsPage() {
           <div className="flex gap-2 mt-3">
             <button className="btn btn-primary flex-1" onClick={() => run('/reports/app?year=' + appYear)}>PDF</button>
             <button className="btn btn-outline flex-1" onClick={() => run('/reports/app?year=' + appYear + '&format=excel', true)}>Excel</button>
+          </div>
+        </ReportCard>
+
+        <ReportCard title="Physical Count Variance Report" description="Variance between system quantities and physical count results per COA Circular 2021-002.">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <fieldset className="fieldset">
+              <legend className="fieldset-legend">From</legend>
+              <input className="input" type="date" value={variance.from} onChange={(e) => setVariance({ ...variance, from: e.target.value })} />
+            </fieldset>
+            <fieldset className="fieldset">
+              <legend className="fieldset-legend">To</legend>
+              <input className="input" type="date" value={variance.to} onChange={(e) => setVariance({ ...variance, to: e.target.value })} />
+            </fieldset>
+            <fieldset className="fieldset">
+              <legend className="fieldset-legend">Department</legend>
+              <select className="select" value={variance.departmentId} onChange={(e) => setVariance({ ...variance, departmentId: e.target.value })}>
+                <option value="">All departments</option>
+                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </fieldset>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button className="btn btn-primary flex-1" onClick={() => {
+              run('/reports/variance?from=' + variance.from + '&to=' + variance.to + (variance.departmentId ? '&departmentId=' + variance.departmentId : ''));
+            }}>PDF</button>
+            <button className="btn btn-outline flex-1" onClick={() => {
+              run('/reports/variance?from=' + variance.from + '&to=' + variance.to + (variance.departmentId ? '&departmentId=' + variance.departmentId : '') + '&format=excel', true);
+            }}>Excel</button>
           </div>
         </ReportCard>
       </div>
