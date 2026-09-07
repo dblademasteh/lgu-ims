@@ -635,7 +635,7 @@ function BackupTab() {
       URL.revokeObjectURL(url);
       toast.success('Backup downloaded.');
     } catch (err) {
-      toast.error(err.message || 'Backup failed.');
+      toast.error(err.response?.data?.message || err.message || 'Backup failed.');
     } finally {
       setBusy(false);
     }
