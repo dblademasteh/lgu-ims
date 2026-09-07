@@ -38,15 +38,12 @@ function SectionCard({ title, subtitle, action, children }) {
 function Modal({ open, onClose, title, children }) {
   if (!open) return null;
   return (
-    <dialog className="modal modal-open">
+    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-box">
         <h3 className="font-bold text-lg">{title}</h3>
         {children}
       </div>
-      <form method="dialog" className="modal-backdrop" onClick={onClose}>
-        <button type="button">close</button>
-      </form>
-    </dialog>
+    </div>
   );
 }
 
