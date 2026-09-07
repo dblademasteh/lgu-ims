@@ -1,56 +1,79 @@
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, ShieldCheck, LogIn, ArrowLeft, Landmark, CircleAlert, X } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck, CircleAlert, MailCheck, X, LockKeyhole, User, Package, ClipboardList, BarChart3, Landmark, KeyRound, ArrowRight } from 'lucide-react';
 import api from '../api/client';
-import useAuthStore from '../stores/authStore';
+import { createPortal } from 'react-dom';
 import { useToast } from '../components/Toast';
+import useAuthStore from '../stores/authStore';
 
-function Portal({ children }) { return createPortal(children, document.body); }
+const DEMO_ACCOUNTS =
+  import.meta.env.VITE_SHOW_DEMO_ACCOUNTS === 'true'
+    ? [
+        { u: 'admin', label: 'Administrator', role: 'Admin' },
+        { u: 'warehouse', label: 'Warehouse Staff', role: 'Warehouse' },
+        { u: 'custodian', label: 'Property Custodian', role: 'Custodian' },
+        { u: 'auditor', label: 'Auditor', role: 'Auditor' },
+      ]
+    : [];
 
-const DEMO_ACCOUNTS = [
-  { u: 'admin', label: 'Administrator', role: 'Admin' },
-  { u: 'warehouse', label: 'Warehouse Staff', role: 'Warehouse' },
-  { u: 'custodian', label: 'Property Custodian', role: 'Custodian' },
-  { u: 'auditor', label: 'Auditor', role: 'Auditor' },
-];
-
-const SYSTEM_NOTES = [
-  'On-premises — all data remains within the LGU network.',
-  'All actions are logged with user identity and timestamp.',
-  'Access is restricted to authorized personnel only.',
+const FEATURES = [
+  { icon: Package, title: 'Stock & Inventory', desc: 'Track items, SKUs, and reorder points in real time.' },
+  { icon: ClipboardList, title: 'Requisitions (RIS)', desc: 'Request → approve → issue workflow with printable slips.' },
+  { icon: BarChart3, title: 'COA-Compliant Reports', desc: 'RSMI, ledger cards, and summaries in PDF & Excel.' },
+  { icon: ShieldCheck, title: 'Full Audit Trail', desc: 'Every action logged with user, timestamp, and changes.' },
 ];
 
 export default function LoginPage() {
   return (
-    <main style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-alt)' }}>
-      <div style={{ width: '100%', maxWidth: '28rem', padding: '3rem 1rem' }}>
-        <Header />
-        <LoginForm />
+    <main className="gov-login">
+      <div className="gov-login-shell">
+        {/* Branding panel */}
+        <aside className="gov-login-brand">
+          <div className="gov-login-brand-inner">
+            <div className="gov-login-seal">
+              <ShieldCheck size={30} strokeWidth={1.5} />
+            </div>
+            <p className="gov-login-agency">Republic of the Philippines</p>
+            <h1 className="gov-login-title">LGU Property &amp; Supply Office</h1>
+            <p className="gov-login-subtitle">Inventory Management System</p>
+            <div className="gov-login-divider" />
+            <p className="gov-login-brand-desc">
+              A secure, on-premise platform for managing government property,
+              supplies, and inventory — built for transparency and accountability.
+            </p>
+            <ul className="gov-login-features">
+              {FEATURES.map((f) => (
+                <li key={f.title} className="gov-login-feature">
+                  <span className="gov-login-feature-icon">
+                    <f.icon size={15} strokeWidth={2} />
+                  </span>
+                  <span className="gov-login-feature-text">
+                    <strong>{f.title}</strong>
+                    <span>{f.desc}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="gov-login-brand-foot">
+            <Landmark size={12} />
+            <span>On-premise · Secure · COA-compliant</span>
+          </div>
+        </aside>
+
+        {/* Form panel */}
+        <div className="gov-login-form-panel">
+          <div className="gov-login-form-inner">
+            <LoginForm />
+          </div>
+        </div>
       </div>
     </main>
   );
 }
 
-function Header() {
-  return (
-    <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '4rem', height: '4rem', borderRadius: '9999px', marginBottom: '1.25rem', background: 'var(--text)' }}>
-        <Landmark size={28} strokeWidth={1.5} style={{ color: 'var(--surface)' }} />
-      </div>
-      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.5rem', color: 'var(--accent)' }}>Republic of the Philippines</div>
-      <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--fs-xl)', fontWeight: 700, lineHeight: 1.2, color: 'var(--text)' }}>
-        Local Government Unit
-      </h1>
-      <p style={{ fontSize: '0.875rem', marginTop: '0.25rem', color: 'color-mix(in oklab, var(--text) 55%, transparent)' }}>Property &amp; Supply Management System</p>
-      <div style={{ marginTop: '1.25rem', height: '2px', width: '6rem', marginLeft: 'auto', marginRight: 'auto', background: 'var(--accent)', borderRadius: '2px' }} />
-    </div>
-  );
-}
-
 function LoginForm() {
   const navigate = useNavigate();
-  const setSession = useAuthStore((s) => s.setSession);
   const toast = useToast();
 
   const [step, setStep] = useState('credentials');
@@ -68,6 +91,18 @@ function LoginForm() {
   const [forgotUser, setForgotUser] = useState('');
   const [forgotBusy, setForgotBusy] = useState(false);
   const [forgotMsg, setForgotMsg] = useState('');
+  const [forgotError, setForgotError] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+
+  const openForgot = () => {
+    setForgotOpen(true);
+    setForgotUser('');
+    setForgotBusy(false);
+    setForgotMsg('');
+    setForgotError('');
+    setForgotSent(false);
+  };
+  const closeForgot = () => setForgotOpen(false);
 
   const prefill = (u) => {
     setUsername(u);
@@ -87,42 +122,16 @@ function LoginForm() {
         setStep('password-change');
         return;
       }
-      if (res.data.requires2FA) {
-        setTempToken(res.data.tempToken);
-        setStep('2fa');
-        return;
-      }
-      setSession(res.data);
-      toast.success(`Welcome, ${res.data.user.fullName}.`);
-      navigate('/dashboard', { replace: true });
-    } catch (err) {
-      const data = err.response?.data;
-      if (data?.details?.unlockVia === 'forgot-password') {
-        setError(data.message || 'Account is locked. Use the forgot-password flow to unlock it.');
-        setForgotOpen(true);
-      } else {
-        setError(data?.message || 'Sign in failed. Check your credentials.');
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const submitPasswordChange = async (e) => {
-    e.preventDefault();
-    setBusy(true);
-    setError('');
-    try {
-      await api.post('/auth/change-password', { newPassword }, {
-        headers: { Authorization: `Bearer ${tempToken}` },
+      useAuthStore.getState().setSession({
+        token: res.data.token,
+        refreshToken: res.data.refreshToken,
+        user: res.data.user,
       });
-      toast.success('Password updated. Sign in with your new password.');
-      setStep('credentials');
-      setPassword('');
-      setNewPassword('');
-      setTempToken('');
+      toast.success(`Welcome, ${res.data.user.fullName}.`);
+      navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to update password.');
+      const msg = err?.response?.data?.message || 'Invalid username or password.';
+      setError(msg);
     } finally {
       setBusy(false);
     }
@@ -134,12 +143,42 @@ function LoginForm() {
     setBusy(true);
     setError('');
     try {
-      const res = await api.post('/auth/2fa/login', { tempToken, code });
-      setSession(res.data);
+      const res = await api.post('/auth/login/2fa', { tempToken, code });
+      useAuthStore.getState().setSession({
+        token: res.data.token,
+        refreshToken: res.data.refreshToken,
+        user: res.data.user,
+      });
       toast.success(`Welcome, ${res.data.user.fullName}.`);
-      navigate('/dashboard', { replace: true });
+      navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid code. Please try again.');
+      const msg = err?.response?.data?.message || 'Invalid verification code.';
+      setError(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitPasswordChange = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api.post('/auth/accept-invite', {
+        tempToken,
+        password: newPassword,
+        code,
+      });
+      useAuthStore.getState().setSession({
+        token: res.data.token,
+        refreshToken: res.data.refreshToken,
+        user: res.data.user,
+      });
+      toast.success(`Welcome, ${res.data.user.fullName}.`);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Could not set password.');
     } finally {
       setBusy(false);
     }
@@ -147,244 +186,334 @@ function LoginForm() {
 
   const submitForgot = async (e) => {
     e.preventDefault();
+    if (forgotBusy || !forgotUser.trim()) return;
     setForgotBusy(true);
-    setForgotMsg('');
+    setForgotError('');
     try {
-      await api.post('/auth/forgot-password', { username: forgotUser });
-      setForgotMsg('If an account matches, a reset link will be sent to the registered email.');
+      const res = await api.post('/auth/forgot-password', {
+        username: forgotUser,
+      });
+      const msg =
+        res.data.message ||
+        'If an account exists, a reset link has been sent to the registered email address.';
+      setForgotMsg(msg);
+      setForgotSent(true);
     } catch (err) {
-      setForgotMsg(err.response?.data?.message || 'Unable to process request.');
+      console.error(err);
+      setForgotError(
+        err?.response?.data?.message ||
+          'Something went wrong. Please try again.'
+      );
     } finally {
       setForgotBusy(false);
     }
   };
 
-  return (
-    <>
-      <div className="card" style={{ overflow: 'hidden' }}>
-        <div style={{ padding: '1.25rem 2rem', borderBottom: '1.5px solid var(--border)' }}>
-          <p className="lbl">
-            {step === 'credentials' ? 'Registered User Access' :
-             step === '2fa' ? 'Two-Factor Verification' :
-             'Password Update Required'}
-          </p>
-        </div>
+  if (step === 'password-change') {
+    return (
+      <>
+        <form onSubmit={submitPasswordChange} className="gov-form" noValidate>
+          <div className="gov-form-group">
+            <label htmlFor="2fa-code" className="gov-label">Verification code</label>
+            <div className="gov-field">
+              <LockKeyhole size={17} className="gov-field-icon" />
+              <input
+                id="2fa-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                name="code"
+                autoFocus
+                placeholder="e.g. 482910"
+                className="gov-input"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                required
+              />
+            </div>
+          </div>
 
-        <div style={{ padding: '1.5rem 2rem' }}>
+          <div className="gov-form-group">
+            <label htmlFor="new-password" className="gov-label">New password</label>
+            <div className="gov-input-wrap">
+              <LockKeyhole size={17} className="gov-field-icon" />
+              <input
+                id="new-password"
+                type={showPw ? 'text' : 'password'}
+                autoComplete="new-password"
+                name="password"
+                required
+                minLength={8}
+                placeholder="Min. 8 characters"
+                className="gov-input"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                className="gov-toggle-pw"
+                aria-label={showPw ? 'Hide password' : 'Show password'}
+                onClick={() => setShowPw((s) => !s)}
+              >
+                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
           {error && (
-            <div className="alert alert-error" style={{ marginBottom: '1.25rem' }}>
-              <CircleAlert size={16} style={{ flexShrink: 0 }} />
+            <div className="gov-error">
+              <CircleAlert size={14} />
               <span>{error}</span>
             </div>
           )}
 
-          {step === 'credentials' && (
-            <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} noValidate>
-              <Field label="Username" id="lgu-username">
-                <input
-                  id="lgu-username"
-                  type="text"
-                  required
-                  autoComplete="username"
-                  autoFocus
-                  placeholder="Enter username"
-                  className="form-input"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
-              </Field>
+          <button type="submit" className="gov-btn gov-btn-primary" disabled={busy}>
+            {busy ? (
+              <span className="loading" style={{ width: '1.125rem', height: '1.125rem', borderWidth: '2px' }} />
+            ) : (
+              'Set password'
+            )}
+          </button>
+        </form>
+        <div className="gov-form-alt">
+          <button type="button" className="gov-link" onClick={() => setStep('credentials')}>
+            Back to sign in
+          </button>
+        </div>
+      </>
+    );
+  }
 
-              <Field label="Password" id="lgu-password">
-                <div style={{ position: 'relative' }}>
-                  <input
-                    id="lgu-password"
-                    type={showPw ? 'text' : 'password'}
-                    required
-                    autoComplete="current-password"
-                    placeholder="Enter password"
-                    className="form-input"
-                    style={{ paddingRight: '2.75rem' }}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPw((s) => !s)}
-                    style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', padding: '0.25rem', display: 'grid', placeItems: 'center', borderRadius: '4px', transition: 'opacity 140ms' }}
-                    aria-label={showPw ? 'Hide password' : 'Show password'}
-                  >
-                    {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </Field>
+  return (
+    <>
+      <div className="gov-login-welcome">
+        <h2 className="gov-login-welcome-title">Welcome back</h2>
+        <p className="gov-login-welcome-sub">Sign in to your account to continue.</p>
+      </div>
 
-              <button type="submit" className="btn btn-primary w-full" disabled={busy} style={{ marginTop: '0.25rem' }}>
-                {busy ? (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span className="loading loading-spinner loading-xs" />
-                    Signing in…
-                  </span>
-                ) : (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <LogIn size={16} />
-                    Sign in
-                  </span>
-                )}
-              </button>
-
-              <div style={{ textAlign: 'right' }}>
-                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--accent)', textDecoration: 'underline', textDecorationColor: 'transparent', transition: 'text-decoration-color 140ms', padding: 0 }}
-                  onClick={() => setForgotOpen(true)}
-                  onMouseEnter={e => e.currentTarget.style.textDecorationColor = 'var(--accent)'}
-                  onMouseLeave={e => e.currentTarget.style.textDecorationColor = 'transparent'}>
-                  Forgot password?
-                </button>
-              </div>
-            </form>
-          )}
-
-          {step === '2fa' && (
-            <form onSubmit={submit2FA} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} noValidate>
-              <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'color-mix(in oklab, var(--text) 60%, transparent)' }}>
-                Enter the 6-digit code from your authenticator app.
-              </p>
-              <Field label="Verification code" id="lgu-2fa-code">
-                <input
-                  id="lgu-2fa-code"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={6}
-                  required
-                  autoFocus
-                  placeholder="000000"
-                  className="form-input"
-                  style={{ textAlign: 'center', fontSize: '1.25rem', letterSpacing: '0.35em', fontFamily: 'var(--font-mono)' }}
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                />
-              </Field>
-              <button type="submit" className="btn btn-primary w-full" disabled={busy || code.length < 6}>
-                {busy ? <span className="loading loading-spinner loading-xs" /> : 'Verify and sign in'}
-              </button>
-              <button type="button" className="btn w-full" style={{ fontSize: '0.8125rem', color: 'var(--accent)' }}
-                onClick={() => { setStep('credentials'); setCode(''); setTempToken(''); }}>
-                ← Back to sign in
-              </button>
-            </form>
-          )}
-
-          {step === 'password-change' && (
-            <form onSubmit={submitPasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} noValidate>
-              <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'color-mix(in oklab, var(--text) 60%, transparent)' }}>
-                Your password has expired. Choose a new password to continue.
-              </p>
-              <Field label="New password" id="new-pw">
-                <input
-                  id="new-pw"
-                  type="password"
-                  required
-                  minLength={8}
-                  autoFocus
-                  placeholder="Minimum 8 characters"
-                  className="form-input"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                />
-              </Field>
-              <button type="submit" className="btn btn-primary w-full" disabled={busy}>
-                {busy ? <span className="loading loading-spinner loading-xs" /> : 'Update and sign in'}
-              </button>
-              <button type="button" className="btn w-full" style={{ fontSize: '0.8125rem', color: 'var(--accent)' }}
-                onClick={() => { setStep('credentials'); setNewPassword(''); }}>
-                ← Back to sign in
-              </button>
-            </form>
-          )}
+      <form onSubmit={submit} className="gov-form">
+        <div className="gov-form-group">
+          <label htmlFor="username" className="gov-label">Username</label>
+          <div className="gov-field">
+            <User size={17} className="gov-field-icon" />
+            <input
+              id="username"
+              type="text"
+              autoComplete="off"
+              name="username"
+              autoFocus
+              placeholder="Enter your username"
+              className="gov-input"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
         </div>
 
-        {step === 'credentials' && (
-          <>
-            {import.meta.env.VITE_SHOW_DEMO_ACCOUNTS === 'true' && (
-              <div style={{ padding: '0 2rem 1.5rem' }}>
-                <div style={{ borderTop: '1.5px solid var(--border)', paddingTop: '1.25rem' }}>
-                  <p className="lbl" style={{ marginBottom: '0.75rem' }}>Demo access</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                    {DEMO_ACCOUNTS.map((a) => (
-                      <button key={a.u} type="button" onClick={() => prefill(a.u)}
-                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '0.625rem', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', transition: 'border-color 140ms, background 140ms', textAlign: 'left' }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--text)'; e.currentTarget.style.background = 'color-mix(in oklab, var(--text) 4%, var(--surface))'; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--surface)'; }}>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text)' }}>{a.u}</span>
-                        <span style={{ fontSize: '0.6875rem', marginTop: '0.125rem', color: 'color-mix(in oklab, var(--text) 50%, transparent)' }}>{a.role}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
+        <div className="gov-form-group">
+          <label htmlFor="password" className="gov-label">Password</label>
+          <div className="gov-input-wrap">
+            <LockKeyhole size={17} className="gov-field-icon" />
+            <input
+              id="password"
+              type={showPw ? 'text' : 'password'}
+              autoComplete="current-password"
+              name="password"
+              required
+              minLength={8}
+              placeholder="Enter your password"
+              className="gov-input"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              className="gov-toggle-pw"
+              aria-label={showPw ? 'Hide password' : 'Show password'}
+              onClick={() => setShowPw((s) => !s)}
+            >
+              {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <div className="gov-error">
+            <CircleAlert size={14} />
+            <span>{error}</span>
+          </div>
         )}
+
+        <button type="submit" className="gov-btn gov-btn-primary" disabled={busy}>
+          {busy ? (
+            <span className="loading" style={{ width: '1.125rem', height: '1.125rem', borderWidth: '2px' }} />
+          ) : (
+            'Sign in'
+          )}
+        </button>
+      </form>
+
+      <div className="gov-form-alt">
+        <button type="button" className="gov-link" onClick={openForgot}>
+          Forgot password?
+        </button>
       </div>
 
-      <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        {SYSTEM_NOTES.map((n) => (
-          <div key={n} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.625rem' }}>
-            <ShieldCheck size={14} style={{ color: 'var(--accent)', marginTop: '2px', flexShrink: 0 }} />
-            <span style={{ fontSize: '0.8125rem', lineHeight: 1.6, color: 'color-mix(in oklab, var(--text) 50%, transparent)' }}>{n}</span>
+      {DEMO_ACCOUNTS.length > 0 && (
+        <>
+          <div className="gov-demo-divider">
+            <span>Quick demo access</span>
           </div>
-        ))}
-      </div>
+          <div className="gov-demo-grid">
+            {DEMO_ACCOUNTS.map((a) => (
+              <button
+                key={a.u}
+                type="button"
+                className="gov-demo-btn"
+                onClick={() => prefill(a.u)}
+              >
+                <span className="gov-demo-label">{a.label}</span>
+                <span className="gov-demo-meta">{a.role} &middot; {a.u}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {forgotOpen && (
-        <Portal>
-          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setForgotOpen(false); }}>
-            <div className="modal-box modal-sm">
-              <div className="modal-header">
-                <h3 className="modal-title">Reset password</h3>
-                <button className="modal-close" onClick={() => setForgotOpen(false)}><X size={15} /></button>
-              </div>
-              <p className="text-sm text-base-content/60 mt-1">Enter your username. If an account exists, a reset link will be sent to the registered email.</p>
-              <form onSubmit={submitForgot} className="flex flex-col gap-4 mt-4">
-                <Field label="Username or email" id="forgot-user">
-                  <input
-                    id="forgot-user"
-                    type="text"
-                    required
-                    autoFocus
-                    placeholder="e.g. admin"
-                    className="form-input"
-                    value={forgotUser}
-                    onChange={(e) => setForgotUser(e.target.value)}
-                  />
-                </Field>
-                {forgotMsg && (
-                  <div className="alert alert-info">
-                    <span>{forgotMsg}</span>
-                  </div>
-                )}
-                <div className="modal-footer">
-                  <button type="button" className="btn" onClick={() => setForgotOpen(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary" disabled={forgotBusy}>
-                    {forgotBusy ? <><span className="loading loading-spinner loading-xs" /> Sending…</> : 'Send reset link'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </Portal>
+        <ForgotPasswordModal
+          user={forgotUser}
+          setUser={setForgotUser}
+          busy={forgotBusy}
+          msg={forgotMsg}
+          error={forgotError}
+          sent={forgotSent}
+          onSubmit={submitForgot}
+          onClose={closeForgot}
+        />
       )}
     </>
   );
 }
 
-function Field({ label, id, children }) {
+function ForgotPasswordModal({
+  user,
+  setUser,
+  busy,
+  msg,
+  error,
+  sent,
+  onSubmit,
+  onClose,
+}) {
   return (
-    <div>
-      <label htmlFor={id} className="login-label">
-        {label}
-      </label>
-      {children}
-    </div>
+    <Portal>
+      <div
+        className="modal-backdrop"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Reset password"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div className="gov-modal">
+          <button className="gov-modal-close" onClick={onClose} aria-label="Close">
+            <X size={16} />
+          </button>
+
+          {!sent ? (
+            <div className="gov-modal-inner">
+              <div className="gov-modal-icon gov-modal-icon--info">
+                <KeyRound size={22} strokeWidth={1.8} />
+              </div>
+              <h3 className="gov-modal-title">Reset your password</h3>
+              <p className="gov-modal-desc">
+                Enter your username or email and we&apos;ll send a secure
+                reset link to the registered address.
+              </p>
+
+              <form onSubmit={onSubmit} className="gov-form" style={{ marginTop: '0.25rem' }}>
+                <div className="gov-form-group">
+                  <label htmlFor="forgot-user" className="gov-label">
+                    Username or email
+                  </label>
+                  <div className="gov-field">
+                    <User size={17} className="gov-field-icon" />
+                    <input
+                      id="forgot-user"
+                      type="text"
+                      required
+                      autoComplete="off"
+                      name="forgot-user"
+                      autoFocus
+                      placeholder="Enter username or email"
+                      className="gov-input"
+                      value={user}
+                      onChange={(e) => setUser(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="gov-error">
+                    <CircleAlert size={14} />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <div className="gov-modal-actions">
+                  <button type="button" className="gov-btn gov-btn-ghost" onClick={onClose}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="gov-btn gov-btn-primary" disabled={busy}>
+                    {busy ? (
+                      <span className="loading" style={{ width: '1.125rem', height: '1.125rem', borderWidth: '2px' }} />
+                    ) : (
+                      <>
+                        Send reset link
+                        <ArrowRight size={15} />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+
+              <div className="gov-modal-back">
+                <button type="button" className="gov-link" onClick={onClose}>
+                  Back to sign in
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="gov-modal-inner">
+              <div className="gov-modal-icon gov-modal-icon--success">
+                <MailCheck size={24} strokeWidth={1.8} />
+              </div>
+              <h3 className="gov-modal-title">Check your inbox</h3>
+              <p className="gov-modal-desc">{msg}</p>
+
+              <div className="gov-modal-success-card">
+                <p className="gov-modal-success-title">Next steps</p>
+                <ol className="gov-modal-steps">
+                  <li>Open the reset email in your inbox</li>
+                  <li>Click the secure link provided</li>
+                  <li>Set a new strong password</li>
+                </ol>
+              </div>
+
+              <button type="button" className="gov-btn gov-btn-primary" onClick={onClose} style={{ marginTop: '0.25rem' }}>
+                Done
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </Portal>
   );
+}
+
+function Portal({ children }) {
+  return createPortal(children, document.body);
 }

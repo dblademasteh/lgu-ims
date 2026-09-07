@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, UploadCloud, UserPlus, SquarePen, Ban, Save, Building2 } from 'lucide-react';
 import api from '../api/client';
 import useAuthStore, { useCan } from '../stores/authStore';
 import { useToast } from '../components/Toast';
-import PageHeader, { EmptyState, Spinner } from '../components/ui';
+import PageHeader, { EmptyState, FormModal, Spinner } from '../components/ui';
 
 function Portal({ children }) { return createPortal(children, document.body); }
 
@@ -73,10 +73,10 @@ export default function SuppliersPage() {
         canManage && (
           <div className="flex gap-2">
             <button className="btn btn-outline" onClick={() => setImportOpen(true)}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+              <UploadCloud size={15} />
               Import CSV
             </button>
-            <button className="btn btn-primary" onClick={() => { setEditing(null); setForm({ name: '', contact: '', phone: '', email: '', address: '' }); setOpen(true); }}>Add Supplier</button>
+            <button className="btn btn-primary" onClick={() => { setEditing(null); setForm({ name: '', contact: '', phone: '', email: '', address: '' }); setOpen(true); }}><UserPlus size={15} /> Add Supplier</button>
           </div>
         )
       } />
@@ -95,8 +95,8 @@ export default function SuppliersPage() {
                       <td>{s.email || '—'}</td>
                       <td className="max-w-64 truncate">{s.address || '—'}</td>
                       <td className="text-right">
-                        {canManage && <button className="btn btn-ghost btn-xs" onClick={() => openEdit(s)}>Edit</button>}
-                        {canManage && <button className="btn btn-ghost btn-xs text-error" onClick={() => setConfirm(s)}>Deactivate</button>}
+                        {canManage && <button className="btn btn-ghost btn-xs" onClick={() => openEdit(s)}><SquarePen size={12} /> Edit</button>}
+                        {canManage && <button className="btn btn-ghost btn-xs text-error" onClick={() => setConfirm(s)}><Ban size={12} /> Deactivate</button>}
                       </td>
                     </tr>
                   ))}
@@ -108,13 +108,15 @@ export default function SuppliersPage() {
       </div>
       {open && (
         <Portal>
-          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) { setOpen(false); setEditing(null); } }}>
-            <div className="modal-box modal-md">
-              <div className="modal-header">
-                <h3 className="modal-title">{editing ? 'Edit supplier' : 'Add supplier'}</h3>
-                <button className="modal-close" onClick={() => { setOpen(false); setEditing(null); }}><X size={15} /></button>
-              </div>
-              <form onSubmit={submit} className="grid grid-cols-1 gap-4 mt-4">
+          <FormModal
+            title={editing ? 'Edit supplier' : 'Add supplier'}
+            formNo="Form No. LGU-IMS-SUP-01"
+            icon={Building2}
+            tone="info"
+            size="modal-md"
+            onClose={() => { setOpen(false); setEditing(null); }}
+          >
+            <form onSubmit={submit} className="grid grid-cols-1 gap-4 mt-4">
                 <fieldset className="fieldset">
                   <legend className="fieldset-legend">Name *</legend>
                   <input className="input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
@@ -138,12 +140,13 @@ export default function SuppliersPage() {
                   <textarea className="textarea" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
                 </fieldset>
                 <div className="modal-footer">
-                  <button type="button" className="btn" onClick={() => { setOpen(false); setEditing(null); }}>Cancel</button>
-                  <button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}{editing ? 'Save changes' : 'Create'}</button>
+                  <button type="button" className="btn" onClick={() => { setOpen(false); setEditing(null); }}>
+                    <X size={14} /> Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}<Save size={14} />{editing ? 'Save changes' : 'Create'}</button>
                 </div>
               </form>
-            </div>
-          </div>
+          </FormModal>
         </Portal>
       )}
       {importOpen && (
@@ -171,8 +174,12 @@ export default function SuppliersPage() {
               </div>
               <p className="text-sm text-base-content/60 mt-2">Deactivate "{confirm.name}"? The supplier will no longer appear in lists but existing records are preserved.</p>
               <div className="modal-footer">
-                <button type="button" className="btn" onClick={() => setConfirm(null)}>Cancel</button>
-                <button type="button" className="btn btn-error" onClick={deactivate}>Deactivate</button>
+                <button type="button" className="btn" onClick={() => setConfirm(null)}>
+                  <X size={14} /> Cancel
+                </button>
+                <button type="button" className="btn btn-error" onClick={deactivate}>
+                  <Ban size={14} /> Deactivate
+                </button>
               </div>
             </div>
           </div>
@@ -212,10 +219,12 @@ function ImportSuppliersForm({ onClose, onImported }) {
         <textarea className="textarea font-mono text-xs" rows={10} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={sampleCSV} />
       </fieldset>
       <div className="modal-footer">
-        <button type="button" className="btn" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn" onClick={onClose}>
+          <X size={14} /> Cancel
+        </button>
         <button type="submit" className="btn btn-primary" disabled={busy}>
           {busy && <span className="loading loading-spinner loading-xs" />}
-          Import
+          <UploadCloud size={14} /> Import
         </button>
       </div>
     </form>

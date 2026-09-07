@@ -4,6 +4,7 @@ node_modules/
 
 # Environment (never commit secrets)
 backend/.env
+frontend/.env
 
 # Build output
 frontend/dist/

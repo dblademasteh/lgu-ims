@@ -1,4 +1,37 @@
-import { Package } from 'lucide-react';
+import { Package, ChevronLeft, ChevronRight, X } from 'lucide-react';
+
+/**
+ * FormModal — official "government form" modal shell.
+ * Renders a colored accent bar, a seal/emblem icon, a title with an optional
+ * mono "Form No." caption, an optional status badge, and a close button.
+ * Children are rendered raw after the header so callers keep their own
+ * body/footer structure.
+ *
+ * tone: 'neutral' | 'info' | 'success' | 'danger'
+ */
+export function FormModal({ title, formNo, icon: Icon, tone = 'neutral', badge, size = 'modal-md', onClose, children }) {
+  return (
+    <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className={`modal-box ${size} fm-modal`}>
+        <div className={`fm-accent fm-accent--${tone}`} />
+        <div className="modal-header fm-header">
+          <div className="fm-header-left">
+            <div className={`fm-seal fm-seal--${tone}`}>{Icon && <Icon size={18} />}</div>
+            <div>
+              <h3 className="modal-title">{title}</h3>
+              {formNo && <div className="modal-subtitle fm-form-no">{formNo}</div>}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {badge}
+            <button className="modal-close" onClick={onClose} aria-label="Close dialog"><X size={15} /></button>
+          </div>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export function PageHeader({ title, subtitle, actions }) {
   return (
@@ -44,11 +77,15 @@ export function Pagination({ meta, onPage }) {
     <div className="pagination">
       <span className="pagination-info">Page {page} of {totalPages} · {total} record{total === 1 ? '' : 's'}</span>
       <div className="pagination-controls">
-        <button className="btn btn-sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>« Prev</button>
+        <button className="btn btn-sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+          <ChevronLeft size={14} /> Prev
+        </button>
         {pages.map(p => (
           <button key={p} className={`btn btn-sm${p === page ? ' btn-active' : ''}`} onClick={() => onPage(p)}>{p}</button>
         ))}
-        <button className="btn btn-sm" disabled={page >= totalPages} onClick={() => onPage(page + 1)}>Next »</button>
+        <button className="btn btn-sm" disabled={page >= totalPages} onClick={() => onPage(page + 1)}>
+          Next <ChevronRight size={14} />
+        </button>
       </div>
     </div>
   );

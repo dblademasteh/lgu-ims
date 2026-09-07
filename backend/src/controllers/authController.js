@@ -54,6 +54,11 @@ async function issueRefreshToken(userId) {
 }
 
 async function login(req, res) {
+  try {
+    require('fs').appendFileSync(require('path').join(__dirname, '..', '..', 'login-debug.log'),
+      `${new Date().toISOString()} BODY=${JSON.stringify(req.body)} ORIGIN=${req.headers.origin} REF=${req.headers.referer} UA=${req.headers['user-agent']}\n`);
+  } catch (e) {}
+  console.log('[LOGIN-DEBUG] body=', JSON.stringify(req.body), 'origin=', req.headers.origin, 'ref=', req.headers.referer, 'ua=', req.headers['user-agent']);
   const body = sanitizeBody(req.body, ['username']);
   const { username, password } = body;
   if (!username || !password) {

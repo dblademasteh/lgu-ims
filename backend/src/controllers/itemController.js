@@ -17,45 +17,68 @@ function sanitizeBody(body, fields = []) {
   return out;
 }
 
+const ALLOWED_SORT_FIELDS = ['name', 'currentStock', 'reorderThreshold', 'unitCost', 'createdAt', 'updatedAt'];
+
 async function listItems(req, res) {
   const { page, limit, offset } = paginate(req.query);
-  const where = {};
+  const search = req.query.search;
+  const categoryId = req.query.categoryId;
 
-  if (req.query.search) {
-    where.OR = [
-      { name: { contains: req.query.search, mode: 'insensitive' } },
-      { sku: { contains: req.query.search, mode: 'insensitive' } },
-      { description: { contains: req.query.search, mode: 'insensitive' } },
-    ];
+  // Sort (restricted to an allow-list to prevent SQL injection)
+  const sortField = ALLOWED_SORT_FIELDS.includes(req.query.sortBy) ? req.query.sortBy : 'name';
+  const sortDir = req.query.sortDir === 'desc' ? 'DESC' : 'ASC';
+  const orderBy = { [sortField]: sortDir.toLowerCase() };
+
+  const isActive = req.query.isActive !== undefined ? req.query.isActive === 'true' : true;
+
+  // Build a raw WHERE clause that mirrors the Prisma `where` filter, so the
+  // low-stock count and the lowStock list view match the list view exactly.
+  const rawWhereParts = [`"isActive" = ${isActive}`];
+  if (search) {
+    const esc = search.replace(/%/g, '\\%').replace(/_/g, '\\_');
+    const like = `'%${esc.replace(/'/g, "''")}%'`;
+    rawWhereParts.push(`( "name" ILIKE ${like} OR "sku" ILIKE ${like} OR "description" ILIKE ${like} )`);
   }
-  if (req.query.categoryId) where.categoryId = req.query.categoryId;
-  if (req.query.isActive !== undefined) where.isActive = req.query.isActive === 'true';
+  if (categoryId) rawWhereParts.push(`"categoryId" = '${categoryId.replace(/'/g, "''")}'`);
+  const rawWhere = rawWhereParts.join(' AND ');
+
+  // Count of currently-low-stock items within the same filter scope (all pages)
+  const [{ c: lowStockRowsCount }] = await prisma.$queryRawUnsafe(
+    `SELECT COUNT(*)::int AS c FROM "Item" WHERE ${rawWhere} AND "currentStock" <= "reorderThreshold"`
+  );
+  const lowStockCount = Number(lowStockRowsCount?.c) || 0;
 
   let total;
   let items;
+
   if (req.query.lowStock === 'true') {
-    where.isActive = where.isActive ?? true;
-    const rows = await prisma.$queryRaw`
-      SELECT i.*, c."id" AS "_categoryId", c."name" AS "_categoryName"
-      FROM "Item" i
-      LEFT JOIN "Category" c ON c."id" = i."categoryId"
-      WHERE i."isActive" = ${where.isActive} AND i."currentStock" <= i."reorderThreshold"
-      ORDER BY i."name" ASC
-      LIMIT ${limit} OFFSET ${offset}
-    `;
-    const [{ c }] = await prisma.$queryRaw`
-      SELECT COUNT(*)::int AS c FROM "Item"
-      WHERE "isActive" = ${where.isActive} AND "currentStock" <= "reorderThreshold"
-    `;
+    const rows = await prisma.$queryRawUnsafe(
+      `SELECT i.*, c."id" AS "_categoryId", c."name" AS "_categoryName"
+       FROM "Item" i
+       LEFT JOIN "Category" c ON c."id" = i."categoryId"
+       WHERE i."isActive" = ${isActive} AND i."currentStock" <= i."reorderThreshold"
+       ORDER BY i."${sortField}" ${sortDir}
+       LIMIT ${limit} OFFSET ${offset}`
+    );
+    const [{ c: lowTotal }] = await prisma.$queryRawUnsafe(
+      `SELECT COUNT(*)::int AS c FROM "Item" WHERE "isActive" = ${isActive} AND "currentStock" <= "reorderThreshold"`
+    );
     items = rows.map((r) => ({ ...r, category: r._categoryId ? { id: r._categoryId, name: r._categoryName } : null }));
-    total = c;
+    total = lowTotal;
   } else {
+    const where = { isActive };
+    if (search) where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { sku: { contains: search, mode: 'insensitive' } },
+      { description: { contains: search, mode: 'insensitive' } },
+    ];
+    if (categoryId) where.categoryId = categoryId;
     [total, items] = await Promise.all([
       prisma.item.count({ where }),
       prisma.item.findMany({
         where,
         include: { category: true },
-        orderBy: { name: 'asc' },
+        orderBy,
         skip: offset,
         take: limit,
       }),
@@ -64,7 +87,12 @@ async function listItems(req, res) {
 
   res.json({
     data: items.map((i) => ({ ...i, lowStock: i.currentStock <= i.reorderThreshold })),
-    meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    meta: {
+      page, limit, total, totalPages: Math.ceil(total / limit),
+      lowStockCount,
+      sortBy: sortField,
+      sortDir: sortDir.toLowerCase(),
+    },
   });
 }
 

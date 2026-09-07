@@ -92,7 +92,7 @@ npm run dev                           # http://localhost:5173
 
 ### Demo accounts
 
-All seeded users use the password **`Password123!`**:
+All seeded users use the password **`LguIms2026!`** (override with `SEED_DEFAULT_PASSWORD`):
 
 | Username | Role |
 |---|---|

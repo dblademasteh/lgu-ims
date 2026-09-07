@@ -4,7 +4,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Package, Landmark, ClipboardList, BookOpen, BarChart3,
   Bell, ShieldCheck, Users, Settings, LogOut, Menu, KeyRound, FileText, UserRound,
-  ChevronRight, Moon, Sun, PanelLeftClose, PanelLeftOpen, Wallet, X,
+  ChevronRight, Moon, Sun, PanelLeftClose, PanelLeftOpen, Wallet, X, Save,
 } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import { useThemeStore } from '../stores/themeStore';
@@ -307,8 +307,12 @@ export default function Layout() {
                 <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', lineHeight: 1.6 }}>You will be signed out from all devices.</p>
               </div>
               <div className="modal-footer">
-                <button className="btn" onClick={() => setLogoutOpen(false)}>Cancel</button>
-                <button className="btn btn-error" onClick={() => { setLogoutOpen(false); handleLogoutAll(); }}>Sign out all</button>
+                <button className="btn" onClick={() => setLogoutOpen(false)}>
+                  <X size={14} /> Cancel
+                </button>
+                <button className="btn btn-error" onClick={() => { setLogoutOpen(false); handleLogoutAll(); }}>
+                  <LogOut size={14} /> Sign out all
+                </button>
               </div>
             </div>
           </div>
@@ -362,10 +366,12 @@ function ChangePasswordModal({ onClose }) {
               </div>
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn" onClick={onClose}>Cancel</button>
+              <button type="button" className="btn" onClick={onClose}>
+                <X size={14} /> Cancel
+              </button>
               <button type="submit" className="btn btn-primary" disabled={busy}>
                 {busy && <span className="loading loading-spinner loading-xs" />}
-                Update
+                <Save size={14} /> Update
               </button>
             </div>
           </form>

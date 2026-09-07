@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { X } from 'lucide-react';
 
 const ToastContext = createContext(null);
 
@@ -15,7 +16,7 @@ export function ToastProvider({ children }) {
     setTimeout(() => dismiss(id), 4500);
   }, [dismiss]);
 
-  const value = useCallback(
+  const value = useMemo(
     () => ({
       push,
       success: (m) => push(m, 'success'),
@@ -33,7 +34,9 @@ export function ToastProvider({ children }) {
         {toasts.map((t) => (
           <div key={t.id} role="alert" className={`alert ${t.type === 'success' ? 'alert-success' : t.type === 'error' ? 'alert-error' : t.type === 'warning' ? 'alert-warning' : 'alert-info'}`}>
             <span>{t.message}</span>
-            <button className="btn btn-ghost btn-sm" aria-label="Dismiss notification" onClick={() => dismiss(t.id)}>✕</button>
+            <button className="btn btn-ghost btn-sm" aria-label="Dismiss notification" onClick={() => dismiss(t.id)}>
+              <X size={14} />
+            </button>
           </div>
         ))}
       </div>

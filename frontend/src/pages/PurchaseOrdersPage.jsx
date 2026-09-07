@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, FileText, GitCompareArrows, Plus, CheckCircle2, SquarePen, XCircle, Trash2, Save } from 'lucide-react';
 import api from '../api/client';
 import useAuthStore, { useCan } from '../stores/authStore';
 import { useToast } from '../components/Toast';
-import PageHeader, { Badge, EmptyState, Pagination, Spinner } from '../components/ui';
+import PageHeader, { Badge, EmptyState, FormModal, Pagination, Spinner } from '../components/ui';
 
 function Portal({ children }) { return createPortal(children, document.body); }
 
@@ -26,8 +26,8 @@ export default function PurchaseOrdersPage() {
         subtitle="Create and manage purchase orders for procurement."
       />
       <div role="tablist" className="tabs tabs-box w-fit mb-4">
-        <button role="tab" aria-selected={tab === 'list'} className={`tab ${tab === 'list' ? 'tab-active' : ''}`} onClick={() => setTab('list')}>Purchase Orders</button>
-        <button role="tab" aria-selected={tab === 'match'} className={`tab ${tab === 'match' ? 'tab-active' : ''}`} onClick={() => setTab('match')}>3-Way Match</button>
+        <button role="tab" aria-selected={tab === 'list'} className={`tab ${tab === 'list' ? 'tab-active' : ''}`} onClick={() => setTab('list')}><FileText size={14} /> Purchase Orders</button>
+        <button role="tab" aria-selected={tab === 'match'} className={`tab ${tab === 'match' ? 'tab-active' : ''}`} onClick={() => setTab('match')}><GitCompareArrows size={14} /> 3-Way Match</button>
       </div>
       {tab === 'list' ? <POList /> : <ThreeWayMatch />}
     </div>
@@ -150,7 +150,7 @@ function POList() {
   return (
     <div>
       <div className="flex justify-end mb-2">
-        {canManage && <button className="btn btn-primary btn-sm" onClick={() => { setEditPo(null); resetForm(); setOpen(true); }}>New Purchase Order</button>}
+        {canManage && <button className="btn btn-primary btn-sm" onClick={() => { setEditPo(null); resetForm(); setOpen(true); }}><Plus size={14} /> New Purchase Order</button>}
       </div>
       <div className="card bg-base-100 shadow-sm">
         <div className="card-body">
@@ -179,9 +179,9 @@ function POList() {
                       <td className="font-mono text-xs">₱{Number(po.totalAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
                       <td><Badge status={po.status}>{po.status}</Badge></td>
                       <td className="text-right">
-                        {canApprove && po.status === 'PENDING' && <button className="btn btn-ghost btn-xs" onClick={() => approve(po.id)}>Approve</button>}
-                        {canManage && po.status === 'PENDING' && <button className="btn btn-ghost btn-xs" onClick={() => openEdit(po)}>Edit</button>}
-                        {canManage && ['PENDING', 'APPROVED'].includes(po.status) && <button className="btn btn-ghost btn-xs text-error" onClick={() => setCancelTarget(po.id)}>Cancel</button>}
+                        {canApprove && po.status === 'PENDING' && <button className="btn btn-ghost btn-xs" onClick={() => approve(po.id)}><CheckCircle2 size={12} /> Approve</button>}
+                        {canManage && po.status === 'PENDING' && <button className="btn btn-ghost btn-xs" onClick={() => openEdit(po)}><SquarePen size={12} /> Edit</button>}
+                        {canManage && ['PENDING', 'APPROVED'].includes(po.status) && <button className="btn btn-ghost btn-xs text-error" onClick={() => setCancelTarget(po.id)}><XCircle size={12} /> Cancel</button>}
                       </td>
                     </tr>
                   ))}
@@ -195,13 +195,15 @@ function POList() {
 
       {open && (
         <Portal>
-          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) { setOpen(false); setEditPo(null); } }}>
-            <div className="modal-box modal-lg">
-              <div className="modal-header">
-                <h3 className="modal-title">{editPo ? `Edit ${editPo.poNumber}` : 'New Purchase Order'}</h3>
-                <button className="modal-close" onClick={() => { setOpen(false); setEditPo(null); }}><X size={15} /></button>
-              </div>
-              <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <FormModal
+            title={editPo ? `Edit ${editPo.poNumber}` : 'New Purchase Order'}
+            formNo="Form No. LGU-IMS-PO-01"
+            icon={FileText}
+            tone="info"
+            size="modal-lg"
+            onClose={() => { setOpen(false); setEditPo(null); }}
+          >
+            <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <fieldset className="fieldset"><legend className="fieldset-legend">Department *</legend>
                   <select className="select" required value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
                     <option value="">Select...</option>
@@ -230,18 +232,19 @@ function POList() {
                       </select>
                       <input type="number" className="input" placeholder="Qty" required min="0.01" step="0.01" value={line.quantity} onChange={(e) => { const l = [...form.lines]; l[idx].quantity = Number(e.target.value); setForm({ ...form, lines: l }); }} />
                       <input type="number" className="input" placeholder="Unit Cost" required min="0" step="0.01" value={line.unitCost} onChange={(e) => { const l = [...form.lines]; l[idx].unitCost = Number(e.target.value); setForm({ ...form, lines: l }); }} />
-                      {form.lines.length > 1 && <button type="button" className="btn btn-ghost btn-sm text-error" onClick={() => setForm({ ...form, lines: form.lines.filter((_, i) => i !== idx) })}>Remove</button>}
+                      {form.lines.length > 1 && <button type="button" className="btn btn-ghost btn-sm text-error" onClick={() => setForm({ ...form, lines: form.lines.filter((_, i) => i !== idx) })}><Trash2 size={13} /> Remove</button>}
                     </div>
                   ))}
-                  <button type="button" className="btn btn-outline btn-sm" onClick={() => setForm({ ...form, lines: [...form.lines, { itemId: '', quantity: 1, unitCost: 0 }] })}>Add line</button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => setForm({ ...form, lines: [...form.lines, { itemId: '', quantity: 1, unitCost: 0 }] })}><Plus size={13} /> Add line</button>
                 </div>
                 <div className="col-span-full modal-footer">
-                  <button type="button" className="btn" onClick={() => { setOpen(false); setEditPo(null); }}>Cancel</button>
-                  <button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}{editPo ? 'Save Changes' : 'Create'}</button>
+                  <button type="button" className="btn" onClick={() => { setOpen(false); setEditPo(null); }}>
+                    <X size={14} /> Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}<Save size={14} />{editPo ? 'Save Changes' : 'Create'}</button>
                 </div>
               </form>
-            </div>
-          </div>
+          </FormModal>
         </Portal>
       )}
 
@@ -255,8 +258,12 @@ function POList() {
               </div>
               <p className="text-sm text-base-content/60 mt-2">Cancel this purchase order? This cannot be undone.</p>
               <div className="modal-footer">
-                <button className="btn" onClick={() => setCancelTarget(null)}>Cancel</button>
-                <button className="btn btn-error" onClick={cancel}>Confirm cancel</button>
+                <button className="btn" onClick={() => setCancelTarget(null)}>
+                  <X size={14} /> Cancel
+                </button>
+                <button className="btn btn-error" onClick={cancel}>
+                  <XCircle size={14} /> Confirm cancel
+                </button>
               </div>
             </div>
           </div>

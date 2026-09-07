@@ -44,12 +44,23 @@ function injectTenant(params) {
 const immutability = prisma.$extends({
   query: {
     auditLog: {
-      $all() {
-        throw new Error('AuditLog records are immutable and cannot be modified or deleted.');
-      },
-      async create({ query }) {
-        return query;
-      }
+      // Reads must pass through — writeAudit() needs findFirst (previous chain hash),
+      // and the audit trail list/verify endpoints need findMany/count.
+      findFirst({ query, args }) { return query(args); },
+      findMany({ query, args }) { return query(args); },
+      findUnique({ query, args }) { return query(args); },
+      count({ query, args }) { return query(args); },
+      aggregate({ query, args }) { return query(args); },
+      groupBy({ query, args }) { return query(args); },
+      // Append-only: new entries are allowed (and must actually be executed).
+      create({ query, args }) { return query(args); },
+      createMany({ query, args }) { throw new Error('AuditLog records are immutable and cannot be created in bulk.'); },
+      // Everything else — updates and deletes — are forbidden.
+      update({ query, args }) { throw new Error('AuditLog records are immutable and cannot be modified or deleted.'); },
+      updateMany({ query, args }) { throw new Error('AuditLog records are immutable and cannot be modified or deleted.'); },
+      upsert({ query, args }) { throw new Error('AuditLog records are immutable and cannot be modified or deleted.'); },
+      delete({ query, args }) { throw new Error('AuditLog records are immutable and cannot be modified or deleted.'); },
+      deleteMany({ query, args }) { throw new Error('AuditLog records are immutable and cannot be modified or deleted.'); },
     },
   },
 });

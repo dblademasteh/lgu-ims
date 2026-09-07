@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, UserRound, ShieldCheck, Save, KeyRound, ShieldOff } from 'lucide-react';
 import api from '../api/client';
 import useAuthStore from '../stores/authStore';
 import { useToast } from '../components/Toast';
@@ -187,8 +187,8 @@ export default function ProfilePage() {
 
         <div className="flex-1">
           <div role="tablist" className="tabs tabs-box w-fit mb-4">
-            <button role="tab" aria-selected={tab === 'profile'} className={`tab ${tab === 'profile' ? 'tab-active' : ''}`} onClick={() => setTab('profile')}>Profile</button>
-            <button role="tab" aria-selected={tab === 'security'} className={`tab ${tab === 'security' ? 'tab-active' : ''}`} onClick={() => setTab('security')}>Security</button>
+            <button role="tab" aria-selected={tab === 'profile'} className={`tab ${tab === 'profile' ? 'tab-active' : ''}`} onClick={() => setTab('profile')}><UserRound size={14} /> Profile</button>
+            <button role="tab" aria-selected={tab === 'security'} className={`tab ${tab === 'security' ? 'tab-active' : ''}`} onClick={() => setTab('security')}><ShieldCheck size={14} /> Security</button>
           </div>
 
           {tab === 'profile' && (
@@ -222,7 +222,7 @@ export default function ProfilePage() {
                   </div>
                   <button type="submit" className="btn btn-primary" disabled={saving}>
                     {saving && <span className="loading loading-spinner loading-xs" />}
-                    Save changes
+                    <Save size={14} /> Save changes
                   </button>
                 </form>
               </div>
@@ -250,7 +250,7 @@ export default function ProfilePage() {
                     </fieldset>
                     <button type="submit" className="btn btn-primary" disabled={pwSaving}>
                       {pwSaving && <span className="loading loading-spinner loading-xs" />}
-                      Change Password
+                      <KeyRound size={14} /> Change Password
                     </button>
                   </form>
                 </div>
@@ -270,12 +270,12 @@ export default function ProfilePage() {
                     {twoFaEnabled ? (
                       <button className="btn btn-outline btn-sm" onClick={() => setDisable2FaOpen(true)} disabled={twoFaBusy}>
                         {twoFaBusy ? <span className="loading loading-spinner loading-xs" /> : null}
-                        Disable 2FA
+                        <ShieldOff size={14} /> Disable 2FA
                       </button>
                     ) : (
                       <button className="btn btn-primary btn-sm" onClick={start2FASetup} disabled={twoFaBusy}>
                         {twoFaBusy ? <span className="loading loading-spinner loading-xs" /> : null}
-                        Enable 2FA
+                        <ShieldCheck size={14} /> Enable 2FA
                       </button>
                     )}
                   </div>
@@ -301,7 +301,7 @@ export default function ProfilePage() {
                         </fieldset>
                         <button type="submit" className="btn btn-primary" disabled={twoFaBusy || verifyCode.length < 6}>
                           {twoFaBusy ? <span className="loading loading-spinner loading-xs" /> : null}
-                          Verify & Enable
+                          <ShieldCheck size={14} /> Verify & Enable
                         </button>
                       </form>
                     </div>
@@ -334,10 +334,12 @@ export default function ProfilePage() {
                   />
                 </fieldset>
                 <div className="modal-footer">
-                  <button type="button" className="btn" onClick={() => { setDisable2FaOpen(false); setDisableCode(''); }}>Cancel</button>
+                  <button type="button" className="btn" onClick={() => { setDisable2FaOpen(false); setDisableCode(''); }}>
+                    <X size={14} /> Cancel
+                  </button>
                   <button type="submit" className="btn btn-error" disabled={twoFaBusy || disableCode.length < 6}>
                     {twoFaBusy ? <span className="loading loading-spinner loading-xs" /> : null}
-                    Disable 2FA
+                    <ShieldOff size={14} /> Disable 2FA
                   </button>
                 </div>
               </form>

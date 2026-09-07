@@ -3,12 +3,14 @@ import { useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import useAuthStore, { useCan } from '../stores/authStore';
 import { useToast } from '../components/Toast';
-import { Badge, EmptyState, Money, Pagination, Spinner, PageHeader } from '../components/ui';
+import { Badge, EmptyState, FormModal, Money, Pagination, Spinner, PageHeader } from '../components/ui';
 import ScanModal from '../components/ScanModal';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import {
   Package, Search, Plus, Download, Upload, QrCode, Camera,
-  ArrowUpDown, X, AlertTriangle, CheckCircle,
+  ArrowUpDown, X, AlertTriangle, CheckCircle, UploadCloud, Save, SquarePen, Archive, ArrowDownToLine, ArrowUpFromLine,
+  ChevronUp, ChevronDown, ChevronsUpDown,
+  Landmark, ArrowRight, FileText, Hash, NotebookPen,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
@@ -18,6 +20,26 @@ function Portal({ children }) {
 
 function fmt(n) {
   return Number(n || 0).toLocaleString('en-US');
+}
+
+/**
+ * Sortable header cell with chevron indicator.
+ * sortKey — the sortBy value passed to the API; label — visible text.
+ */
+function SortHeader({ sortKey, label, activeKey, activeDir, onSort, right }) {
+  const active = activeKey === sortKey;
+  const Icon = active ? (activeDir === 'asc' ? ChevronUp : ChevronDown) : ChevronsUpDown;
+  return (
+    <button
+      type="button"
+      className={`sort-header ${right ? 'sort-header--right' : ''}`}
+      title={`Sort by ${label}`}
+      onClick={() => onSort(sortKey, active && activeDir === 'asc' ? 'desc' : 'asc')}
+    >
+      <span>{label}</span>
+      <Icon size={13} style={{ color: active ? 'var(--accent)' : 'var(--muted)' }} />
+    </button>
+  );
 }
 
 export default function ItemsPage() {
@@ -31,7 +53,9 @@ export default function ItemsPage() {
   const [categoryId, setCategoryId] = useState('');
   const [lowStockOnly, setLowStockOnly] = useState(params.get('lowStock') === '1');
   const [page, setPage] = useState(1);
-  const [limit] = useState(20);
+  const [limit, setLimit] = useState(20);
+const [sortKey, setSortKey] = useState('name');
+const [sortDir, setSortDir] = useState('asc');
   const [data, setData] = useState(null);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -48,18 +72,24 @@ export default function ItemsPage() {
   const imageInputRef = useRef(null);
   const fileRef = useRef(null);
 
-  const loadCategories = () => api.get('/categories').then(r => setCategories(r.data.data)).catch(() => {});
+  const requestIdRef = useRef(0);
+const loadCategories = () => api.get('/categories').then(r => setCategories(r.data.data)).catch(() => {});
 
   const load = () => {
+    const rid = ++requestIdRef.current;
     setLoading(true);
-    const q = new URLSearchParams({ page, limit });
+    const q = new URLSearchParams({ page, limit, sortBy: sortKey, sortDir });
     if (query) q.set('search', query);
     if (categoryId) q.set('categoryId', categoryId);
     if (lowStockOnly) q.set('lowStock', 'true');
     api.get(`/items?${q}`)
-      .then(r => setData(r.data))
+      .then(r => {
+        // Stale-response guard: ignore results from an earlier, superseded request
+        if (rid !== requestIdRef.current) return;
+        setData(r.data);
+      })
       .catch(e => toast.error(e.response?.data?.message || 'Unable to load items.'))
-      .finally(() => setLoading(false));
+      .finally(() => { if (rid === requestIdRef.current) setLoading(false); });
   };
 
   useEffect(() => {
@@ -67,7 +97,7 @@ export default function ItemsPage() {
     return () => clearTimeout(t);
   }, [search]);
 
-  useEffect(() => { load(); }, [page, categoryId, lowStockOnly, query]);
+  useEffect(() => { load(); }, [page, limit, categoryId, lowStockOnly, query, sortKey, sortDir]);
   useEffect(() => { loadCategories(); }, []);
 
   useKeyboardShortcuts({
@@ -148,7 +178,18 @@ export default function ItemsPage() {
   };
 
   const totalItems = data?.meta?.total || 0;
-  const lowCount = data?.data?.filter(i => i.lowStock).length || 0;
+  const lowCount = data?.meta?.lowStockCount || 0;
+  const totalPages = data?.meta?.totalPages || 1;
+
+  const onSort = (key, dir) => {
+    if (sortKey === key) {
+      setSortDir(dir);
+    } else {
+      setSortKey(key);
+      setSortDir(dir);
+    }
+    setPage(1);
+  };
 
   return (
     <div>
@@ -177,7 +218,7 @@ export default function ItemsPage() {
       />
 
       {/* ── Filters ── */}
-      <div style={{ display: 'flex', gap: '0.625rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+      <div className="sp-toolbar" style={{ marginBottom: '1rem' }}>
         <label className="input" style={{ flex: '1 1 14rem', gap: '0.5rem' }}>
           <Search size={14} style={{ color: 'color-mix(in oklab, var(--text) 40%, transparent)', flexShrink: 0 }} />
           <input type="search" placeholder="Search name or SKU..." style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', minWidth: 0 }}
@@ -197,6 +238,14 @@ export default function ItemsPage() {
             onChange={e => { setLowStockOnly(e.target.checked); setPage(1); }} />
           Low stock
         </label>
+        <select className="select select-sm" style={{ width: '6rem' }} value={limit} onChange={e => { setLimit(Number(e.target.value)); setPage(1); }}>
+          {[10, 20, 50, 100].map(l => <option key={l} value={l}>{l}/page</option>)}
+        </select>
+      </div>
+      <div className="sp-result-chip" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+        <span style={{ fontSize: '0.75rem', color: 'color-mix(in oklab, var(--text) 50%, transparent)', fontFamily: 'var(--font-mono)' }}>
+          {totalItems > 0 ? `Showing ${((page - 1) * limit) + 1}–${Math.min(page * limit, totalItems)} of ${totalItems} items · ${lowCount} low stock` : 'No items to display'}
+        </span>
       </div>
 
       {/* ── Table ── */}
@@ -211,11 +260,11 @@ export default function ItemsPage() {
               <thead>
                 <tr>
                   <th style={{ width: '2.5rem' }}></th>
-                  <th>Item</th>
+                  <th><SortHeader sortKey="name" label="Item" activeKey={sortKey} activeDir={sortDir} onSort={onSort} /></th>
                   <th>Category</th>
-                  <th style={{ textAlign: 'right' }}>On hand</th>
-                  <th style={{ textAlign: 'right' }}>Reorder</th>
-                  <th style={{ textAlign: 'right' }}>Unit cost</th>
+                  <th><SortHeader sortKey="currentStock" label="On hand" activeKey={sortKey} activeDir={sortDir} onSort={onSort} right /></th>
+                  <th><SortHeader sortKey="reorderThreshold" label="Reorder" activeKey={sortKey} activeDir={sortDir} onSort={onSort} right /></th>
+                  <th><SortHeader sortKey="unitCost" label="Unit cost" activeKey={sortKey} activeDir={sortDir} onSort={onSort} right /></th>
                   <th>Status</th>
                   <th style={{ width: '5rem' }}></th>
                 </tr>
@@ -287,8 +336,12 @@ export default function ItemsPage() {
                 <img src={imagePreview} alt="Preview" style={{ width: '100%', maxHeight: '16rem', objectFit: 'contain', borderRadius: '6px' }} />
               </div>
               <div className="modal-footer">
-                <button className="btn" onClick={() => { setImagePreview(''); setImageFile(null); }}>Cancel</button>
-                <button className="btn btn-primary" onClick={uploadImage}>Upload</button>
+                <button className="btn" onClick={() => { setImagePreview(''); setImageFile(null); }}>
+                  <X size={14} /> Cancel
+                </button>
+                <button className="btn btn-primary" onClick={uploadImage}>
+                  <UploadCloud size={14} /> Upload
+                </button>
               </div>
             </div>
           </div>
@@ -364,9 +417,9 @@ function ItemDetailPanel({ item, onClose, onEdit, onAdjust, onQR, onImageUpload,
 
   return (
     <>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'color-mix(in oklab, var(--text) 30%, transparent)', backdropFilter: 'blur(2px)' }} onClick={onClose} />
-        <div style={{ position: 'relative', marginLeft: 'auto', width: '100%', maxWidth: '22rem', background: 'var(--surface)', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', height: '100dvh', boxShadow: 'var(--shadow-lg)', zIndex: 1 }}>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'color-mix(in oklab, var(--text) 30%, transparent)' }} onClick={onClose} />
+        <div style={{ position: 'relative', width: '100%', maxWidth: '42rem', maxHeight: '85vh', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-lg)', zIndex: 1 }}>
           {/* Panel header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--text) 50%, transparent)' }}>Item detail</span>
@@ -489,8 +542,8 @@ function ItemDetailPanel({ item, onClose, onEdit, onAdjust, onQR, onImageUpload,
             </button>
             {canManage && (
               <>
-                <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={onEdit}>Edit</button>
-                <button className="btn btn-sm" style={{ color: 'var(--error)', borderColor: 'color-mix(in oklab, var(--error) 30%, transparent)' }} onClick={() => setArchiveOpen(true)}>Archive</button>
+                <button className="btn btn-primary btn-sm" style={{ flex: 1, gap: '0.375rem' }} onClick={onEdit}><SquarePen size={13} /> Edit</button>
+                <button className="btn btn-sm" style={{ flex: 1, gap: '0.375rem', color: 'var(--error)', borderColor: 'color-mix(in oklab, var(--error) 30%, transparent)' }} onClick={() => setArchiveOpen(true)}><Archive size={13} /> Archive</button>
               </>
             )}
           </div>
@@ -512,9 +565,11 @@ function ItemDetailPanel({ item, onClose, onEdit, onAdjust, onQR, onImageUpload,
                 </div>
               </div>
               <div className="modal-footer">
-                <button className="btn" onClick={() => setArchiveOpen(false)}>Cancel</button>
+                <button className="btn" onClick={() => setArchiveOpen(false)}>
+                  <X size={14} /> Cancel
+                </button>
                 <button className="btn btn-error" disabled={archiving} onClick={archive}>
-                  {archiving && <span className="loading loading-spinner loading-xs" />}Archive
+                  {archiving && <span className="loading loading-spinner loading-xs" />}<Archive size={14} /> Archive
                 </button>
               </div>
             </div>
@@ -595,13 +650,15 @@ function ItemFormModal({ item, categories, onClose, onSaved }) {
 
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-        <div className="modal-box modal-lg">
-          <div className="modal-header">
-            <h3 className="modal-title">{editing ? 'Edit item' : 'New item'}</h3>
-            <button className="modal-close" onClick={onClose}><X size={15} /></button>
-          </div>
-          <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <FormModal
+        title={editing ? 'Edit item' : 'New item'}
+        formNo="Form No. LGU-IMS-ITM-01"
+        icon={Package}
+        tone="info"
+        size="modal-lg"
+        onClose={onClose}
+      >
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div className="modal-form-grid">
               <div className="fieldset">
                 <span className="fieldset-legend">SKU *</span>
@@ -672,20 +729,21 @@ function ItemFormModal({ item, categories, onClose, onSaved }) {
               <span className="form-checkbox-label">Accountable item (PAR / PPE)</span>
             </label>
             <div className="modal-footer">
-              <button type="button" className="btn" onClick={onClose}>Cancel</button>
+              <button type="button" className="btn" onClick={onClose}>
+                <X size={14} /> Cancel
+              </button>
               <button type="submit" className="btn btn-primary" disabled={busy}>
                 {busy && <span className="loading loading-spinner loading-xs" />}
-                {editing ? 'Save changes' : 'Create item'}
+                <Save size={14} /> {editing ? 'Save changes' : 'Create item'}
               </button>
             </div>
-          </form>
-        </div>
-      </div>
+        </form>
+      </FormModal>
     </Portal>
   );
 }
 
-/* ── Adjust Modal ─────────────────────────────────────────────── */
+/* ── Adjust Modal (official stock adjustment form) ────────────── */
 function AdjustModal({ item, onClose, onSaved }) {
   const toast = useToast();
   const [operation, setOperation] = useState('IN');
@@ -694,6 +752,10 @@ function AdjustModal({ item, onClose, onSaved }) {
   const [referenceId, setReferenceId] = useState('');
   const [referenceType, setReferenceType] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const isIn = operation === 'IN';
+  const qty = Number(quantity) || 0;
+  const after = isIn ? item.currentStock + qty : item.currentStock - qty;
 
   const submit = async (e) => {
     e.preventDefault();
@@ -716,53 +778,118 @@ function AdjustModal({ item, onClose, onSaved }) {
   return (
     <Portal>
       <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-        <div className="modal-box modal-md">
-          <div className="modal-header">
-            <h3 className="modal-title">Adjust stock</h3>
-            <button className="modal-close" onClick={onClose}><X size={15} /></button>
-          </div>
-          <div className="modal-body">
-            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', marginBottom: '1rem' }}>
-              {item.name} · <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)' }}>{item.sku}</span>
-            </p>
+        <div className="modal-box modal-lg adj-modal">
+          {/* Operation accent bar */}
+          <div className={`adj-accent ${isIn ? 'adj-accent--in' : 'adj-accent--out'}`} />
 
-            <div className="adjust-op-toggle">
-              <button type="button" className={`adjust-op-btn ${operation === 'IN' ? 'active-in' : ''}`} onClick={() => { setOperation('IN'); setReferenceId(''); }}>Receive</button>
-              <button type="button" className={`adjust-op-btn ${operation === 'OUT' ? 'active-out' : ''}`} onClick={() => { setOperation('OUT'); setReferenceId(''); }}>Issue</button>
+          {/* Document header */}
+          <div className="modal-header adj-header">
+            <div className="adj-header-left">
+              <div className={`adj-seal ${isIn ? 'adj-seal--in' : 'adj-seal--out'}`}>
+                <Landmark size={18} />
+              </div>
+              <div>
+                <h3 className="modal-title">Stock Adjustment</h3>
+                <div className="modal-subtitle adj-form-no">Form No. LGU-IMS-ADJ-01</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span className={`adj-op-badge ${isIn ? 'adj-op-badge--in' : 'adj-op-badge--out'}`}>
+                {isIn ? <ArrowDownToLine size={12} /> : <ArrowUpFromLine size={12} />}
+                {isIn ? 'RECEIVE' : 'ISSUE'}
+              </span>
+              <button className="modal-close" onClick={onClose}><X size={15} /></button>
+            </div>
+          </div>
+
+          <div className="modal-body adj-body">
+            {/* Item information — official form block */}
+            <div className="adj-item-block">
+              <div className="adj-section-label">Item information</div>
+              <div className="adj-item-name">{item.name}</div>
+              <div className="adj-item-grid">
+                <div className="adj-item-cell">
+                  <span className="adj-cell-label">Stock No.</span>
+                  <span className="adj-cell-value">{item.stockNumber || '—'}</span>
+                </div>
+                <div className="adj-item-cell">
+                  <span className="adj-cell-label">SKU</span>
+                  <span className="adj-cell-value adj-cell-mono">{item.sku}</span>
+                </div>
+                <div className="adj-item-cell">
+                  <span className="adj-cell-label">Category</span>
+                  <span className="adj-cell-value">{item.category?.name || '—'}</span>
+                </div>
+                <div className="adj-item-cell">
+                  <span className="adj-cell-label">Unit</span>
+                  <span className="adj-cell-value">{item.unit}</span>
+                </div>
+              </div>
             </div>
 
-            <div className="adjust-stock-display">
-              <div className="adjust-stock-label">Current stock</div>
-              <div className="adjust-stock-value">{fmt(item.currentStock)} <span className="adjust-stock-unit">{item.unit}</span></div>
+            {/* Operation selector */}
+            <div className="adj-op-toggle">
+              <button type="button" className={`adj-op-btn ${isIn ? 'active-in' : ''}`} onClick={() => { setOperation('IN'); setReferenceId(''); }}>
+                <ArrowDownToLine size={15} /> Receive
+              </button>
+              <button type="button" className={`adj-op-btn ${!isIn ? 'active-out' : ''}`} onClick={() => { setOperation('OUT'); setReferenceId(''); }}>
+                <ArrowUpFromLine size={15} /> Issue
+              </button>
+            </div>
+
+            {/* Stock projection */}
+            <div className={`adj-projection ${isIn ? 'adj-projection--in' : 'adj-projection--out'}`}>
+              <div className="adj-proj-col">
+                <span className="adj-proj-label">Current on hand</span>
+                <span className="adj-proj-value">{fmt(item.currentStock)} <span className="adj-proj-unit">{item.unit}</span></span>
+              </div>
+              <div className="adj-proj-arrow"><ArrowRight size={16} /></div>
+              <div className="adj-proj-col adj-proj-col--after">
+                <span className="adj-proj-label">After adjustment</span>
+                <span className="adj-proj-value">{fmt(after)} <span className="adj-proj-unit">{item.unit}</span></span>
+              </div>
             </div>
 
             <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
               <div className="fieldset">
-                <span className="fieldset-legend">Reference ID / Document No. {operation === 'OUT' && '*'}</span>
-                <input className="input" value={referenceId} onChange={e => setReferenceId(e.target.value)} placeholder={operation === 'OUT' ? "Required for Issuance (e.g. RIS-001)" : "Optional for Receipt"} />
-              </div>
-              {operation === 'IN' && (
-                <select className="select" value={referenceType} onChange={e => setReferenceType(e.target.value)}>
-                  <option value="">Receipt (default)</option><option value="ADJUSTMENT_IN">Adjustment IN</option>
-                </select>
-              )}
-              {operation === 'OUT' && (
-                <select className="select" value={referenceType} onChange={e => setReferenceType(e.target.value)}>
-                  <option value="">Issue (default)</option><option value="RETURN">Return to stock</option>
-                </select>
-              )}
-              <div className="fieldset">
-                <span className="fieldset-legend">Quantity ({item.unit})</span>
-                <input className="input" type="number" min="0" step="any" required autoFocus value={quantity} onChange={e => setQuantity(e.target.value)} />
+                <span className="fieldset-legend">Reference / Document No. {operation === 'OUT' && <span className="adj-req">*</span>}</span>
+                <div className="adj-input-wrap">
+                  <FileText size={15} className="adj-input-icon" />
+                  <input className="input adj-input" value={referenceId} onChange={e => setReferenceId(e.target.value)} placeholder={operation === 'OUT' ? "Required for Issuance (e.g. RIS-001)" : "Optional for Receipt"} />
+                </div>
               </div>
               <div className="fieldset">
-                <span className="fieldset-legend">Reason *</span>
-                <textarea className="textarea" rows={2} required value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. PO-2026-001 delivery / Returned damaged unit" style={{ resize: 'vertical' }} />
+                <span className="fieldset-legend">Reference type</span>
+                {isIn ? (
+                  <select className="select" value={referenceType} onChange={e => setReferenceType(e.target.value)}>
+                    <option value="">Receipt (default)</option><option value="ADJUSTMENT_IN">Adjustment IN</option>
+                  </select>
+                ) : (
+                  <select className="select" value={referenceType} onChange={e => setReferenceType(e.target.value)}>
+                    <option value="">Issue (default)</option><option value="RETURN">Return to stock</option>
+                  </select>
+                )}
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn" onClick={onClose}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={busy}>
-                  {busy && <span className="loading loading-spinner loading-xs" />}Save
+              <div className="fieldset">
+                <span className="fieldset-legend">Quantity ({item.unit}) <span className="adj-req">*</span></span>
+                <div className="adj-input-wrap">
+                  <Hash size={15} className="adj-input-icon" />
+                  <input className="input adj-input" type="number" min="0" step="any" required autoFocus value={quantity} onChange={e => setQuantity(e.target.value)} />
+                </div>
+              </div>
+              <div className="fieldset">
+                <span className="fieldset-legend">Reason <span className="adj-req">*</span></span>
+                <div className="adj-input-wrap adj-input-wrap--area">
+                  <NotebookPen size={15} className="adj-input-icon" />
+                  <textarea className="textarea adj-textarea" rows={2} required value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. PO-2026-001 delivery / Returned damaged unit" style={{ resize: 'vertical' }} />
+                </div>
+              </div>
+              <div className="modal-footer adj-footer">
+                <button type="button" className="btn" onClick={onClose}>
+                  <X size={14} /> Cancel
+                </button>
+                <button type="submit" className={`btn ${isIn ? 'btn-primary' : 'btn-error'}`} disabled={busy}>
+                  {busy && <span className="loading loading-spinner loading-xs" />}<Save size={14} /> {isIn ? 'Record receipt' : 'Record issuance'}
                 </button>
               </div>
             </form>

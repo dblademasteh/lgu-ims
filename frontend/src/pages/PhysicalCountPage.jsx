@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, Plus, Eye, SquarePen, Send, CheckCircle2, XCircle, Save, ClipboardList } from 'lucide-react';
 import api from '../api/client';
 import useAuthStore, { useCan } from '../stores/authStore';
 import { useToast } from '../components/Toast';
-import PageHeader, { Badge, EmptyState, Pagination, Spinner } from '../components/ui';
+import PageHeader, { Badge, EmptyState, FormModal, Pagination, Spinner } from '../components/ui';
 
 function Portal({ children }) { return createPortal(children, document.body); }
 
@@ -122,7 +122,7 @@ export default function PhysicalCountsPage() {
       <PageHeader
         title="Physical Count"
         subtitle="COA inventory-taking worksheet with variance detection."
-        actions={canManage && <button className="btn btn-primary" onClick={() => { setEditCount(null); resetForm(); setOpen(true); }}>New Count</button>}
+        actions={canManage && <button className="btn btn-primary" onClick={() => { setEditCount(null); resetForm(); setOpen(true); }}><Plus size={15} /> New Count</button>}
       />
       <div className="card bg-base-100 shadow-sm">
         <div className="card-body">
@@ -145,17 +145,17 @@ export default function PhysicalCountsPage() {
                       <td><Badge status={pc.status}>{pc.status}</Badge></td>
                       <td className="text-xs opacity-70">{pc.remarks || '—'}</td>
                       <td className="text-right">
-                        <button className="btn btn-ghost btn-xs" onClick={() => openDetail(pc)}>View</button>
+                        <button className="btn btn-ghost btn-xs" onClick={() => openDetail(pc)}><Eye size={12} /> View</button>
                         {canManage && pc.status === 'DRAFT' && (
-                          <button className="btn btn-ghost btn-xs" onClick={() => openEdit(pc)}>Edit</button>
+                          <button className="btn btn-ghost btn-xs" onClick={() => openEdit(pc)}><SquarePen size={12} /> Edit</button>
                         )}
                         {canManage && ['DRAFT', 'REJECTED'].includes(pc.status) && (
-                          <button className="btn btn-ghost btn-xs" onClick={() => updateStatus(pc.id, 'submit')}>{pc.status === 'REJECTED' ? 'Resubmit' : 'Submit'}</button>
+                          <button className="btn btn-ghost btn-xs" onClick={() => updateStatus(pc.id, 'submit')}><Send size={12} /> {pc.status === 'REJECTED' ? 'Resubmit' : 'Submit'}</button>
                         )}
                         {canApprove && pc.status === 'SUBMITTED' && (
                           <>
-                            <button className="btn btn-ghost btn-xs" onClick={() => updateStatus(pc.id, 'approve')}>Approve</button>
-                            <button className="btn btn-ghost btn-xs text-error" onClick={() => updateStatus(pc.id, 'reject')}>Reject</button>
+                            <button className="btn btn-ghost btn-xs" onClick={() => updateStatus(pc.id, 'approve')}><CheckCircle2 size={12} /> Approve</button>
+                            <button className="btn btn-ghost btn-xs text-error" onClick={() => updateStatus(pc.id, 'reject')}><XCircle size={12} /> Reject</button>
                           </>
                         )}
                       </td>
@@ -171,13 +171,15 @@ export default function PhysicalCountsPage() {
 
       {open && (
         <Portal>
-          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) { setOpen(false); setEditCount(null); } }}>
-            <div className="modal-box modal-md">
-              <div className="modal-header">
-                <h3 className="modal-title">{editCount ? 'Edit Physical Count' : 'New Physical Count'}</h3>
-                <button className="modal-close" onClick={() => { setOpen(false); setEditCount(null); }}><X size={15} /></button>
-              </div>
-              <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <FormModal
+            title={editCount ? 'Edit Physical Count' : 'New Physical Count'}
+            formNo="Form No. LGU-IMS-PC-01"
+            icon={ClipboardList}
+            tone="info"
+            size="modal-md"
+            onClose={() => { setOpen(false); setEditCount(null); }}
+          >
+            <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <fieldset className="fieldset"><legend className="fieldset-legend">Department *</legend>
                   <select className="select" required value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
                     <option value="">Select...</option>
@@ -201,19 +203,20 @@ export default function PhysicalCountsPage() {
                       <input className="input" type="number" min="0" step="any" required placeholder="Counted qty" value={line.countedQuantity}
                         onChange={(e) => { const next = [...form.lines]; next[idx].countedQuantity = e.target.value; setForm({ ...form, lines: next }); }} />
                       {form.lines.length > 1 && (
-                        <button type="button" className="btn btn-ghost btn-sm btn-square text-error" onClick={() => setForm({ ...form, lines: form.lines.filter((_, i) => i !== idx) })}>✕</button>
+                        <button type="button" className="btn btn-ghost btn-sm btn-square text-error" onClick={() => setForm({ ...form, lines: form.lines.filter((_, i) => i !== idx) })}><X size={14} /></button>
                       )}
                     </div>
                   ))}
-                  <button type="button" className="btn btn-outline btn-sm" onClick={() => setForm({ ...form, lines: [...form.lines, { itemId: '', countedQuantity: 1 }] })}>Add item</button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => setForm({ ...form, lines: [...form.lines, { itemId: '', countedQuantity: 1 }] })}><Plus size={13} /> Add item</button>
                 </div>
                 <div className="col-span-full modal-footer">
-                  <button type="button" className="btn" onClick={() => { setOpen(false); setEditCount(null); }}>Cancel</button>
-                  <button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}{editCount ? 'Save Changes' : 'Create'}</button>
+                  <button type="button" className="btn" onClick={() => { setOpen(false); setEditCount(null); }}>
+                    <X size={14} /> Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}<Save size={14} />{editCount ? 'Save Changes' : 'Create'}</button>
                 </div>
               </form>
-            </div>
-          </div>
+          </FormModal>
         </Portal>
       )}
 
@@ -253,7 +256,9 @@ export default function PhysicalCountsPage() {
                 </>
               )}
               <div className="modal-footer">
-                <button className="btn" onClick={() => setDetail(null)}>Close</button>
+                <button className="btn" onClick={() => setDetail(null)}>
+                  <X size={14} /> Close
+                </button>
               </div>
             </div>
           </div>

@@ -3,11 +3,11 @@ import { createPortal } from 'react-dom';
 import api from '../api/client';
 import useAuthStore from '../stores/authStore';
 import { useToast } from '../components/Toast';
-import PageHeader, { EmptyState, Spinner } from '../components/ui';
+import PageHeader, { EmptyState, FormModal, Spinner } from '../components/ui';
 import {
   FolderOpen, Building2, ShieldCheck, Download, Flag,
   Plus, Pencil, Trash2, Search, Users,
-  KeyRound, Server, X, ChevronRight,
+  KeyRound, Server, X, ChevronRight, Save, ShieldOff,
 } from 'lucide-react';
 
 const TABS = [
@@ -23,23 +23,15 @@ function Portal({ children }) {
   return createPortal(children, document.body);
 }
 
-function Modal({ open, onClose, title, size = 'modal-md', children }) {
+function Modal({ open, onClose, title, size = 'modal-md', icon: Icon, tone = 'neutral', formNo, children }) {
   if (!open) return null;
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-        <div className={`modal-box ${size}`}>
-          <div className="modal-header">
-            <h3 className="modal-title">{title}</h3>
-            <button className="modal-close" onClick={onClose} aria-label="Close dialog">
-              <X size={15} />
-            </button>
-          </div>
-          <div className="modal-body">
-            {children}
-          </div>
+      <FormModal title={title} formNo={formNo} icon={Icon} tone={tone} size={size} onClose={onClose}>
+        <div className="modal-body">
+          {children}
         </div>
-      </div>
+      </FormModal>
     </Portal>
   );
 }
@@ -152,7 +144,7 @@ function CategoryTab() {
         )}
       </div>
 
-      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit category' : 'Add category'}>
+      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit category' : 'Add category'} icon={FolderOpen} tone="info" formNo="Form No. LGU-IMS-REF-01">
         <form onSubmit={submit} className="sp-form">
           <div className="sp-field">
             <label className="sp-label">Name *</label>
@@ -163,8 +155,12 @@ function CategoryTab() {
             <textarea className="textarea" rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Optional description..." />
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn" onClick={() => setOpen(false)}>Cancel</button>
-            <button type="submit" className="btn btn-primary">{editing ? 'Save changes' : 'Create'}</button>
+            <button type="button" className="btn" onClick={() => setOpen(false)}>
+              <X size={14} /> Cancel
+            </button>
+            <button type="submit" className="btn btn-primary">
+              <Save size={14} /> {editing ? 'Save changes' : 'Create'}
+            </button>
           </div>
         </form>
       </Modal>
@@ -293,7 +289,7 @@ function DepartmentTab() {
         )}
       </div>
 
-      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit department' : 'Add department'}>
+      <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit department' : 'Add department'} icon={Building2} tone="info" formNo="Form No. LGU-IMS-REF-02">
         <form onSubmit={submit} className="sp-form">
           <div className="sp-form-row">
             <div className="sp-field flex-2">
@@ -319,8 +315,12 @@ function DepartmentTab() {
             </div>
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn" onClick={() => setOpen(false)}>Cancel</button>
-            <button type="submit" className="btn btn-primary">{editing ? 'Save changes' : 'Create'}</button>
+            <button type="button" className="btn" onClick={() => setOpen(false)}>
+              <X size={14} /> Cancel
+            </button>
+            <button type="submit" className="btn btn-primary">
+              <Save size={14} /> {editing ? 'Save changes' : 'Create'}
+            </button>
           </div>
         </form>
       </Modal>
@@ -392,7 +392,7 @@ function TenantTab() {
         )}
       </div>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Create tenant">
+      <Modal open={open} onClose={() => setOpen(false)} title="Create tenant" icon={Server} tone="info" formNo="Form No. LGU-IMS-REF-03">
         <form onSubmit={submit} className="sp-form">
           <div className="sp-field">
             <label className="sp-label">Name *</label>
@@ -404,8 +404,12 @@ function TenantTab() {
             <span className="sp-hint">Unique slug used in API headers and URLs.</span>
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn" onClick={() => setOpen(false)}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? 'Creating...' : 'Create tenant'}</button>
+            <button type="button" className="btn" onClick={() => setOpen(false)}>
+              <X size={14} /> Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>
+              {busy ? 'Creating...' : (<><Save size={14} /> Create tenant</>)}
+            </button>
           </div>
         </form>
       </Modal>
@@ -533,7 +537,7 @@ function SecurityTab() {
             disabled={busy}
             onClick={() => setDisable2FaOpen(true)}
           >
-            {twoFaEnabled ? 'Disable 2FA' : 'Enable 2FA'}
+            {twoFaEnabled ? (<><ShieldOff size={14} /> Disable 2FA</>) : (<><ShieldCheck size={14} /> Enable 2FA</>)}
           </button>
         </div>
         <div className="sp-status-row">
@@ -541,7 +545,9 @@ function SecurityTab() {
             {twoFaEnabled ? 'Enabled' : 'Disabled'}
           </span>
           {!twoFaEnabled && (
-            <button className="btn btn-primary btn-sm" disabled={busy} onClick={startSetup}>Set up 2FA</button>
+            <button className="btn btn-primary btn-sm" disabled={busy} onClick={startSetup}>
+              <ShieldCheck size={13} /> Set up 2FA
+            </button>
           )}
         </div>
       </div>
@@ -585,7 +591,7 @@ function SecurityTab() {
         )}
       </div>
 
-      <Modal open={setupOpen} onClose={() => setSetupOpen(false)} title="Set up two-factor authentication">
+      <Modal open={setupOpen} onClose={() => setSetupOpen(false)} title="Set up two-factor authentication" icon={ShieldCheck} tone="success" formNo="Form No. LGU-IMS-SEC-01">
         <p className="modal-hint">Scan this QR code with your authenticator app.</p>
         {qr && <img src={qr} alt="2FA QR" className="sp-qr" />}
         <p className="modal-hint" style={{ marginTop: '0.75rem' }}>Or enter this secret manually:</p>
@@ -596,13 +602,17 @@ function SecurityTab() {
             <input className="input font-mono" style={{ fontSize: '1.25rem', letterSpacing: '0.2em', textAlign: 'center' }} required maxLength={6} inputMode="numeric" value={verifyCode} onChange={(e) => setVerifyCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} placeholder="000000" autoFocus />
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn" onClick={() => setSetupOpen(false)}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={busy}>Enable 2FA</button>
+            <button type="button" className="btn" onClick={() => setSetupOpen(false)}>
+              <X size={14} /> Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>
+              <ShieldCheck size={14} /> Enable 2FA
+            </button>
           </div>
         </form>
       </Modal>
 
-      <Modal open={disable2FaOpen} onClose={() => { setDisable2FaOpen(false); setDisableCode(''); }} title="Disable two-factor authentication">
+      <Modal open={disable2FaOpen} onClose={() => { setDisable2FaOpen(false); setDisableCode(''); }} title="Disable two-factor authentication" icon={ShieldOff} tone="danger" formNo="Form No. LGU-IMS-SEC-02">
         <p className="modal-hint">Enter the 6-digit code from your authenticator app to confirm.</p>
         <form onSubmit={disable2FA} className="sp-form">
           <div className="sp-field">
@@ -610,10 +620,12 @@ function SecurityTab() {
             <input className="input font-mono" style={{ fontSize: '1.25rem', letterSpacing: '0.2em', textAlign: 'center' }} required maxLength={6} inputMode="numeric" value={disableCode} onChange={(e) => setDisableCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))} placeholder="000000" autoFocus />
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn" onClick={() => { setDisable2FaOpen(false); setDisableCode(''); }}>Cancel</button>
+            <button type="button" className="btn" onClick={() => { setDisable2FaOpen(false); setDisableCode(''); }}>
+              <X size={14} /> Cancel
+            </button>
             <button type="submit" className="btn btn-error" disabled={busy || disableCode.length < 6}>
               {busy && <span className="loading loading-spinner loading-xs" />}
-              Disable 2FA
+              <ShieldOff size={14} /> Disable 2FA
             </button>
           </div>
         </form>

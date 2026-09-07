@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../api/client';
 import { useToast } from '../components/Toast';
 import PageHeader, { EmptyState, Pagination, Spinner } from '../components/ui';
+import { CheckCheck, Save, Trash2 } from 'lucide-react';
 
 const TYPE_ICON = {
   LOW_STOCK: 'M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z',
@@ -78,7 +79,7 @@ export default function NotificationsPage() {
         subtitle="Low-stock alerts and requisition updates."
         actions={
           <button className="btn btn-outline btn-sm" onClick={markAll} disabled={!data || ((data.unreadCount ?? data.data.filter((n) => !n.isRead).length) === 0)}>
-            Mark all as read
+            <CheckCheck size={14} /> Mark all as read
           </button>
         }
       />
@@ -92,7 +93,7 @@ export default function NotificationsPage() {
             </div>
             <button className="btn btn-primary btn-sm" disabled={prefsBusy} onClick={savePrefs}>
               {prefsBusy && <span className="loading loading-spinner loading-xs" />}
-              Save preferences
+              <Save size={14} /> Save preferences
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -151,7 +152,7 @@ export default function NotificationsPage() {
                           <p className="text-sm text-base-content/70 mt-0.5">{n.message}</p>
                           <div className="text-xs opacity-50 mt-1">{new Date(n.createdAt).toLocaleString()}</div>
                         </div>
-                        <button className="btn btn-ghost btn-xs text-error" onClick={(e) => { e.stopPropagation(); deleteNotification(n); }}>Delete</button>
+                        <button className="btn btn-ghost btn-xs text-error" onClick={(e) => { e.stopPropagation(); deleteNotification(n); }}><Trash2 size={12} /> Delete</button>
                       </div>
                     </div>
                   </li>

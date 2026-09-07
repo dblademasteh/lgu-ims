@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, UploadCloud, UserPlus, SquarePen, Save, UserRound } from 'lucide-react';
 import api from '../api/client';
 import { useToast } from '../components/Toast';
-import PageHeader, { EmptyState, Pagination, Spinner } from '../components/ui';
+import PageHeader, { EmptyState, FormModal, Pagination, Spinner } from '../components/ui';
 
 function Portal({ children }) { return createPortal(children, document.body); }
 
@@ -58,11 +58,11 @@ export default function UsersPage() {
         actions={
           <div className="flex gap-2">
             <button className="btn btn-outline" onClick={() => setImportOpen(true)}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+              <UploadCloud size={15} />
               Import CSV
             </button>
             <button className="btn btn-primary" onClick={() => { setEditing(null); setOpen(true); }}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+              <UserPlus size={15} />
               New user
             </button>
           </div>
@@ -115,7 +115,7 @@ export default function UsersPage() {
                         <td>{u.department?.name || <span className="opacity-40">—</span>}</td>
                         <td>{u.isActive ? <span className="badge badge-success">Active</span> : <span className="badge badge-error">Inactive</span>}</td>
                         <td className="text-right">
-                          <button className="btn btn-ghost btn-xs" onClick={() => { setEditing(u); setOpen(true); }}>Edit</button>
+                          <button className="btn btn-ghost btn-xs" onClick={() => { setEditing(u); setOpen(true); }}><SquarePen size={12} /> Edit</button>
                         </td>
                       </tr>
                     ))}
@@ -184,13 +184,15 @@ function UserFormModal({ user, departments, roles, onClose, onSaved }) {
 
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-        <div className="modal-box modal-lg">
-          <div className="modal-header">
-            <h3 className="modal-title">{editing ? `Edit user — ${form.username}` : 'New user'}</h3>
-            <button className="modal-close" onClick={onClose}><X size={15} /></button>
-          </div>
-          <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+      <FormModal
+        title={editing ? `Edit user — ${form.username}` : 'New user'}
+        formNo="Form No. LGU-IMS-USR-01"
+        icon={UserRound}
+        tone="info"
+        size="modal-lg"
+        onClose={onClose}
+      >
+        <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
             {!editing && (
               <>
                 <fieldset className="fieldset">
@@ -240,15 +242,16 @@ function UserFormModal({ user, departments, roles, onClose, onSaved }) {
               </fieldset>
             )}
             <div className="modal-footer col-span-full">
-              <button type="button" className="btn" onClick={onClose}>Cancel</button>
+              <button type="button" className="btn" onClick={onClose}>
+                <X size={14} /> Cancel
+              </button>
               <button type="submit" className="btn btn-primary" disabled={busy}>
                 {busy && <span className="loading loading-spinner loading-xs" />}
-                {editing ? 'Save changes' : 'Create user'}
+                <Save size={14} /> {editing ? 'Save changes' : 'Create user'}
               </button>
             </div>
           </form>
-        </div>
-      </div>
+      </FormModal>
     </Portal>
   );
 }
@@ -291,10 +294,12 @@ function ImportUsersModal({ onClose, onImported }) {
               <textarea className="textarea font-mono text-xs" rows={10} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={sampleCSV} />
             </fieldset>
             <div className="modal-footer">
-              <button type="button" className="btn" onClick={onClose}>Cancel</button>
+              <button type="button" className="btn" onClick={onClose}>
+                <X size={14} /> Cancel
+              </button>
               <button type="submit" className="btn btn-primary" disabled={busy}>
                 {busy && <span className="loading loading-spinner loading-xs" />}
-                Import
+                <UploadCloud size={14} /> Import
               </button>
             </div>
           </form>

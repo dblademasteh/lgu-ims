@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api, { openReport } from '../api/client';
 import { useToast } from '../components/Toast';
 import PageHeader, { Spinner } from '../components/ui';
+import { FileText, FileSpreadsheet, Printer } from 'lucide-react';
 
 function ReportCard({ title, description, children }) {
   return (
@@ -94,11 +95,11 @@ export default function ReportsPage() {
             <button className="btn btn-primary flex-1" onClick={() => {
               if (!rsmi.from || !rsmi.to) return toast.error('Select a date range.');
               run(`/reports/rsmi?from=${rsmi.from}&to=${rsmi.to}${rsmi.departmentId ? `&departmentId=${rsmi.departmentId}` : ''}`);
-            }}>PDF</button>
+            }}><FileText size={14} /> PDF</button>
             <button className="btn btn-outline flex-1" onClick={() => {
               if (!rsmi.from || !rsmi.to) return toast.error('Select a date range.');
               run(`/reports/rsmi?from=${rsmi.from}&to=${rsmi.to}${rsmi.departmentId ? `&departmentId=${rsmi.departmentId}` : ''}&format=excel`, true);
-            }}>Excel</button>
+            }}><FileSpreadsheet size={14} /> Excel</button>
           </div>
         </ReportCard>
 
@@ -111,16 +112,16 @@ export default function ReportsPage() {
             </select>
           </fieldset>
           <div className="flex gap-2 mt-3">
-            <button className="btn btn-primary flex-1" onClick={() => run(`/reports/inventory${inventory.categoryId ? `?categoryId=${inventory.categoryId}` : ''}`)}>PDF</button>
-            <button className="btn btn-outline flex-1" onClick={() => run(`/reports/inventory${inventory.categoryId ? `?categoryId=${inventory.categoryId}` : ''}&format=excel`, true)}>Excel</button>
+            <button className="btn btn-primary flex-1" onClick={() => run(`/reports/inventory${inventory.categoryId ? `?categoryId=${inventory.categoryId}` : ''}`)}><FileText size={14} /> PDF</button>
+            <button className="btn btn-outline flex-1" onClick={() => run(`/reports/inventory${inventory.categoryId ? `?categoryId=${inventory.categoryId}` : ''}&format=excel`, true)}><FileSpreadsheet size={14} /> Excel</button>
           </div>
         </ReportCard>
 
         <ReportCard title="Stock Aging Analysis" description="Inventory age by last movement bucket (0-30, 31-90, 91-180, 181-365, &gt;365 days).">
           <p className="text-sm text-base-content/60">Flags slow-moving and dormant stock for write-off or redistribution decisions.</p>
           <div className="flex gap-2 mt-3">
-            <button className="btn btn-primary flex-1" onClick={() => run('/reports/aging')}>PDF</button>
-            <button className="btn btn-outline flex-1" onClick={() => run('/reports/aging?format=excel', true)}>Excel</button>
+            <button className="btn btn-primary flex-1" onClick={() => run('/reports/aging')}><FileText size={14} /> PDF</button>
+            <button className="btn btn-outline flex-1" onClick={() => run('/reports/aging?format=excel', true)}><FileSpreadsheet size={14} /> Excel</button>
           </div>
         </ReportCard>
 
@@ -143,8 +144,8 @@ export default function ReportsPage() {
             </div>
           )}
           <div className="flex gap-2 mt-3">
-            <button className="btn btn-primary flex-1" onClick={() => run(movementsPath(''))}>PDF</button>
-            <button className="btn btn-outline flex-1" onClick={() => run(movementsPath('excel'), true)}>Excel</button>
+            <button className="btn btn-primary flex-1" onClick={() => run(movementsPath(''))}><FileText size={14} /> PDF</button>
+            <button className="btn btn-outline flex-1" onClick={() => run(movementsPath('excel'), true)}><FileSpreadsheet size={14} /> Excel</button>
           </div>
         </ReportCard>
 
@@ -160,11 +161,11 @@ export default function ReportsPage() {
             <button className="btn btn-primary flex-1" onClick={() => {
               if (!ledgerItemId) return toast.error('Select an item first.');
               run(`/reports/ledger-card/${ledgerItemId}`);
-            }}>Print / PDF</button>
+            }}><Printer size={14} /> Print / PDF</button>
             <button className="btn btn-outline flex-1" onClick={() => {
               if (!ledgerItemId) return toast.error('Select an item first.');
               run(`/reports/ledger-card/${ledgerItemId}?format=excel`, true);
-            }}>Excel</button>
+            }}><FileSpreadsheet size={14} /> Excel</button>
           </div>
 </ReportCard>
 
@@ -183,11 +184,11 @@ export default function ReportsPage() {
             <button className="btn btn-primary flex-1" onClick={() => {
               if (!ics.from || !ics.to) return toast.error('Select a date range.');
               run('/reports/icing?from=' + ics.from + '&to=' + ics.to);
-            }}>PDF</button>
+            }}><FileText size={14} /> PDF</button>
             <button className="btn btn-outline flex-1" onClick={() => {
               if (!ics.from || !ics.to) return toast.error('Select a date range.');
               run('/reports/icing?from=' + ics.from + '&to=' + ics.to + '&format=excel', true);
-            }}>Excel</button>
+            }}><FileSpreadsheet size={14} /> Excel</button>
           </div>
         </ReportCard>
 
@@ -206,11 +207,11 @@ export default function ReportsPage() {
             <button className="btn btn-primary flex-1" onClick={() => {
               if (!ias.from || !ias.to) return toast.error('Select a date range.');
               run('/reports/ias?from=' + ias.from + '&to=' + ias.to);
-            }}>PDF</button>
+            }}><FileText size={14} /> PDF</button>
             <button className="btn btn-outline flex-1" onClick={() => {
               if (!ias.from || !ias.to) return toast.error('Select a date range.');
               run('/reports/ias?from=' + ias.from + '&to=' + ias.to + '&format=excel', true);
-            }}>Excel</button>
+            }}><FileSpreadsheet size={14} /> Excel</button>
           </div>
         </ReportCard>
 
@@ -220,8 +221,8 @@ export default function ReportsPage() {
             <input className="input" type="number" value={appYear} onChange={(e) => setAppYear(Number(e.target.value) || new Date().getFullYear())} />
           </fieldset>
           <div className="flex gap-2 mt-3">
-            <button className="btn btn-primary flex-1" onClick={() => run('/reports/app?year=' + appYear)}>PDF</button>
-            <button className="btn btn-outline flex-1" onClick={() => run('/reports/app?year=' + appYear + '&format=excel', true)}>Excel</button>
+            <button className="btn btn-primary flex-1" onClick={() => run('/reports/app?year=' + appYear)}><FileText size={14} /> PDF</button>
+            <button className="btn btn-outline flex-1" onClick={() => run('/reports/app?year=' + appYear + '&format=excel', true)}><FileSpreadsheet size={14} /> Excel</button>
           </div>
         </ReportCard>
 
@@ -246,10 +247,10 @@ export default function ReportsPage() {
           <div className="flex gap-2 mt-3">
             <button className="btn btn-primary flex-1" onClick={() => {
               run('/reports/variance?from=' + variance.from + '&to=' + variance.to + (variance.departmentId ? '&departmentId=' + variance.departmentId : ''));
-            }}>PDF</button>
+            }}><FileText size={14} /> PDF</button>
             <button className="btn btn-outline flex-1" onClick={() => {
               run('/reports/variance?from=' + variance.from + '&to=' + variance.to + (variance.departmentId ? '&departmentId=' + variance.departmentId : '') + '&format=excel', true);
-            }}>Excel</button>
+            }}><FileSpreadsheet size={14} /> Excel</button>
           </div>
         </ReportCard>
 
@@ -267,10 +268,10 @@ export default function ReportsPage() {
           <div className="flex gap-2 mt-3">
             <button className="btn btn-primary flex-1" onClick={() => {
               run('/reports/suppliers?from=' + supplier.from + '&to=' + supplier.to);
-            }}>PDF</button>
+            }}><FileText size={14} /> PDF</button>
             <button className="btn btn-outline flex-1" onClick={() => {
               run('/reports/suppliers?from=' + supplier.from + '&to=' + supplier.to + '&format=excel', true);
-            }}>Excel</button>
+            }}><FileSpreadsheet size={14} /> Excel</button>
           </div>
         </ReportCard>
       </div>

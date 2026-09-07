@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import api from '../api/client';
 import { useCan } from '../stores/authStore';
 import { useToast } from '../components/Toast';
-import PageHeader, { EmptyState, Spinner } from '../components/ui';
-import { X } from 'lucide-react';
+import PageHeader, { EmptyState, FormModal, Spinner } from '../components/ui';
+import { X, Plus, SquarePen, Trash2, Save, Wallet } from 'lucide-react';
 
 function Portal({ children }) {
   return createPortal(children, document.body);
@@ -89,7 +89,7 @@ export default function BudgetPage() {
       <PageHeader
         title="Budgets"
         subtitle="Department budget allocations for RIS affordability checks."
-        actions={isAdmin && <button className="btn btn-primary" onClick={() => { setEditTarget(null); resetForm(); setOpen(true); }}>New Budget</button>}
+        actions={isAdmin && <button className="btn btn-primary" onClick={() => { setEditTarget(null); resetForm(); setOpen(true); }}><Plus size={15} /> New Budget</button>}
       />
       <div className="card bg-base-100 shadow-sm">
         <div className="card-body">
@@ -126,8 +126,8 @@ export default function BudgetPage() {
                         </td>
                         {isAdmin && (
                           <td className="text-right">
-                            <button className="btn btn-ghost btn-xs" onClick={() => openEdit(b)}>Edit</button>
-                            <button className="btn btn-ghost btn-xs text-error" onClick={() => setDeleteTarget(b)}>Delete</button>
+                            <button className="btn btn-ghost btn-xs" onClick={() => openEdit(b)}><SquarePen size={12} /> Edit</button>
+                            <button className="btn btn-ghost btn-xs text-error" onClick={() => setDeleteTarget(b)}><Trash2 size={12} /> Delete</button>
                           </td>
                         )}
                       </tr>
@@ -142,13 +142,15 @@ export default function BudgetPage() {
 
       {open && (
         <Portal>
-          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) { setOpen(false); setEditTarget(null); } }}>
-            <div className="modal-box modal-lg">
-              <div className="modal-header">
-                <h3 className="modal-title">{editTarget ? 'Edit Budget' : 'New Budget'}</h3>
-                <button className="modal-close" onClick={() => { setOpen(false); setEditTarget(null); }}><X size={15} /></button>
-              </div>
-              <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <FormModal
+            title={editTarget ? 'Edit Budget' : 'New Budget'}
+            formNo="Form No. LGU-IMS-BUD-01"
+            icon={Wallet}
+            tone="info"
+            size="modal-lg"
+            onClose={() => { setOpen(false); setEditTarget(null); }}
+          >
+            <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="modal-form-grid">
                   <div className="fieldset" style={{ gridColumn: '1 / -1' }}>
                     <span className="fieldset-legend">Department *</span>
@@ -167,12 +169,13 @@ export default function BudgetPage() {
                   </div>
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn" onClick={() => { setOpen(false); setEditTarget(null); }}>Cancel</button>
-                  <button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}{editTarget ? 'Save Changes' : 'Create'}</button>
+                  <button type="button" className="btn" onClick={() => { setOpen(false); setEditTarget(null); }}>
+                    <X size={14} /> Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}<Save size={14} />{editTarget ? 'Save Changes' : 'Create'}</button>
                 </div>
               </form>
-            </div>
-          </div>
+          </FormModal>
         </Portal>
       )}
 
@@ -188,8 +191,12 @@ export default function BudgetPage() {
                 <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', lineHeight: 1.6 }}>Delete the {deleteTarget.year} budget for {deleteTarget.department?.name}? Existing requisition charges are not affected.</p>
               </div>
               <div className="modal-footer">
-                <button className="btn" onClick={() => setDeleteTarget(null)}>Cancel</button>
-                <button className="btn btn-error" disabled={busy} onClick={confirmDelete}>Delete</button>
+                <button className="btn" onClick={() => setDeleteTarget(null)}>
+                  <X size={14} /> Cancel
+                </button>
+                <button className="btn btn-error" disabled={busy} onClick={confirmDelete}>
+                  <Trash2 size={14} /> Delete
+                </button>
               </div>
             </div>
           </div>

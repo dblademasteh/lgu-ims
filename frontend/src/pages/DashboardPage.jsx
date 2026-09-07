@@ -8,7 +8,7 @@ import useAuthStore from '../stores/authStore';
 import { Spinner } from '../components/ui';
 import {
   Package, ClipboardList, AlertTriangle, TrendingUp, CheckSquare,
-  CalendarClock, FileText, Landmark, ArrowUpRight, ArrowDownRight, Clock,
+  CalendarClock, FileText, Landmark, ArrowUpRight, ArrowDownRight, Clock, ArrowRight,
 } from 'lucide-react';
 
 const TOOLTIP = {
@@ -251,7 +251,7 @@ export default function DashboardPage() {
       <div className="alerts-grid">
         <ChartSection
           title="Low stock"
-          action={<Link to="/items?lowStock=1" className="dash-link">View all</Link>}
+          action={<Link to="/items?lowStock=1" className="dash-link">View all <ArrowRight size={13} /></Link>}
         >
           {lowStock.length === 0 ? (
             <div className="dash-empty"><CheckSquare size={15} style={{ color: 'var(--success)' }} /> All items above reorder point.</div>
@@ -274,7 +274,7 @@ export default function DashboardPage() {
 
         <ChartSection
           title="Recent ledger"
-          action={<Link to="/ledger" className="dash-link">Ledger</Link>}
+          action={<Link to="/ledger" className="dash-link">Ledger <ArrowRight size={13} /></Link>}
         >
           {recentLedger.length === 0 ? (
             <div className="dash-empty">No movement recorded yet.</div>

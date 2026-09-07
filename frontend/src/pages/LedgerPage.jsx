@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api, { openReport } from '../api/client';
 import { useToast } from '../components/Toast';
 import PageHeader, { EmptyState, Spinner } from '../components/ui';
+import { FileText, FileSpreadsheet } from 'lucide-react';
 
 const TYPE_BADGE = {
   OPENING_BALANCE: 'badge-ghost',
@@ -58,13 +59,15 @@ export default function LedgerPage() {
         actions={
           <>
             <button className="btn btn-outline" disabled={!itemId} onClick={() => openReport(`/reports/ledger-card/${itemId}`)}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3M4 19V5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1z" /></svg>
+              <FileText size={15} />
               Ledger Card (PDF)
             </button>
             <button className="btn btn-outline" disabled={!itemId} onClick={() => openReport(`/reports/ledger-card/${itemId}?format=excel`, true)}>
+              <FileSpreadsheet size={15} />
               Ledger Card (Excel)
             </button>
             <button className="btn btn-outline" disabled={!itemId} onClick={() => openReport(`/reports/movements?itemId=${itemId}&format=excel`, true)}>
+              <FileSpreadsheet size={15} />
               Movements (Excel)
             </button>
           </>

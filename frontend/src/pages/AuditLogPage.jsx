@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { X } from 'lucide-react';
+import { X, ShieldCheck, FileText, FileSpreadsheet, GitCompareArrows } from 'lucide-react';
 import api, { openReport } from '../api/client';
 import { useToast } from '../components/Toast';
 import PageHeader, { EmptyState, Pagination, Spinner } from '../components/ui';
@@ -45,19 +45,19 @@ export default function AuditLogPage() {
         subtitle="Full log of create, update, delete and workflow actions — with before / after values."
         actions={
           <div className="flex gap-2">
-            <Link to="/coa-compliance" className="btn btn-outline btn-sm">COA Compliance</Link>
+            <Link to="/coa-compliance" className="btn btn-outline btn-sm"><ShieldCheck size={14} /> COA Compliance</Link>
             <button className="btn btn-outline btn-sm" onClick={() => {
               const q = new URLSearchParams({ format: 'pdf' });
               if (action) q.set('action', action);
               if (search) q.set('entityType', search);
               openReport(`/audit-logs/export?${q}`);
-            }}>PDF</button>
+            }}><FileText size={14} /> PDF</button>
 <button className="btn btn-outline btn-sm" onClick={() => {
               const q = new URLSearchParams({ format: 'excel' });
               if (action) q.set('action', action);
               if (search) q.set('entityType', search);
               openReport(`/audit-logs/export?${q}`, true);
-            }}>Excel</button>
+            }}><FileSpreadsheet size={14} /> Excel</button>
           </div>
         }
       />
@@ -109,7 +109,7 @@ export default function AuditLogPage() {
                         <td className="text-xs">{l.ip || '—'}</td>
                         <td className="text-right">
                           {(l.before || l.after) && (
-                            <button className="btn btn-ghost btn-xs" onClick={() => setDetail(l)}>View diff</button>
+                            <button className="btn btn-ghost btn-xs" onClick={() => setDetail(l)}><GitCompareArrows size={12} /> View diff</button>
                           )}
                         </td>
                       </tr>
@@ -150,7 +150,9 @@ export default function AuditLogPage() {
                 {!detail.before && !detail.after && <p className="text-sm opacity-60 col-span-full">No field-level payload recorded for this action.</p>}
               </div>
               <div className="modal-footer">
-                <button className="btn" onClick={() => setDetail(null)}>Close</button>
+                <button className="btn" onClick={() => setDetail(null)}>
+                  <X size={14} /> Close
+                </button>
               </div>
             </div>
           </div>

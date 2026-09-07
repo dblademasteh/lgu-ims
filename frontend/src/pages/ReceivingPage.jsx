@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, UserPlus, Plus, Eye, Printer, Trash2, Save, PackageOpen } from 'lucide-react';
 import api from '../api/client';
 import useAuthStore, { useCan } from '../stores/authStore';
 import { useToast } from '../components/Toast';
-import PageHeader, { Spinner, Pagination } from '../components/ui';
+import PageHeader, { Spinner, Pagination, FormModal } from '../components/ui';
 
 function Portal({ children }) { return createPortal(children, document.body); }
 
@@ -198,13 +198,13 @@ export default function ReceivingPage() {
         <>
           {canManage && (
             <button className="btn btn-outline btn-sm gap-2" onClick={() => setSupplierOpen(true)}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <UserPlus size={15} />
               Add Supplier
             </button>
           )}
           {canManage && (
             <button className="btn btn-primary btn-sm gap-2" onClick={() => { setEditRec(null); setPoId(''); setForm({ supplierId: '', receivingNo: '', receiptDate: todayLocal(), poNumber: '', drNumber: '', remarks: '', purchaseOrderId: '', lines: [{ itemId: '', quantity: 1, unitCost: 0, remarks: '' }] }); setOpen(true); }}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              <Plus size={15} />
               New Receiving
             </button>
           )}
@@ -289,16 +289,16 @@ export default function ReceivingPage() {
                       <td className="text-right">
                         <div className="flex justify-end gap-1">
                           <button className="btn btn-ghost btn-xs gap-1" onClick={async () => { const res = await api.get(`/inventory/receivings/${r.id}`); setDetailRec(res.data.data); }}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <Eye size={14} />
                             View
                           </button>
                           <button className="btn btn-ghost btn-xs gap-1" onClick={async () => { const res = await api.get(`/inventory/receivings/${r.id}`); setPrintRec(res.data.data); }}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                            <Printer size={14} />
                             Print
                           </button>
                           {canManage && (
                             <button className="btn btn-ghost btn-xs text-error gap-1" onClick={() => setDeleteId(r.id)}>
-                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                              <Trash2 size={14} />
                               Delete
                             </button>
                           )}
@@ -317,14 +317,16 @@ export default function ReceivingPage() {
       </div>
       {open && (
         <Portal>
-          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
-            <div className="modal-box modal-lg">
-              <div className="modal-header">
-                <h3 className="modal-title">{editRec ? 'Edit Receiving' : 'New Receiving'}</h3>
-                <button className="modal-close" onClick={() => setOpen(false)}><X size={15} /></button>
-              </div>
-              <div className="modal-body">
-                <form onSubmit={editRec ? submitEdit : submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormModal
+            title={editRec ? 'Edit Receiving' : 'New Receiving'}
+            formNo="Form No. LGU-IMS-RCV-01"
+            icon={PackageOpen}
+            tone="success"
+            size="modal-lg"
+            onClose={() => setOpen(false)}
+          >
+            <div className="modal-body">
+              <form onSubmit={editRec ? submitEdit : submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <fieldset className="fieldset"><legend className="fieldset-legend">Supplier *</legend>
                     <select className="select" required value={form.supplierId} onChange={e => setForm({...form, supplierId: e.target.value})}>
                       <option value="">Select...</option>
@@ -365,19 +367,20 @@ export default function ReceivingPage() {
                         </select>
                         <input className="input col-span-2" type="number" min="0" step="any" value={ln.quantity} onChange={e => { const next = [...form.lines]; next[idx].quantity = e.target.value; setForm({...form, lines: next}); }} />
                         <input className="input col-span-2" type="number" min="0" step="0.01" value={ln.unitCost} onChange={e => { const next = [...form.lines]; next[idx].unitCost = e.target.value; setForm({...form, lines: next}); }} placeholder="Unit cost" />
-                        <button type="button" className="btn btn-ghost btn-sm col-span-2" onClick={() => { const next = form.lines.filter((_, i) => i !== idx); setForm({...form, lines: next}); }}>Remove</button>
+                        <button type="button" className="btn btn-ghost btn-sm col-span-2" onClick={() => { const next = form.lines.filter((_, i) => i !== idx); setForm({...form, lines: next}); }}><Trash2 size={13} /> Remove</button>
                       </div>
                     ))}
-                    <button type="button" className="btn btn-outline btn-sm" onClick={() => setForm({...form, lines: [...form.lines, { itemId: '', quantity: 1, unitCost: 0, remarks: '' }]})}>Add line</button>
+                    <button type="button" className="btn btn-outline btn-sm" onClick={() => setForm({...form, lines: [...form.lines, { itemId: '', quantity: 1, unitCost: 0, remarks: '' }]})}><Plus size={13} /> Add line</button>
                   </div>
                 </form>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn" onClick={() => setOpen(false)}>Cancel</button>
-                <button className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}Save Receiving</button>
-              </div>
             </div>
-          </div>
+            <div className="modal-footer">
+              <button type="button" className="btn" onClick={() => setOpen(false)}>
+                <X size={14} /> Cancel
+              </button>
+              <button className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}<Save size={14} /> Save Receiving</button>
+            </div>
+          </FormModal>
         </Portal>
       )}
       {supplierOpen && (
@@ -410,8 +413,10 @@ export default function ReceivingPage() {
                 </form>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn" onClick={() => setSupplierOpen(false)}>Cancel</button>
-                <button className="btn btn-primary" disabled={supplierBusy}>{supplierBusy && <span className="loading loading-spinner loading-xs" />}Create Supplier</button>
+                <button type="button" className="btn" onClick={() => setSupplierOpen(false)}>
+                  <X size={14} /> Cancel
+                </button>
+                <button className="btn btn-primary" disabled={supplierBusy}>{supplierBusy && <span className="loading loading-spinner loading-xs" />}<Save size={14} /> Create Supplier</button>
               </div>
             </div>
           </div>
@@ -482,7 +487,9 @@ export default function ReceivingPage() {
           </div>
 
           <div className="mt-8 text-center">
-            <button className="btn btn-primary no-print" onClick={() => setPrintRec(null)}>Close</button>
+            <button className="btn btn-primary no-print" onClick={() => setPrintRec(null)}>
+              <X size={14} /> Close
+            </button>
           </div>
         </div>
       )}
@@ -521,7 +528,9 @@ export default function ReceivingPage() {
                 </div>
               </div>
               <div className="modal-footer">
-                <button className="btn" onClick={() => setDetailRec(null)}>Close</button>
+                <button className="btn" onClick={() => setDetailRec(null)}>
+                  <X size={14} /> Close
+                </button>
               </div>
             </div>
           </div>
@@ -540,8 +549,12 @@ export default function ReceivingPage() {
                 <p className="text-sm text-base-content/60 mt-1">This will reverse all stock movements. This cannot be undone.</p>
               </div>
               <div className="modal-footer">
-                <button className="btn" onClick={() => setDeleteId(null)}>Cancel</button>
-                <button className="btn btn-error" onClick={confirmDelete}>Delete</button>
+                <button className="btn" onClick={() => setDeleteId(null)}>
+                  <X size={14} /> Cancel
+                </button>
+                <button className="btn btn-error" onClick={confirmDelete}>
+                  <Trash2 size={14} /> Delete
+                </button>
               </div>
             </div>
           </div>

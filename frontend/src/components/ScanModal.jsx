@@ -77,7 +77,9 @@ export default function ScanModal({ onScan, onClose }) {
             </div>
           </div>
           <div className="modal-footer">
-            <button className="btn" onClick={onClose}>Close</button>
+            <button className="btn" onClick={onClose}>
+              <X size={14} /> Close
+            </button>
           </div>
         </div>
       </div>

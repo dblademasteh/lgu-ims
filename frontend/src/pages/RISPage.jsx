@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, CopyPlus, Plus, Eye, Printer, FileText, CheckCircle2, XCircle, BadgeCheck, PackageCheck, Undo2, Send, Trash2, Save } from 'lucide-react';
 import api, { openReport } from '../api/client';
 import useAuthStore, { useCan } from '../stores/authStore';
 import { useToast } from '../components/Toast';
-import PageHeader, { Badge, EmptyState, Money, Pagination, Spinner } from '../components/ui';
+import PageHeader, { Badge, EmptyState, FormModal, Money, Pagination, Spinner } from '../components/ui';
 
 function Portal({ children }) { return createPortal(children, document.body); }
 const STATUS_FLOW = ['PENDING', 'APPROVED', 'CERTIFIED', 'ISSUED', 'PARTIALLY_ISSUED', 'REJECTED', 'CANCELLED'];
@@ -92,11 +92,11 @@ export default function RISPage() {
         actions={canRequest && (
           <div className="flex gap-2">
             <button className="btn btn-outline" onClick={() => setBulkOpen(true)}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              <CopyPlus size={15} />
               Bulk Create
             </button>
             <button className="btn btn-primary" onClick={() => setCreateOpen(true)}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+              <Plus size={15} />
               New requisition
             </button>
           </div>
@@ -149,7 +149,7 @@ export default function RISPage() {
                         <td>{r.requestedBy?.fullName}</td>
                         <td><Badge status={r.status}>{r.status.replace(/_/g, ' ')}</Badge></td>
                         <td className="text-right">
-                          <button className="btn btn-ghost btn-xs">Details</button>
+                          <button className="btn btn-ghost btn-xs"><Eye size={12} /> Details</button>
                         </td>
                       </tr>
                     ))}
@@ -275,8 +275,12 @@ export default function RISPage() {
                 </form>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn" onClick={() => setApproveOpen(false)}>Cancel</button>
-                <button type="submit" form="approve-form" className="btn btn-success">Approve</button>
+                <button type="button" className="btn" onClick={() => setApproveOpen(false)}>
+                  <X size={14} /> Cancel
+                </button>
+                <button type="submit" form="approve-form" className="btn btn-success">
+                  <CheckCircle2 size={14} /> Approve
+                </button>
               </div>
             </div>
           </div>
@@ -303,29 +307,29 @@ function RisDetail({ ris, user, canManage, canIssue, canCancel, canReturn, onClo
 
           <div className="modal-action no-print mt-0 mb-2">
             <button className="btn btn-outline btn-sm" onClick={() => window.print()}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2z" /></svg>
+              <Printer size={14} />
               Print RIS
             </button>
             {['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status) && (
               <button className="btn btn-outline btn-sm" onClick={() => openReport(`/reports/acknowledgment/${ris.id}`)}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m-6-8h6M5 21h14a1 1 0 001-1V4a1 1 0 00-1-1H5a1 1 0 00-1 1v16a1 1 0 001 1z" /></svg>
+                <FileText size={14} />
                 Acknowledgment Slip
               </button>
             )}
             {['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status) && ris.items.some((it) => it.item.isAccountable) && (
               <button className="btn btn-outline btn-sm" onClick={() => openReport(`/reports/par/${ris.id}`)}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m-6-8h6M5 21h14a1 1 0 001-1V4a1 1 0 00-1-1H5a1 1 0 00-1 1v16a1 1 0 001 1z" /></svg>
+                <FileText size={14} />
                 Generate PAR
               </button>
             )}
-            {canOperate(ris, user.role, 'approve') && <button className="btn btn-success btn-sm" onClick={onApprove}>Approve</button>}
-            {canOperate(ris, user.role, 'reject') && <button className="btn btn-error btn-sm btn-outline" onClick={onReject}>Reject</button>}
-            {canOperate(ris, user.role, 'certify') && <button className="btn btn-info btn-sm" onClick={() => act(ris.id, 'certify', {}, 'certified')}>Certify</button>}
-            {canOperate(ris, user.role, 'issue') && <button className="btn btn-primary btn-sm" onClick={onIssue}>Issue items</button>}
+            {canOperate(ris, user.role, 'approve') && <button className="btn btn-success btn-sm" onClick={onApprove}><CheckCircle2 size={14} /> Approve</button>}
+            {canOperate(ris, user.role, 'reject') && <button className="btn btn-error btn-sm btn-outline" onClick={onReject}><XCircle size={14} /> Reject</button>}
+            {canOperate(ris, user.role, 'certify') && <button className="btn btn-info btn-sm" onClick={() => act(ris.id, 'certify', {}, 'certified')}><BadgeCheck size={14} /> Certify</button>}
+            {canOperate(ris, user.role, 'issue') && <button className="btn btn-primary btn-sm" onClick={onIssue}><PackageCheck size={14} /> Issue items</button>}
             {canReturn && ['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status) && (
-              <button className="btn btn-outline btn-sm" onClick={onReturn}>Return items</button>
+              <button className="btn btn-outline btn-sm" onClick={onReturn}><Undo2 size={14} /> Return items</button>
             )}
-            {canOperate(ris, user.role, 'cancel') && <button className="btn btn-ghost btn-sm" onClick={onCancel}>Cancel RIS</button>}
+            {canOperate(ris, user.role, 'cancel') && <button className="btn btn-ghost btn-sm" onClick={onCancel}><XCircle size={14} /> Cancel RIS</button>}
           </div>
 
           <div className="print-area">
@@ -463,7 +467,9 @@ function RisDetail({ ris, user, canManage, canIssue, canCancel, canReturn, onClo
           </div>
 
           <div className="no-print flex justify-end">
-            <button className="btn" onClick={onClose}>Close</button>
+            <button className="btn" onClick={onClose}>
+              <X size={14} /> Close
+            </button>
           </div>
         </div>
       </div>
@@ -537,14 +543,16 @@ function CreateRisModal({ onClose, onSaved }) {
 
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-        <div className="modal-box modal-lg">
-          <div className="modal-header">
-            <h3 className="modal-title">New requisition (RIS)</h3>
-            <button className="modal-close" onClick={onClose}><X size={15} /></button>
-          </div>
-          <div className="modal-body">
-            <form id="create-ris-form" onSubmit={submit} className="flex flex-col gap-4">
+      <FormModal
+        title="New requisition (RIS)"
+        formNo="Form No. LGU-IMS-RIS-01"
+        icon={FileText}
+        tone="info"
+        size="modal-lg"
+        onClose={onClose}
+      >
+        <div className="modal-body">
+          <form id="create-ris-form" onSubmit={submit} className="flex flex-col gap-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <fieldset className="fieldset">
                   <legend className="fieldset-legend">Department *</legend>
@@ -565,7 +573,7 @@ function CreateRisModal({ onClose, onSaved }) {
               <div className="flex items-center justify-between">
                 <h4 className="font-semibold text-sm">Items requested</h4>
                 <button type="button" className="btn btn-outline btn-sm" onClick={() => setLineItems([...lineItems, { itemId: '', quantityRequested: '', unitCost: '' }])}>
-                  + Add item
+                  <Plus size={13} /> Add item
                 </button>
               </div>
 
@@ -616,16 +624,17 @@ function CreateRisModal({ onClose, onSaved }) {
                   onChange={(e) => setForm({ ...form, remarks: e.target.value })} placeholder="Optional notes" />
               </fieldset>
             </form>
-          </div>
-          <div className="modal-footer">
-            <button type="button" className="btn" onClick={onClose}>Cancel</button>
-            <button type="submit" form="create-ris-form" className="btn btn-primary" disabled={busy}>
-              {busy && <span className="loading loading-spinner loading-xs" />}
-              Submit requisition
-            </button>
-          </div>
         </div>
-      </div>
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose}>
+            <X size={14} /> Cancel
+          </button>
+          <button type="submit" form="create-ris-form" className="btn btn-primary" disabled={busy}>
+            {busy && <span className="loading loading-spinner loading-xs" />}
+            <Send size={14} /> Submit requisition
+          </button>
+        </div>
+      </FormModal>
     </Portal>
   );
 }
@@ -728,7 +737,7 @@ function BulkCreateModal({ onClose, onSaved }) {
                 <div key={risIdx} className="border border-base-300 rounded-lg p-4 relative">
                   <div className="absolute top-2 right-2">
                     {risList.length > 1 && (
-                      <button type="button" className="btn btn-ghost btn-xs text-error" onClick={() => removeRis(risIdx)}>Remove</button>
+                      <button type="button" className="btn btn-ghost btn-xs text-error" onClick={() => removeRis(risIdx)}><Trash2 size={12} /> Remove</button>
                     )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
@@ -763,7 +772,7 @@ function BulkCreateModal({ onClose, onSaved }) {
                           <button type="button" className="btn btn-ghost btn-xs btn-square text-error" onClick={() => removeLine(risIdx, lineIdx)}><X size={15} /></button>
                         )}
                         {lineIdx === ris.lines.length - 1 && (
-                          <button type="button" className="btn btn-ghost btn-xs" onClick={() => addLine(risIdx)}>+</button>
+                          <button type="button" className="btn btn-ghost btn-xs" onClick={() => addLine(risIdx)}><Plus size={14} /></button>
                         )}
                       </div>
                     </div>
@@ -776,15 +785,17 @@ function BulkCreateModal({ onClose, onSaved }) {
                 </div>
               ))}
               <div className="flex gap-2">
-                <button type="button" className="btn btn-outline btn-sm" onClick={addRis}>+ Add another RIS</button>
+                <button type="button" className="btn btn-outline btn-sm" onClick={addRis}><CopyPlus size={13} /> Add another RIS</button>
               </div>
             </form>
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn" onClick={onClose}>
+              <X size={14} /> Cancel
+            </button>
             <button type="submit" form="bulk-create-form" className="btn btn-primary" disabled={busy}>
               {busy && <span className="loading loading-spinner loading-xs" />}
-              Create {risList.length} requisition{risList.length !== 1 ? 's' : ''}
+              <Send size={14} /> Create {risList.length} requisition{risList.length !== 1 ? 's' : ''}
             </button>
           </div>
         </div>
@@ -825,10 +836,12 @@ function ConfirmModal({ message, placeholder, onClose, onConfirm }) {
             </form>
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn" onClick={onClose}>
+              <X size={14} /> Cancel
+            </button>
             <button type="submit" form="confirm-form" className="btn btn-error" disabled={busy}>
               {busy && <span className="loading loading-spinner loading-xs" />}
-              Confirm
+              <CheckCircle2 size={14} /> Confirm
             </button>
           </div>
         </div>
@@ -929,10 +942,12 @@ function IssueModal({ ris, onClose, onIssue }) {
             </form>
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn" onClick={onClose}>
+              <X size={14} /> Cancel
+            </button>
             <button type="submit" form="issue-form" className="btn btn-primary" disabled={busy}>
               {busy && <span className="loading loading-spinner loading-xs" />}
-              Issue stock
+              <PackageCheck size={14} /> Issue stock
             </button>
           </div>
         </div>
@@ -1029,10 +1044,12 @@ function ReturnModal({ ris, onClose, onReturn }) {
             </form>
           </div>
           <div className="modal-footer">
-            <button type="button" className="btn" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn" onClick={onClose}>
+              <X size={14} /> Cancel
+            </button>
             <button type="submit" form="return-form" className="btn btn-primary" disabled={busy}>
               {busy && <span className="loading loading-spinner loading-xs" />}
-              Return to stock
+              <Undo2 size={14} /> Return to stock
             </button>
           </div>
         </div>
