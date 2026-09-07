@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../api/client';
 import { useCan } from '../stores/authStore';
 import { useToast } from '../components/Toast';
 import PageHeader, { EmptyState, Spinner } from '../components/ui';
+import { X } from 'lucide-react';
+
+function Portal({ children }) {
+  return createPortal(children, document.body);
+}
 
 function fmtMoney(v) {
   return `₱${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -135,44 +141,59 @@ export default function BudgetPage() {
       </div>
 
       {open && (
-        <dialog className="modal modal-open">
-          <div className="modal-box">
-            <h3 className="font-bold text-lg">{editTarget ? 'Edit Budget' : 'New Budget'}</h3>
-            <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-              <fieldset className="fieldset sm:col-span-2"><legend className="fieldset-legend">Department *</legend>
-                <select className="select" required disabled={!!editTarget} value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
-                  <option value="">Select...</option>
-                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-              </fieldset>
-              <fieldset className="fieldset"><legend className="fieldset-legend">Year *</legend>
-                <input className="input" type="number" min="2000" max="2100" required value={form.year} disabled={!!editTarget} onChange={(e) => setForm({ ...form, year: e.target.value })} />
-              </fieldset>
-              <fieldset className="fieldset"><legend className="fieldset-legend">Allocated Amount (₱) *</legend>
-                <input className="input" type="number" min="0" step="0.01" required value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-              </fieldset>
-              <div className="modal-action col-span-full">
-                <button type="button" className="btn" onClick={() => { setOpen(false); setEditTarget(null); }}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}{editTarget ? 'Save Changes' : 'Create'}</button>
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) { setOpen(false); setEditTarget(null); } }}>
+            <div className="modal-box modal-lg">
+              <div className="modal-header">
+                <h3 className="modal-title">{editTarget ? 'Edit Budget' : 'New Budget'}</h3>
+                <button className="modal-close" onClick={() => { setOpen(false); setEditTarget(null); }}><X size={15} /></button>
               </div>
-            </form>
+              <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="modal-form-grid">
+                  <div className="fieldset" style={{ gridColumn: '1 / -1' }}>
+                    <span className="fieldset-legend">Department *</span>
+                    <select className="select" required disabled={!!editTarget} value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
+                      <option value="">Select...</option>
+                      {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="fieldset">
+                    <span className="fieldset-legend">Year *</span>
+                    <input className="input" type="number" min="2000" max="2100" required value={form.year} disabled={!!editTarget} onChange={(e) => setForm({ ...form, year: e.target.value })} />
+                  </div>
+                  <div className="fieldset">
+                    <span className="fieldset-legend">Allocated Amount (₱) *</span>
+                    <input className="input" type="number" min="0" step="0.01" required value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn" onClick={() => { setOpen(false); setEditTarget(null); }}>Cancel</button>
+                  <button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}{editTarget ? 'Save Changes' : 'Create'}</button>
+                </div>
+              </form>
+            </div>
           </div>
-          <form method="dialog" className="modal-backdrop"><button onClick={() => { setOpen(false); setEditTarget(null); }}>close</button></form>
-        </dialog>
+        </Portal>
       )}
 
       {deleteTarget && (
-        <dialog className="modal modal-open">
-          <div className="modal-box">
-            <h3 className="font-bold text-lg">Delete budget</h3>
-            <p className="text-sm text-base-content/60 mt-1">Delete the {deleteTarget.year} budget for {deleteTarget.department?.name}? Existing requisition charges are not affected.</p>
-            <div className="modal-action">
-              <button className="btn" onClick={() => setDeleteTarget(null)}>Cancel</button>
-              <button className="btn btn-error" disabled={busy} onClick={confirmDelete}>Delete</button>
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setDeleteTarget(null); }}>
+            <div className="modal-box modal-sm">
+              <div className="modal-header">
+                <h3 className="modal-title">Delete budget</h3>
+                <button className="modal-close" onClick={() => setDeleteTarget(null)}><X size={15} /></button>
+              </div>
+              <div className="modal-body">
+                <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', lineHeight: 1.6 }}>Delete the {deleteTarget.year} budget for {deleteTarget.department?.name}? Existing requisition charges are not affected.</p>
+              </div>
+              <div className="modal-footer">
+                <button className="btn" onClick={() => setDeleteTarget(null)}>Cancel</button>
+                <button className="btn btn-error" disabled={busy} onClick={confirmDelete}>Delete</button>
+              </div>
             </div>
           </div>
-          <form method="dialog" className="modal-backdrop"><button onClick={() => setDeleteTarget(null)}>close</button></form>
-        </dialog>
+        </Portal>
       )}
     </div>
   );

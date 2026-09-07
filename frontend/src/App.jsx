@@ -23,8 +23,8 @@ import ProfilePage from './pages/ProfilePage';
 function NotFound() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '6rem 1rem' }}>
-      <h1 style={{ fontSize: '3rem', fontWeight: 800, color: 'var(--ink)' }}>404</h1>
-      <p style={{ color: 'color-mix(in oklab, var(--ink) 55%, transparent)', fontSize: '0.9375rem' }}>The page you are looking for does not exist.</p>
+      <h1 style={{ fontSize: '3rem', fontWeight: 800, color: 'var(--text)' }}>404</h1>
+      <p style={{ color: 'color-mix(in oklab, var(--text) 55%, transparent)', fontSize: '0.9375rem' }}>The page you are looking for does not exist.</p>
       <a className="btn btn-primary" href="/dashboard">Go to Dashboard</a>
     </div>
   );

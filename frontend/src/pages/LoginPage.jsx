@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, ShieldCheck, LogIn, ArrowLeft, Landmark, CircleAlert } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck, LogIn, ArrowLeft, Landmark, CircleAlert, X } from 'lucide-react';
 import api from '../api/client';
 import useAuthStore from '../stores/authStore';
 import { useToast } from '../components/Toast';
+
+function Portal({ children }) { return createPortal(children, document.body); }
 
 const DEMO_ACCOUNTS = [
   { u: 'admin', label: 'Administrator', role: 'Admin' },
@@ -20,7 +23,7 @@ const SYSTEM_NOTES = [
 
 export default function LoginPage() {
   return (
-    <main style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface2)' }}>
+    <main style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-alt)' }}>
       <div style={{ width: '100%', maxWidth: '28rem', padding: '3rem 1rem' }}>
         <Header />
         <LoginForm />
@@ -32,15 +35,15 @@ export default function LoginPage() {
 function Header() {
   return (
     <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '4rem', height: '4rem', borderRadius: '9999px', marginBottom: '1.25rem', background: 'var(--ink)' }}>
-        <Landmark size={28} strokeWidth={1.5} style={{ color: 'var(--on-ink)' }} />
+      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '4rem', height: '4rem', borderRadius: '9999px', marginBottom: '1.25rem', background: 'var(--text)' }}>
+        <Landmark size={28} strokeWidth={1.5} style={{ color: 'var(--surface)' }} />
       </div>
-      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.5rem', color: 'var(--lgu-accent)' }}>Republic of the Philippines</div>
-      <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--fs-xl)', fontWeight: 700, lineHeight: 1.2, color: 'var(--ink)' }}>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: '0.5rem', color: 'var(--accent)' }}>Republic of the Philippines</div>
+      <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--fs-xl)', fontWeight: 700, lineHeight: 1.2, color: 'var(--text)' }}>
         Local Government Unit
       </h1>
-      <p style={{ fontSize: '0.875rem', marginTop: '0.25rem', color: 'color-mix(in oklab, var(--ink) 55%, transparent)' }}>Property &amp; Supply Management System</p>
-      <div style={{ marginTop: '1.25rem', height: '2px', width: '6rem', marginLeft: 'auto', marginRight: 'auto', background: 'var(--lgu-accent)', borderRadius: '2px' }} />
+      <p style={{ fontSize: '0.875rem', marginTop: '0.25rem', color: 'color-mix(in oklab, var(--text) 55%, transparent)' }}>Property &amp; Supply Management System</p>
+      <div style={{ marginTop: '1.25rem', height: '2px', width: '6rem', marginLeft: 'auto', marginRight: 'auto', background: 'var(--accent)', borderRadius: '2px' }} />
     </div>
   );
 }
@@ -159,7 +162,7 @@ function LoginForm() {
   return (
     <>
       <div className="card" style={{ overflow: 'hidden' }}>
-        <div style={{ padding: '1.25rem 2rem', borderBottom: '1.5px solid var(--line)' }}>
+        <div style={{ padding: '1.25rem 2rem', borderBottom: '1.5px solid var(--border)' }}>
           <p className="lbl">
             {step === 'credentials' ? 'Registered User Access' :
              step === '2fa' ? 'Two-Factor Verification' :
@@ -207,7 +210,7 @@ function LoginForm() {
                   <button
                     type="button"
                     onClick={() => setShowPw((s) => !s)}
-                    style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink)', padding: '0.25rem', display: 'grid', placeItems: 'center', borderRadius: '4px', transition: 'opacity 140ms' }}
+                    style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', padding: '0.25rem', display: 'grid', placeItems: 'center', borderRadius: '4px', transition: 'opacity 140ms' }}
                     aria-label={showPw ? 'Hide password' : 'Show password'}
                   >
                     {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -230,9 +233,9 @@ function LoginForm() {
               </button>
 
               <div style={{ textAlign: 'right' }}>
-                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--lgu-accent)', textDecoration: 'underline', textDecorationColor: 'transparent', transition: 'text-decoration-color 140ms', padding: 0 }}
+                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--accent)', textDecoration: 'underline', textDecorationColor: 'transparent', transition: 'text-decoration-color 140ms', padding: 0 }}
                   onClick={() => setForgotOpen(true)}
-                  onMouseEnter={e => e.currentTarget.style.textDecorationColor = 'var(--lgu-accent)'}
+                  onMouseEnter={e => e.currentTarget.style.textDecorationColor = 'var(--accent)'}
                   onMouseLeave={e => e.currentTarget.style.textDecorationColor = 'transparent'}>
                   Forgot password?
                 </button>
@@ -242,7 +245,7 @@ function LoginForm() {
 
           {step === '2fa' && (
             <form onSubmit={submit2FA} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} noValidate>
-              <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'color-mix(in oklab, var(--ink) 60%, transparent)' }}>
+              <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'color-mix(in oklab, var(--text) 60%, transparent)' }}>
                 Enter the 6-digit code from your authenticator app.
               </p>
               <Field label="Verification code" id="lgu-2fa-code">
@@ -264,7 +267,7 @@ function LoginForm() {
               <button type="submit" className="btn btn-primary w-full" disabled={busy || code.length < 6}>
                 {busy ? <span className="loading loading-spinner loading-xs" /> : 'Verify and sign in'}
               </button>
-              <button type="button" className="btn w-full" style={{ fontSize: '0.8125rem', color: 'var(--lgu-accent)' }}
+              <button type="button" className="btn w-full" style={{ fontSize: '0.8125rem', color: 'var(--accent)' }}
                 onClick={() => { setStep('credentials'); setCode(''); setTempToken(''); }}>
                 ← Back to sign in
               </button>
@@ -273,7 +276,7 @@ function LoginForm() {
 
           {step === 'password-change' && (
             <form onSubmit={submitPasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }} noValidate>
-              <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'color-mix(in oklab, var(--ink) 60%, transparent)' }}>
+              <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'color-mix(in oklab, var(--text) 60%, transparent)' }}>
                 Your password has expired. Choose a new password to continue.
               </p>
               <Field label="New password" id="new-pw">
@@ -292,7 +295,7 @@ function LoginForm() {
               <button type="submit" className="btn btn-primary w-full" disabled={busy}>
                 {busy ? <span className="loading loading-spinner loading-xs" /> : 'Update and sign in'}
               </button>
-              <button type="button" className="btn w-full" style={{ fontSize: '0.8125rem', color: 'var(--lgu-accent)' }}
+              <button type="button" className="btn w-full" style={{ fontSize: '0.8125rem', color: 'var(--accent)' }}
                 onClick={() => { setStep('credentials'); setNewPassword(''); }}>
                 ← Back to sign in
               </button>
@@ -304,16 +307,16 @@ function LoginForm() {
           <>
             {import.meta.env.VITE_SHOW_DEMO_ACCOUNTS === 'true' && (
               <div style={{ padding: '0 2rem 1.5rem' }}>
-                <div style={{ borderTop: '1.5px solid var(--line)', paddingTop: '1.25rem' }}>
+                <div style={{ borderTop: '1.5px solid var(--border)', paddingTop: '1.25rem' }}>
                   <p className="lbl" style={{ marginBottom: '0.75rem' }}>Demo access</p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                     {DEMO_ACCOUNTS.map((a) => (
                       <button key={a.u} type="button" onClick={() => prefill(a.u)}
-                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '0.625rem', borderRadius: '8px', border: '1.5px solid var(--line)', background: 'var(--surface)', cursor: 'pointer', transition: 'border-color 140ms, background 140ms', textAlign: 'left' }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ink)'; e.currentTarget.style.background = 'color-mix(in oklab, var(--ink) 4%, var(--surface))'; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.style.background = 'var(--surface)'; }}>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink)' }}>{a.u}</span>
-                        <span style={{ fontSize: '0.6875rem', marginTop: '0.125rem', color: 'color-mix(in oklab, var(--ink) 50%, transparent)' }}>{a.role}</span>
+                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '0.625rem', borderRadius: '8px', border: '1.5px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', transition: 'border-color 140ms, background 140ms', textAlign: 'left' }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--text)'; e.currentTarget.style.background = 'color-mix(in oklab, var(--text) 4%, var(--surface))'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--surface)'; }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text)' }}>{a.u}</span>
+                        <span style={{ fontSize: '0.6875rem', marginTop: '0.125rem', color: 'color-mix(in oklab, var(--text) 50%, transparent)' }}>{a.role}</span>
                       </button>
                     ))}
                   </div>
@@ -327,52 +330,49 @@ function LoginForm() {
       <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {SYSTEM_NOTES.map((n) => (
           <div key={n} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.625rem' }}>
-            <ShieldCheck size={14} style={{ color: 'var(--lgu-accent)', marginTop: '2px', flexShrink: 0 }} />
-            <span style={{ fontSize: '0.8125rem', lineHeight: 1.6, color: 'color-mix(in oklab, var(--ink) 50%, transparent)' }}>{n}</span>
+            <ShieldCheck size={14} style={{ color: 'var(--accent)', marginTop: '2px', flexShrink: 0 }} />
+            <span style={{ fontSize: '0.8125rem', lineHeight: 1.6, color: 'color-mix(in oklab, var(--text) 50%, transparent)' }}>{n}</span>
           </div>
         ))}
       </div>
 
       {forgotOpen && (
-        <dialog className="modal modal-open" aria-label="Reset password">
-          <div className="modal-box" style={{ maxWidth: '24rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
-              <button onClick={() => setForgotOpen(false)} className="btn btn-ghost btn-sm btn-square -ml-2" aria-label="Go back">
-                <ArrowLeft size={16} />
-              </button>
-              <h3 style={{ fontWeight: 600, fontSize: '1rem' }}>Reset password</h3>
-            </div>
-            <p style={{ fontSize: '0.9375rem', marginTop: '0.25rem', marginBottom: '1rem', color: 'color-mix(in oklab, var(--ink) 60%, transparent)' }}>
-              Enter your username. If an account exists, a reset link will be sent to the registered email.
-            </p>
-            <form onSubmit={submitForgot} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <Field label="Username or email" id="forgot-user">
-                <input
-                  id="forgot-user"
-                  type="text"
-                  required
-                  autoFocus
-                  placeholder="e.g. admin"
-                  className="form-input"
-                  value={forgotUser}
-                  onChange={(e) => setForgotUser(e.target.value)}
-                />
-              </Field>
-              {forgotMsg && (
-                <div className="alert alert-info">
-                  <span>{forgotMsg}</span>
-                </div>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', paddingTop: '0.25rem' }}>
-                <button type="button" className="btn btn-sm" onClick={() => setForgotOpen(false)}>Cancel</button>
-                <button type="submit" className="btn btn-sm btn-primary" disabled={forgotBusy}>
-                  {forgotBusy ? <><span className="loading loading-spinner loading-xs" /> Sending…</> : 'Send reset link'}
-                </button>
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setForgotOpen(false); }}>
+            <div className="modal-box modal-sm">
+              <div className="modal-header">
+                <h3 className="modal-title">Reset password</h3>
+                <button className="modal-close" onClick={() => setForgotOpen(false)}><X size={15} /></button>
               </div>
-            </form>
+              <p className="text-sm text-base-content/60 mt-1">Enter your username. If an account exists, a reset link will be sent to the registered email.</p>
+              <form onSubmit={submitForgot} className="flex flex-col gap-4 mt-4">
+                <Field label="Username or email" id="forgot-user">
+                  <input
+                    id="forgot-user"
+                    type="text"
+                    required
+                    autoFocus
+                    placeholder="e.g. admin"
+                    className="form-input"
+                    value={forgotUser}
+                    onChange={(e) => setForgotUser(e.target.value)}
+                  />
+                </Field>
+                {forgotMsg && (
+                  <div className="alert alert-info">
+                    <span>{forgotMsg}</span>
+                  </div>
+                )}
+                <div className="modal-footer">
+                  <button type="button" className="btn" onClick={() => setForgotOpen(false)}>Cancel</button>
+                  <button type="submit" className="btn btn-primary" disabled={forgotBusy}>
+                    {forgotBusy ? <><span className="loading loading-spinner loading-xs" /> Sending…</> : 'Send reset link'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-          <form method="dialog" className="modal-backdrop"><button aria-label="Close dialog" onClick={() => setForgotOpen(false)}>close</button></form>
-        </dialog>
+        </Portal>
       )}
     </>
   );

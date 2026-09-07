@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import api from '../api/client';
 import useAuthStore, { useCan } from '../stores/authStore';
 import { useToast } from '../components/Toast';
 import PageHeader, { Badge, EmptyState, Pagination, Spinner } from '../components/ui';
+
+function Portal({ children }) { return createPortal(children, document.body); }
 
 const PO_STATUSES = ['PENDING', 'APPROVED', 'RECEIVED', 'CANCELLED'];
 
@@ -190,65 +194,73 @@ function POList() {
       </div>
 
       {open && (
-        <dialog className="modal modal-open">
-          <div className="modal-box max-w-3xl">
-            <h3 className="font-bold text-lg">{editPo ? `Edit ${editPo.poNumber}` : 'New Purchase Order'}</h3>
-            <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-              <fieldset className="fieldset"><legend className="fieldset-legend">Department *</legend>
-                <select className="select" required value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
-                  <option value="">Select...</option>
-                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-              </fieldset>
-              <fieldset className="fieldset"><legend className="fieldset-legend">Supplier *</legend>
-                <select className="select" required value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })}>
-                  <option value="">Select...</option>
-                  {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </fieldset>
-              <fieldset className="fieldset"><legend className="fieldset-legend">Date</legend>
-                <input type="date" className="input" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-              </fieldset>
-              <fieldset className="fieldset"><legend className="fieldset-legend">Remarks</legend>
-                <input className="input" value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} />
-              </fieldset>
-              <div className="col-span-full">
-                <div className="font-semibold text-sm mb-2">Items</div>
-                {form.lines.map((line, idx) => (
-                  <div key={idx} className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-2">
-                    <select className="select" required value={line.itemId} onChange={(e) => { const l = [...form.lines]; l[idx].itemId = e.target.value; setForm({ ...form, lines: l }); }}>
-                      <option value="">Select item...</option>
-                      {items.map((i) => <option key={i.id} value={i.id}>{i.name} ({i.sku})</option>)}
-                    </select>
-                    <input type="number" className="input" placeholder="Qty" required min="0.01" step="0.01" value={line.quantity} onChange={(e) => { const l = [...form.lines]; l[idx].quantity = Number(e.target.value); setForm({ ...form, lines: l }); }} />
-                    <input type="number" className="input" placeholder="Unit Cost" required min="0" step="0.01" value={line.unitCost} onChange={(e) => { const l = [...form.lines]; l[idx].unitCost = Number(e.target.value); setForm({ ...form, lines: l }); }} />
-                    {form.lines.length > 1 && <button type="button" className="btn btn-ghost btn-sm text-error" onClick={() => setForm({ ...form, lines: form.lines.filter((_, i) => i !== idx) })}>Remove</button>}
-                  </div>
-                ))}
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => setForm({ ...form, lines: [...form.lines, { itemId: '', quantity: 1, unitCost: 0 }] })}>Add line</button>
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) { setOpen(false); setEditPo(null); } }}>
+            <div className="modal-box modal-lg">
+              <div className="modal-header">
+                <h3 className="modal-title">{editPo ? `Edit ${editPo.poNumber}` : 'New Purchase Order'}</h3>
+                <button className="modal-close" onClick={() => { setOpen(false); setEditPo(null); }}><X size={15} /></button>
               </div>
-              <div className="col-span-full modal-action">
-                <button type="button" className="btn" onClick={() => { setOpen(false); setEditPo(null); }}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}{editPo ? 'Save Changes' : 'Create'}</button>
-              </div>
-            </form>
+              <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                <fieldset className="fieldset"><legend className="fieldset-legend">Department *</legend>
+                  <select className="select" required value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
+                    <option value="">Select...</option>
+                    {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </fieldset>
+                <fieldset className="fieldset"><legend className="fieldset-legend">Supplier *</legend>
+                  <select className="select" required value={form.supplierId} onChange={(e) => setForm({ ...form, supplierId: e.target.value })}>
+                    <option value="">Select...</option>
+                    {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </fieldset>
+                <fieldset className="fieldset"><legend className="fieldset-legend">Date</legend>
+                  <input type="date" className="input" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+                </fieldset>
+                <fieldset className="fieldset"><legend className="fieldset-legend">Remarks</legend>
+                  <input className="input" value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} />
+                </fieldset>
+                <div className="col-span-full">
+                  <div className="font-semibold text-sm mb-2">Items</div>
+                  {form.lines.map((line, idx) => (
+                    <div key={idx} className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-2">
+                      <select className="select" required value={line.itemId} onChange={(e) => { const l = [...form.lines]; l[idx].itemId = e.target.value; setForm({ ...form, lines: l }); }}>
+                        <option value="">Select item...</option>
+                        {items.map((i) => <option key={i.id} value={i.id}>{i.name} ({i.sku})</option>)}
+                      </select>
+                      <input type="number" className="input" placeholder="Qty" required min="0.01" step="0.01" value={line.quantity} onChange={(e) => { const l = [...form.lines]; l[idx].quantity = Number(e.target.value); setForm({ ...form, lines: l }); }} />
+                      <input type="number" className="input" placeholder="Unit Cost" required min="0" step="0.01" value={line.unitCost} onChange={(e) => { const l = [...form.lines]; l[idx].unitCost = Number(e.target.value); setForm({ ...form, lines: l }); }} />
+                      {form.lines.length > 1 && <button type="button" className="btn btn-ghost btn-sm text-error" onClick={() => setForm({ ...form, lines: form.lines.filter((_, i) => i !== idx) })}>Remove</button>}
+                    </div>
+                  ))}
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => setForm({ ...form, lines: [...form.lines, { itemId: '', quantity: 1, unitCost: 0 }] })}>Add line</button>
+                </div>
+                <div className="col-span-full modal-footer">
+                  <button type="button" className="btn" onClick={() => { setOpen(false); setEditPo(null); }}>Cancel</button>
+                  <button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}{editPo ? 'Save Changes' : 'Create'}</button>
+                </div>
+              </form>
+            </div>
           </div>
-          <form method="dialog" className="modal-backdrop"><button onClick={() => { setOpen(false); setEditPo(null); }}>close</button></form>
-        </dialog>
+        </Portal>
       )}
 
       {cancelTarget && (
-        <dialog className="modal modal-open">
-          <div className="modal-box">
-            <h3 className="font-bold text-lg">Cancel purchase order</h3>
-            <p className="mt-2">Cancel this purchase order? This cannot be undone.</p>
-            <div className="modal-action">
-              <button className="btn" onClick={() => setCancelTarget(null)}>Cancel</button>
-              <button className="btn btn-error" onClick={cancel}>Confirm cancel</button>
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setCancelTarget(null); }}>
+            <div className="modal-box modal-sm">
+              <div className="modal-header">
+                <h3 className="modal-title">Cancel purchase order</h3>
+                <button className="modal-close" onClick={() => setCancelTarget(null)}><X size={15} /></button>
+              </div>
+              <p className="text-sm text-base-content/60 mt-2">Cancel this purchase order? This cannot be undone.</p>
+              <div className="modal-footer">
+                <button className="btn" onClick={() => setCancelTarget(null)}>Cancel</button>
+                <button className="btn btn-error" onClick={cancel}>Confirm cancel</button>
+              </div>
             </div>
           </div>
-          <form method="dialog" className="modal-backdrop"><button onClick={() => setCancelTarget(null)}>close</button></form>
-        </dialog>
+        </Portal>
       )}
     </div>
   );

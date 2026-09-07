@@ -11,28 +11,28 @@ import {
   CalendarClock, FileText, Landmark, ArrowUpRight, ArrowDownRight, Clock,
 } from 'lucide-react';
 
-const CHART_TOOLTIP = {
-  bg: 'var(--surface)', color: 'var(--ink)', border: '1px solid var(--line)',
-  borderRadius: '6px', fontSize: 'var(--fs-sm)', boxShadow: 'var(--shadow-md)',
+const TOOLTIP = {
+  bg: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)',
+  borderRadius: '6px', fontSize: '0.8125rem', boxShadow: 'var(--shadow-md)',
 };
 
-function KpiCard({ icon: Icon, label, value, accent, to }) {
-  const content = (
-    <div className="kpi-card">
-      <div className="kpi-icon" style={{ background: accent }}>{Icon && <Icon size={16} strokeWidth={2} style={{ color: 'var(--surface)' }} />}</div>
+function KpiCard({ icon: Icon, label, value, color, to }) {
+  return (
+    <Link to={to || '#'} className="kpi-card">
+      <div className="kpi-icon" style={{ background: `color-mix(in oklab, ${color} 12%, transparent)` }}>
+        {Icon && <Icon size={16} strokeWidth={2} style={{ color }} />}
+      </div>
       <div>
         <div className="kpi-value">{value ?? '—'}</div>
         <div className="kpi-label">{label}</div>
       </div>
-    </div>
+    </Link>
   );
-  if (to) return <Link to={to}>{content}</Link>;
-  return content;
 }
 
-function Section({ title, action, children, style }) {
+function ChartSection({ title, action, children }) {
   return (
-    <div className="chart-card" style={style}>
+    <div className="chart-card">
       {(title || action) && (
         <div className="chart-header">
           <div className="chart-title">{title}</div>
@@ -46,17 +46,20 @@ function Section({ title, action, children, style }) {
 
 function AlertRow({ item, type }) {
   const isExpiry = type === 'expiry';
-  const daysLeft = isExpiry && item.expiryDate ? Math.ceil((new Date(item.expiryDate) - new Date()) / 86400000) : null;
+  const daysLeft = isExpiry && item.expiryDate
+    ? Math.ceil((new Date(item.expiryDate) - new Date()) / 86400000)
+    : null;
+  const color = isExpiry ? 'var(--warning)' : 'var(--error)';
   return (
-    <Link to="/items" className="alert-row" style={{ textDecoration: 'none' }}>
-      <div className="alert-row-icon" style={{ background: isExpiry ? 'color-mix(in oklab, var(--lgu-warning) 12%, transparent)' : 'color-mix(in oklab, var(--lgu-error) 12%, transparent)' }}>
-        <AlertTriangle size={14} style={{ color: isExpiry ? 'var(--lgu-warning)' : 'var(--lgu-error)' }} />
+    <Link to="/items" className="alert-row">
+      <div className="alert-row-icon" style={{ background: `color-mix(in oklab, ${color} 12%, transparent)` }}>
+        <AlertTriangle size={14} style={{ color }} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: '0.8125rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', color: 'color-mix(in oklab, var(--ink) 40%, transparent)', letterSpacing: '0.04em' }}>{item.sku}</div>
+        <div className="alert-row-name">{item.name}</div>
+        <div className="alert-row-meta">{item.sku}</div>
       </div>
-      <div style={{ fontSize: '0.6875rem', fontFamily: 'var(--font-mono)', color: isExpiry ? 'var(--lgu-warning)' : 'var(--lgu-error)', whiteSpace: 'nowrap' }}>
+      <div className="alert-row-badge" style={{ color }}>
         {isExpiry ? (daysLeft > 0 ? `${daysLeft}d left` : 'expired') : `${item.currentStock} left`}
       </div>
     </Link>
@@ -65,18 +68,23 @@ function AlertRow({ item, type }) {
 
 function LedgerRow({ entry }) {
   const isIn = entry.inflow > 0;
+  const color = isIn ? 'var(--success)' : 'var(--error)';
   return (
     <div className="alert-row" style={{ pointerEvents: 'none' }}>
-      <div className="alert-row-icon" style={{ background: isIn ? 'color-mix(in oklab, var(--lgu-success) 12%, transparent)' : 'color-mix(in oklab, var(--lgu-error) 12%, transparent)' }}>
-        {isIn ? <ArrowUpRight size={12} style={{ color: 'var(--lgu-success)' }} /> : <ArrowDownRight size={12} style={{ color: 'var(--lgu-error)' }} />}
+      <div className="alert-row-icon" style={{ background: `color-mix(in oklab, ${color} 12%, transparent)` }}>
+        {isIn
+          ? <ArrowUpRight size={12} style={{ color }} />
+          : <ArrowDownRight size={12} style={{ color }} />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: '0.8125rem', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.item?.name}</div>
-        <div style={{ fontSize: '0.5625rem', fontFamily: 'var(--font-mono)', color: 'color-mix(in oklab, var(--ink) 40%, transparent)', letterSpacing: '0.04em' }}>
-          {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {entry.referenceType?.replace(/_/g, ' ')}
+        <div className="alert-row-name">{entry.item?.name}</div>
+        <div className="alert-row-meta">
+          {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          {' · '}
+          {entry.referenceType?.replace(/_/g, ' ')}
         </div>
       </div>
-      <div style={{ fontSize: '0.8125rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isIn ? 'var(--lgu-success)' : 'var(--lgu-error)', whiteSpace: 'nowrap' }}>
+      <div style={{ fontSize: '0.8125rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color, whiteSpace: 'nowrap' }}>
         {isIn ? `+${entry.inflow}` : `-${entry.outflow}`}
       </div>
     </div>
@@ -85,19 +93,17 @@ function LedgerRow({ entry }) {
 
 function BudgetCard({ budget }) {
   const pct = budget.utilizationPct;
-  const color = pct >= 90 ? 'var(--lgu-error)' : pct >= 70 ? 'var(--lgu-warning)' : 'var(--lgu-success)';
+  const color = pct >= 90 ? 'var(--error)' : pct >= 70 ? 'var(--warning)' : 'var(--success)';
   return (
-    <div style={{ padding: '0.875rem', border: '1px solid var(--line)', borderRadius: '7px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.5rem' }}>
-        <span style={{ fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '0.5rem' }}>
-          {budget.department?.name || 'General'}
-        </span>
-        <span style={{ fontSize: '0.875rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color }}>{pct}%</span>
+    <div className="budget-card">
+      <div className="budget-card-header">
+        <span className="budget-card-name">{budget.department?.name || 'General'}</span>
+        <span className="budget-card-pct" style={{ color }}>{pct}%</span>
       </div>
-      <div style={{ height: '8px', background: 'var(--line)', borderRadius: '9999px', overflow: 'hidden', marginBottom: '0.5rem' }}>
-        <div style={{ height: '100%', width: `${Math.min(pct, 100)}%`, background: color, borderRadius: '9999px', transition: 'width 400ms ease' }} />
+      <div className="progress">
+        <div className="progress-bar" style={{ width: `${Math.min(pct, 100)}%`, background: color }} />
       </div>
-      <div style={{ fontSize: '0.625rem', fontFamily: 'var(--font-mono)', color: 'color-mix(in oklab, var(--ink) 40%, transparent)', letterSpacing: '0.04em' }}>
+      <div className="budget-card-amount">
         ₱{(budget.spent / 1).toLocaleString('en-US', { minimumFractionDigits: 2 })} of ₱{(budget.budget / 1).toLocaleString('en-US', { minimumFractionDigits: 2 })}
       </div>
     </div>
@@ -118,7 +124,7 @@ export default function DashboardPage() {
       setData(r.data);
       setLastUpdated(new Date());
     } catch (e) {
-      setError(e.response?.data?.message || 'Unable to load.');
+      setError(e.response?.data?.message || 'Unable to load dashboard.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -129,7 +135,7 @@ export default function DashboardPage() {
 
   const handleRefresh = () => { setRefreshing(true); setLoading(true); fetchData(); };
 
-  if (error) return <div className="alert alert-error" style={{ margin: '1.5rem' }}><span>{error}</span></div>;
+  if (error) return <div className="alert alert-error"><span>{error}</span></div>;
   if (loading || !data) return <Spinner label="Loading dashboard..." />;
 
   const { stats, lowStock, recentLedger, expiringItems } = data;
@@ -140,13 +146,8 @@ export default function DashboardPage() {
   const isDeptHead = user?.role === 'DEPARTMENT_HEAD';
   const isWarehouse = ['WAREHOUSE_STAFF', 'PROPERTY_CUSTODIAN'].includes(user?.role);
 
-  const greeting = (() => {
-    const h = new Date().getHours();
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
-  })();
-
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const firstName = (user?.fullName || user?.username || '').trim().split(' ')[0] || '';
 
   const movementData = monthLabels.map((label, i) => ({
@@ -162,150 +163,136 @@ export default function DashboardPage() {
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
-  const tenantName = user?.tenantId
-    ? (user.tenantId === 'default' ? 'Default Tenant' : user.tenantId)
-    : null;
-
   return (
-    <div className="dashboard" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+    <div className="dashboard">
+      {/* Header */}
+      <div className="dash-header">
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-            {greeting}{firstName ? `, ${firstName}` : ''}.
-          </h1>
-          <p style={{ fontSize: '0.8125rem', color: 'color-mix(in oklab, var(--ink) 50%, transparent)', marginTop: '0.25rem' }}>{today}</p>
-          {tenantName && (
-            <p style={{ fontSize: '0.6875rem', fontFamily: 'var(--font-mono)', color: 'color-mix(in oklab, var(--ink) 35%, transparent)', marginTop: '0.125rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Tenant: {tenantName}
-            </p>
-          )}
+          <h1 className="dash-greeting">{greeting}{firstName ? `, ${firstName}` : ''}.</h1>
+          <p className="dash-date">{today}</p>
           {lastUpdated && (
-            <p style={{ fontSize: '0.6875rem', fontFamily: 'var(--font-mono)', color: 'color-mix(in oklab, var(--ink) 35%, transparent)', marginTop: '0.125rem' }}>
-              Updated {lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-            </p>
+            <p className="dash-updated">Updated {lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
           )}
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <button onClick={handleRefresh} disabled={refreshing} className="btn btn-sm" style={{ gap: '0.375rem', opacity: refreshing ? 0.6 : 1 }} title="Refresh dashboard">
+        <div className="dash-actions">
+          <button onClick={handleRefresh} disabled={refreshing} className="btn btn-sm" title="Refresh dashboard">
             <Clock size={13} /> {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
-          <Link to="/ris" className="btn btn-primary btn-sm" style={{ gap: '0.375rem' }}>
+          <Link to="/ris" className="btn btn-primary btn-sm">
             <ClipboardList size={13} /> New RIS
           </Link>
           {['ADMIN', 'WAREHOUSE_STAFF'].includes(user?.role) && (
-            <Link to="/receiving" className="btn btn-sm" style={{ gap: '0.375rem' }}>
+            <Link to="/receiving" className="btn btn-sm">
               <Landmark size={13} /> Record Receiving
             </Link>
           )}
         </div>
       </div>
 
-      {/* ── KPI Grid ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 14rem), 1fr))', gap: '0.625rem' }}>
-        <KpiCard icon={Package} label="Active items" value={stats.totalItems} accent="color-mix(in oklab, var(--lgu-info) 15%, transparent)" to="/items" />
-        <KpiCard icon={AlertTriangle} label="Low stock" value={stats.lowStockItems} accent="color-mix(in oklab, var(--lgu-error) 15%, transparent)" to="/items?lowStock=1" />
-        <KpiCard icon={ClipboardList} label="Pending RIS" value={stats.pendingRisApprovals ?? stats.pendingRis} accent="color-mix(in oklab, var(--lgu-warning) 15%, transparent)" to="/ris" />
-        <KpiCard icon={FileText} label="Open POs" value={stats.openPurchaseOrders ?? 0} accent="color-mix(in oklab, var(--lgu-info) 15%, transparent)" to="/purchase-orders" />
+      {/* KPI Grid */}
+      <div className="kpi-grid">
+        <KpiCard icon={Package} label="Active items" value={stats.totalItems} color="var(--accent)" to="/items" />
+        <KpiCard icon={AlertTriangle} label="Low stock" value={stats.lowStockItems} color="var(--error)" to="/items?lowStock=1" />
+        <KpiCard icon={ClipboardList} label="Pending RIS" value={stats.pendingRisApprovals ?? stats.pendingRis} color="var(--warning)" to="/ris" />
+        <KpiCard icon={FileText} label="Open POs" value={stats.openPurchaseOrders ?? 0} color="var(--accent)" to="/purchase-orders" />
         {(isAdmin || isAuditor) && (
-          <KpiCard icon={CheckSquare} label="Pending counts" value={stats.pendingPhysicalCountsReview ?? 0} accent="color-mix(in oklab, var(--lgu-success) 15%, transparent)" to="/physical-counts" />
+          <KpiCard icon={CheckSquare} label="Pending counts" value={stats.pendingPhysicalCountsReview ?? 0} color="var(--success)" to="/physical-counts" />
         )}
         {isAdmin && (
-          <KpiCard icon={CalendarClock} label="Expiring 30d" value={expiringItems?.length || 0} accent="color-mix(in oklab, var(--lgu-warning) 15%, transparent)" to="/items" />
+          <KpiCard icon={CalendarClock} label="Expiring 30d" value={expiringItems?.length || 0} color="var(--warning)" to="/items" />
         )}
         {isAdmin && (
-          <KpiCard icon={TrendingUp} label="Issued / month" value={stats.issuedThisMonth} accent="color-mix(in oklab, var(--lgu-success) 15%, transparent)" to="/reports" />
+          <KpiCard icon={TrendingUp} label="Issued / month" value={stats.issuedThisMonth} color="var(--success)" to="/reports" />
         )}
         {isAdmin && (
-          <KpiCard icon={Landmark} label="Suppliers" value={stats.totalSuppliers ?? 0} accent="color-mix(in oklab, var(--lgu-info) 15%, transparent)" to="/suppliers" />
+          <KpiCard icon={Landmark} label="Suppliers" value={stats.totalSuppliers ?? 0} color="var(--accent)" to="/suppliers" />
         )}
       </div>
 
-      {/* ── Charts ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 26rem), 1fr))', gap: '0.875rem' }}>
-        <Section title="Stock movement — 12 months">
+      {/* Charts */}
+      <div className="charts-grid">
+        <ChartSection title="Stock movement — 12 months">
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={movementData} margin={{ top: 4, right: 4, left: -14, bottom: 0 }}>
               <defs>
                 <linearGradient id="inG" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--lgu-success)" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="var(--lgu-success)" stopOpacity={0} />
+                  <stop offset="5%" stopColor="var(--success)" stopOpacity={0.15} />
+                  <stop offset="95%" stopColor="var(--success)" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="outG" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--lgu-error)" stopOpacity={0.12} />
-                  <stop offset="95%" stopColor="var(--lgu-error)" stopOpacity={0} />
+                  <stop offset="5%" stopColor="var(--error)" stopOpacity={0.12} />
+                  <stop offset="95%" stopColor="var(--error)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'color-mix(in oklab, var(--ink) 45%, transparent)' }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: 'color-mix(in oklab, var(--ink) 45%, transparent)' }} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={CHART_TOOLTIP} />
-              <Area type="monotone" dataKey="In" stroke="var(--lgu-success)" fill="url(#inG)" strokeWidth={2} dot={false} />
-              <Area type="monotone" dataKey="Out" stroke="var(--lgu-error)" fill="url(#outG)" strokeWidth={2} dot={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--muted)' }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: 'var(--muted)' }} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={TOOLTIP} />
+              <Area type="monotone" dataKey="In" stroke="var(--success)" fill="url(#inG)" strokeWidth={2} dot={false} />
+              <Area type="monotone" dataKey="Out" stroke="var(--error)" fill="url(#outG)" strokeWidth={2} dot={false} />
             </AreaChart>
           </ResponsiveContainer>
-        </Section>
+        </ChartSection>
 
-        <Section title="RIS — 12 months">
+        <ChartSection title="RIS — 12 months">
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={risData} margin={{ top: 4, right: 4, left: -14, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'color-mix(in oklab, var(--ink) 45%, transparent)' }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: 'color-mix(in oklab, var(--ink) 45%, transparent)' }} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={CHART_TOOLTIP} />
-              <Bar dataKey="RIS" fill="var(--ink)" radius={[3, 3, 0, 0]} maxBarSize={26} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--muted)' }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: 'var(--muted)' }} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={TOOLTIP} />
+              <Bar dataKey="RIS" fill="var(--text)" radius={[3, 3, 0, 0]} maxBarSize={26} />
             </BarChart>
           </ResponsiveContainer>
-        </Section>
+        </ChartSection>
       </div>
 
-      {/* ── Bottom row ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 15rem), 1fr))', gap: '0.875rem' }}>
-        {/* Low stock */}
-        <Section title="Low stock" action={<Link to="/items?lowStock=1" style={{ fontSize: '0.625rem', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--ink) 50%, transparent)', textDecoration: 'none' }}>All</Link>}>
+      {/* Alert rows */}
+      <div className="alerts-grid">
+        <ChartSection
+          title="Low stock"
+          action={<Link to="/items?lowStock=1" className="dash-link">View all</Link>}
+        >
           {lowStock.length === 0 ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '1.5rem 0', color: 'var(--lgu-success)', fontSize: '0.8125rem' }}>
-              <CheckSquare size={16} /> All items above reorder point.
-            </div>
+            <div className="dash-empty"><CheckSquare size={15} style={{ color: 'var(--success)' }} /> All items above reorder point.</div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+            <div className="dash-list">
               {lowStock.slice(0, 4).map(i => <AlertRow key={i.id} item={i} type="low" />)}
             </div>
           )}
-        </Section>
+        </ChartSection>
 
-        {/* Expiring */}
-        <Section title="Expiring within 30 days">
+        <ChartSection title="Expiring within 30 days">
           {(!expiringItems || expiringItems.length === 0) ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '1.5rem 0', color: 'color-mix(in oklab, var(--ink) 40%, transparent)', fontSize: '0.8125rem' }}>
-              <Clock size={16} /> No items expiring soon.
-            </div>
+            <div className="dash-empty"><Clock size={15} /> No items expiring soon.</div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+            <div className="dash-list">
               {expiringItems.slice(0, 4).map(i => <AlertRow key={i.id} item={i} type="expiry" />)}
             </div>
           )}
-        </Section>
+        </ChartSection>
 
-        {/* Recent ledger */}
-        <Section title="Recent ledger" action={<Link to="/ledger" style={{ fontSize: '0.625rem', fontFamily: 'var(--font-mono)', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--ink) 50%, transparent)', textDecoration: 'none' }}>Ledger</Link>}>
+        <ChartSection
+          title="Recent ledger"
+          action={<Link to="/ledger" className="dash-link">Ledger</Link>}
+        >
           {recentLedger.length === 0 ? (
-            <div style={{ padding: '1.5rem 0', color: 'color-mix(in oklab, var(--ink) 40%, transparent)', fontSize: '0.8125rem' }}>No movement recorded yet.</div>
+            <div className="dash-empty">No movement recorded yet.</div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+            <div className="dash-list">
               {recentLedger.slice(0, 4).map(e => <LedgerRow key={e.id} entry={e} />)}
             </div>
           )}
-        </Section>
+        </ChartSection>
       </div>
 
-      {/* ── Budget ── */}
+      {/* Budget */}
       {stats.budgetUtilization?.length > 0 && (isAdmin || isDeptHead || isAuditor) && (
-        <Section title={`Budget — ${new Date().getFullYear()}`}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 11rem), 1fr))', gap: '0.625rem' }}>
+        <ChartSection title={`Budget — ${new Date().getFullYear()}`}>
+          <div className="budget-grid">
             {stats.budgetUtilization.map(b => <BudgetCard key={b.department?.id} budget={b} />)}
           </div>
-        </Section>
+        </ChartSection>
       )}
     </div>
   );

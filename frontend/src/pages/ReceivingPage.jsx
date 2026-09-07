@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import api from '../api/client';
 import useAuthStore, { useCan } from '../stores/authStore';
 import { useToast } from '../components/Toast';
 import PageHeader, { Spinner, Pagination } from '../components/ui';
+
+function Portal({ children }) { return createPortal(children, document.body); }
 
 function todayLocal() {
   const d = new Date();
@@ -312,94 +316,106 @@ export default function ReceivingPage() {
         </div>
       </div>
       {open && (
-        <dialog className="modal modal-open">
-          <div className="modal-box max-w-3xl">
-            <h3 className="font-bold text-lg">{editRec ? 'Edit Receiving' : 'New Receiving'}</h3>
-            <form onSubmit={editRec ? submitEdit : submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-              <fieldset className="fieldset"><legend className="fieldset-legend">Supplier *</legend>
-                <select className="select" required value={form.supplierId} onChange={e => setForm({...form, supplierId: e.target.value})}>
-                  <option value="">Select...</option>
-                  {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </fieldset>
-              <fieldset className="fieldset"><legend className="fieldset-legend">Receiving No. *</legend>
-                <input className="input" required value={form.receivingNo} onChange={e => setForm({...form, receivingNo: e.target.value})} />
-              </fieldset>
-              <fieldset className="fieldset"><legend className="fieldset-legend">Receipt Date *</legend>
-                <input className="input" type="date" required value={form.receiptDate} onChange={e => setForm({...form, receiptDate: e.target.value})} />
-              </fieldset>
-              <fieldset className="fieldset"><legend className="fieldset-legend">Purchase Order (optional link)</legend>
-                <select className="select" value={poId} onChange={(e) => selectPo(e.target.value)}>
-                  <option value="">Standalone (no PO link)</option>
-                  {purchaseOrders.filter(p => ['PENDING', 'APPROVED'].includes(p.status) && (p.items || []).some(pi => pi.quantity > (pi.receivedQuantity || 0))).map(p => {
-                    const remaining = (p.items || []).reduce((s, pi) => s + (pi.quantity - (pi.receivedQuantity || 0)), 0);
-                    return <option key={p.id} value={p.id}>{p.poNumber} — {p.supplier?.name} (remaining {Number(remaining.toFixed(2))})</option>;
-                  })}
-                </select>
-              </fieldset>
-              <fieldset className="fieldset"><legend className="fieldset-legend">PO No. (manual)</legend>
-                <input className="input" value={form.poNumber} onChange={e => setForm({...form, poNumber: e.target.value})} />
-              </fieldset>
-              <fieldset className="fieldset sm:col-span-2"><legend className="fieldset-legend">DR No.</legend>
-                <input className="input" value={form.drNumber} onChange={e => setForm({...form, drNumber: e.target.value})} />
-              </fieldset>
-              <fieldset className="fieldset sm:col-span-2"><legend className="fieldset-legend">Remarks</legend>
-                <textarea className="textarea" value={form.remarks} onChange={e => setForm({...form, remarks: e.target.value})} />
-              </fieldset>
-              <div className="sm:col-span-2">
-                <div className="font-semibold mb-2">Items</div>
-                {form.lines.map((ln, idx) => (
-                  <div key={idx} className="grid grid-cols-12 gap-2 mb-2">
-                    <select className="select col-span-6" value={ln.itemId} onChange={e => { const next = [...form.lines]; next[idx].itemId = e.target.value; setForm({...form, lines: next}); }}>
-                      <option value="">Select item</option>
-                      {items.map(it => <option key={it.id} value={it.id}>{it.name} ({it.sku})</option>)}
-                    </select>
-                    <input className="input col-span-2" type="number" min="0" step="any" value={ln.quantity} onChange={e => { const next = [...form.lines]; next[idx].quantity = e.target.value; setForm({...form, lines: next}); }} />
-                    <input className="input col-span-2" type="number" min="0" step="0.01" value={ln.unitCost} onChange={e => { const next = [...form.lines]; next[idx].unitCost = e.target.value; setForm({...form, lines: next}); }} placeholder="Unit cost" />
-                    <button type="button" className="btn btn-ghost btn-sm col-span-2" onClick={() => { const next = form.lines.filter((_, i) => i !== idx); setForm({...form, lines: next}); }}>Remove</button>
-                  </div>
-                ))}
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => setForm({...form, lines: [...form.lines, { itemId: '', quantity: 1, unitCost: 0, remarks: '' }]})}>Add line</button>
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}>
+            <div className="modal-box modal-lg">
+              <div className="modal-header">
+                <h3 className="modal-title">{editRec ? 'Edit Receiving' : 'New Receiving'}</h3>
+                <button className="modal-close" onClick={() => setOpen(false)}><X size={15} /></button>
               </div>
-              <div className="modal-action col-span-full">
+              <div className="modal-body">
+                <form onSubmit={editRec ? submitEdit : submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <fieldset className="fieldset"><legend className="fieldset-legend">Supplier *</legend>
+                    <select className="select" required value={form.supplierId} onChange={e => setForm({...form, supplierId: e.target.value})}>
+                      <option value="">Select...</option>
+                      {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </fieldset>
+                  <fieldset className="fieldset"><legend className="fieldset-legend">Receiving No. *</legend>
+                    <input className="input" required value={form.receivingNo} onChange={e => setForm({...form, receivingNo: e.target.value})} />
+                  </fieldset>
+                  <fieldset className="fieldset"><legend className="fieldset-legend">Receipt Date *</legend>
+                    <input className="input" type="date" required value={form.receiptDate} onChange={e => setForm({...form, receiptDate: e.target.value})} />
+                  </fieldset>
+                  <fieldset className="fieldset"><legend className="fieldset-legend">Purchase Order (optional link)</legend>
+                    <select className="select" value={poId} onChange={(e) => selectPo(e.target.value)}>
+                      <option value="">Standalone (no PO link)</option>
+                      {purchaseOrders.filter(p => ['PENDING', 'APPROVED'].includes(p.status) && (p.items || []).some(pi => pi.quantity > (pi.receivedQuantity || 0))).map(p => {
+                        const remaining = (p.items || []).reduce((s, pi) => s + (pi.quantity - (pi.receivedQuantity || 0)), 0);
+                        return <option key={p.id} value={p.id}>{p.poNumber} — {p.supplier?.name} (remaining {Number(remaining.toFixed(2))})</option>;
+                      })}
+                    </select>
+                  </fieldset>
+                  <fieldset className="fieldset"><legend className="fieldset-legend">PO No. (manual)</legend>
+                    <input className="input" value={form.poNumber} onChange={e => setForm({...form, poNumber: e.target.value})} />
+                  </fieldset>
+                  <fieldset className="fieldset sm:col-span-2"><legend className="fieldset-legend">DR No.</legend>
+                    <input className="input" value={form.drNumber} onChange={e => setForm({...form, drNumber: e.target.value})} />
+                  </fieldset>
+                  <fieldset className="fieldset sm:col-span-2"><legend className="fieldset-legend">Remarks</legend>
+                    <textarea className="textarea" value={form.remarks} onChange={e => setForm({...form, remarks: e.target.value})} />
+                  </fieldset>
+                  <div className="sm:col-span-2">
+                    <div className="font-semibold mb-2">Items</div>
+                    {form.lines.map((ln, idx) => (
+                      <div key={idx} className="grid grid-cols-12 gap-2 mb-2">
+                        <select className="select col-span-6" value={ln.itemId} onChange={e => { const next = [...form.lines]; next[idx].itemId = e.target.value; setForm({...form, lines: next}); }}>
+                          <option value="">Select item</option>
+                          {items.map(it => <option key={it.id} value={it.id}>{it.name} ({it.sku})</option>)}
+                        </select>
+                        <input className="input col-span-2" type="number" min="0" step="any" value={ln.quantity} onChange={e => { const next = [...form.lines]; next[idx].quantity = e.target.value; setForm({...form, lines: next}); }} />
+                        <input className="input col-span-2" type="number" min="0" step="0.01" value={ln.unitCost} onChange={e => { const next = [...form.lines]; next[idx].unitCost = e.target.value; setForm({...form, lines: next}); }} placeholder="Unit cost" />
+                        <button type="button" className="btn btn-ghost btn-sm col-span-2" onClick={() => { const next = form.lines.filter((_, i) => i !== idx); setForm({...form, lines: next}); }}>Remove</button>
+                      </div>
+                    ))}
+                    <button type="button" className="btn btn-outline btn-sm" onClick={() => setForm({...form, lines: [...form.lines, { itemId: '', quantity: 1, unitCost: 0, remarks: '' }]})}>Add line</button>
+                  </div>
+                </form>
+              </div>
+              <div className="modal-footer">
                 <button type="button" className="btn" onClick={() => setOpen(false)}>Cancel</button>
                 <button className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}Save Receiving</button>
               </div>
-            </form>
+            </div>
           </div>
-          <form method="dialog" className="modal-backdrop"><button onClick={() => setOpen(false)}>close</button></form>
-        </dialog>
+        </Portal>
       )}
       {supplierOpen && (
-        <dialog className="modal modal-open">
-          <div className="modal-box max-w-lg">
-            <h3 className="font-bold text-lg">New Supplier</h3>
-            <form onSubmit={createSupplier} className="grid grid-cols-1 gap-4 mt-4">
-              <fieldset className="fieldset"><legend className="fieldset-legend">Name *</legend>
-                <input className="input" required value={supplierForm.name} onChange={e => setSupplierForm({...supplierForm, name: e.target.value})} />
-              </fieldset>
-              <fieldset className="fieldset"><legend className="fieldset-legend">Contact person</legend>
-                <input className="input" value={supplierForm.contact} onChange={e => setSupplierForm({...supplierForm, contact: e.target.value})} />
-              </fieldset>
-              <div className="grid grid-cols-2 gap-4">
-                <fieldset className="fieldset"><legend className="fieldset-legend">Phone</legend>
-                  <input className="input" value={supplierForm.phone} onChange={e => setSupplierForm({...supplierForm, phone: e.target.value})} />
-                </fieldset>
-                <fieldset className="fieldset"><legend className="fieldset-legend">Email</legend>
-                  <input className="input" type="email" value={supplierForm.email} onChange={e => setSupplierForm({...supplierForm, email: e.target.value})} />
-                </fieldset>
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setSupplierOpen(false); }}>
+            <div className="modal-box modal-sm">
+              <div className="modal-header">
+                <h3 className="modal-title">New Supplier</h3>
+                <button className="modal-close" onClick={() => setSupplierOpen(false)}><X size={15} /></button>
               </div>
-              <fieldset className="fieldset"><legend className="fieldset-legend">Address</legend>
-                <textarea className="textarea" value={supplierForm.address} onChange={e => setSupplierForm({...supplierForm, address: e.target.value})} />
-              </fieldset>
-              <div className="modal-action">
+              <div className="modal-body">
+                <form onSubmit={createSupplier} className="grid grid-cols-1 gap-4">
+                  <fieldset className="fieldset"><legend className="fieldset-legend">Name *</legend>
+                    <input className="input" required value={supplierForm.name} onChange={e => setSupplierForm({...supplierForm, name: e.target.value})} />
+                  </fieldset>
+                  <fieldset className="fieldset"><legend className="fieldset-legend">Contact person</legend>
+                    <input className="input" value={supplierForm.contact} onChange={e => setSupplierForm({...supplierForm, contact: e.target.value})} />
+                  </fieldset>
+                  <div className="grid grid-cols-2 gap-4">
+                    <fieldset className="fieldset"><legend className="fieldset-legend">Phone</legend>
+                      <input className="input" value={supplierForm.phone} onChange={e => setSupplierForm({...supplierForm, phone: e.target.value})} />
+                    </fieldset>
+                    <fieldset className="fieldset"><legend className="fieldset-legend">Email</legend>
+                      <input className="input" type="email" value={supplierForm.email} onChange={e => setSupplierForm({...supplierForm, email: e.target.value})} />
+                    </fieldset>
+                  </div>
+                  <fieldset className="fieldset"><legend className="fieldset-legend">Address</legend>
+                    <textarea className="textarea" value={supplierForm.address} onChange={e => setSupplierForm({...supplierForm, address: e.target.value})} />
+                  </fieldset>
+                </form>
+              </div>
+              <div className="modal-footer">
                 <button type="button" className="btn" onClick={() => setSupplierOpen(false)}>Cancel</button>
                 <button className="btn btn-primary" disabled={supplierBusy}>{supplierBusy && <span className="loading loading-spinner loading-xs" />}Create Supplier</button>
               </div>
-            </form>
+            </div>
           </div>
-          <form method="dialog" className="modal-backdrop"><button onClick={() => setSupplierOpen(false)}>close</button></form>
-        </dialog>
+        </Portal>
       )}
 
       {printRec && (
@@ -472,55 +488,64 @@ export default function ReceivingPage() {
       )}
 
       {detailRec && (
-        <dialog className="modal modal-open">
-          <div className="modal-box max-w-3xl">
-            <div className="flex items-start justify-between">
-              <h3 className="font-bold text-lg">Receiving Detail</h3>
-              <button className="btn btn-ghost btn-sm" onClick={() => setDetailRec(null)}>✕</button>
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-sm mt-4">
-              <div><span className="opacity-60">Receiving No.:</span> <span className="font-mono font-semibold">{detailRec.receivingNo}</span></div>
-              <div><span className="opacity-60">Supplier:</span> {detailRec.supplier?.name}</div>
-              <div><span className="opacity-60">Date:</span> {new Date(detailRec.receiptDate).toLocaleDateString()}</div>
-              <div><span className="opacity-60">PO No.:</span> {detailRec.poNumber || '—'}</div>
-              <div><span className="opacity-60">DR No.:</span> {detailRec.drNumber || '—'}</div>
-              <div><span className="opacity-60">Remarks:</span> {detailRec.remarks || '—'}</div>
-            </div>
-            <div className="mt-4">
-              <table className="table table-sm" aria-label="Receiving records table">
-                <thead><tr><th>Item</th><th>SKU</th><th className="text-right">Qty</th><th className="text-right">Unit Cost</th></tr></thead>
-                <tbody>
-                  {detailRec.items?.map(ri => (
-                    <tr key={ri.id}>
-                      <td>{ri.item?.name}</td>
-                      <td className="font-mono text-xs">{ri.item?.sku}</td>
-                      <td className="text-right">{Number(ri.quantity).toLocaleString()}</td>
-                      <td className="text-right">₱{Number(ri.unitCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="modal-action">
-              <button className="btn" onClick={() => setDetailRec(null)}>Close</button>
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setDetailRec(null); }}>
+            <div className="modal-box modal-lg">
+              <div className="modal-header">
+                <h3 className="modal-title">Receiving Detail</h3>
+                <button className="modal-close" onClick={() => setDetailRec(null)}><X size={15} /></button>
+              </div>
+              <div className="modal-body">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div><span className="opacity-60">Receiving No.:</span> <span className="font-mono font-semibold">{detailRec.receivingNo}</span></div>
+                  <div><span className="opacity-60">Supplier:</span> {detailRec.supplier?.name}</div>
+                  <div><span className="opacity-60">Date:</span> {new Date(detailRec.receiptDate).toLocaleDateString()}</div>
+                  <div><span className="opacity-60">PO No.:</span> {detailRec.poNumber || '—'}</div>
+                  <div><span className="opacity-60">DR No.:</span> {detailRec.drNumber || '—'}</div>
+                  <div><span className="opacity-60">Remarks:</span> {detailRec.remarks || '—'}</div>
+                </div>
+                <div className="mt-4">
+                  <table className="table table-sm" aria-label="Receiving records table">
+                    <thead><tr><th>Item</th><th>SKU</th><th className="text-right">Qty</th><th className="text-right">Unit Cost</th></tr></thead>
+                    <tbody>
+                      {detailRec.items?.map(ri => (
+                        <tr key={ri.id}>
+                          <td>{ri.item?.name}</td>
+                          <td className="font-mono text-xs">{ri.item?.sku}</td>
+                          <td className="text-right">{Number(ri.quantity).toLocaleString()}</td>
+                          <td className="text-right">₱{Number(ri.unitCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn" onClick={() => setDetailRec(null)}>Close</button>
+              </div>
             </div>
           </div>
-          <form method="dialog" className="modal-backdrop"><button onClick={() => setDetailRec(null)}>close</button></form>
-        </dialog>
+        </Portal>
       )}
 
       {deleteId && (
-        <dialog className="modal modal-open">
-          <div className="modal-box">
-            <h3 className="font-bold text-lg">Delete receiving</h3>
-            <p className="text-sm text-base-content/60 mt-1">This will reverse all stock movements. This cannot be undone.</p>
-            <div className="modal-action">
-              <button className="btn" onClick={() => setDeleteId(null)}>Cancel</button>
-               <button className="btn btn-error" onClick={confirmDelete}>Delete</button>
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setDeleteId(null); }}>
+            <div className="modal-box modal-sm">
+              <div className="modal-header">
+                <h3 className="modal-title">Delete receiving</h3>
+                <button className="modal-close" onClick={() => setDeleteId(null)}><X size={15} /></button>
+              </div>
+              <div className="modal-body">
+                <p className="text-sm text-base-content/60 mt-1">This will reverse all stock movements. This cannot be undone.</p>
+              </div>
+              <div className="modal-footer">
+                <button className="btn" onClick={() => setDeleteId(null)}>Cancel</button>
+                <button className="btn btn-error" onClick={confirmDelete}>Delete</button>
+              </div>
             </div>
           </div>
-          <form method="dialog" className="modal-backdrop"><button onClick={() => setDeleteId(null)}>close</button></form>
-        </dialog>
+        </Portal>
       )}
     </div>
   );

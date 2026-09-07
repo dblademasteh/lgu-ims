@@ -50,7 +50,7 @@ Office desktops, daytime use, web browser. Staff routinely print the signed docu
 
 ## Evidence on Hand
 
-- Full source at `backend/` (Express + Prisma, migrated and seeded) and `frontend/` (React + Vite + Tailwind/daisyUI).
+- Full source at `backend/` (Express + Prisma, migrated and seeded) and `frontend/` (React + Vite + Tailwind v4, own component system).
 - Seed data: users (admin, warehouse, custodian, auditor, cho.head, eo.head), items, categories, departments.
 - No real municipal stock data, financial figures, or customer material exists; nothing commercial may be fabricated.
 

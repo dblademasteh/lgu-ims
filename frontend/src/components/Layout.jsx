@@ -1,14 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Package, Landmark, ClipboardList, BookOpen, BarChart3,
   Bell, ShieldCheck, Users, Settings, LogOut, Menu, KeyRound, FileText, UserRound,
-  ChevronRight, Moon, Sun, PanelLeftClose, PanelLeftOpen, Wallet,
+  ChevronRight, Moon, Sun, PanelLeftClose, PanelLeftOpen, Wallet, X,
 } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import { useThemeStore } from '../stores/themeStore';
 import api from '../api/client';
 import { useToast } from './Toast';
+
+function Portal({ children }) {
+  return createPortal(children, document.body);
+}
 
 const MENU = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'ops' },
@@ -144,7 +149,7 @@ export default function Layout() {
                         <item.icon size={16} strokeWidth={1.8} />
                         <span style={{ flex: 1 }}>{item.label}</span>
                         {item.to === '/notifications' && unread > 0 && (
-                          <span style={{ minWidth: '1.25rem', height: '1.25rem', padding: '0 0.3125rem', background: 'var(--lgu-error)', color: '#fff', borderRadius: '9999px', fontSize: '0.5625rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ minWidth: '1.25rem', height: '1.25rem', padding: '0 0.3125rem', background: 'var(--error)', color: '#fff', borderRadius: '9999px', fontSize: '0.5625rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {unread > 99 ? '99+' : unread}
                           </span>
                         )}
@@ -158,7 +163,7 @@ export default function Layout() {
         </aside>
 
       {/* ── Main ── */}
-      <div className="drawer-content" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--surface2)' }}>
+      <div className="drawer-content" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--surface-alt)' }}>
         {/* Topbar */}
         <header className="topbar">
           {/* Mobile hamburger */}
@@ -206,7 +211,7 @@ export default function Layout() {
             <NavLink to="/notifications" className="btn btn-ghost btn-sm btn-square" title="Notifications" style={{ border: 'none', position: 'relative' }}>
               <Bell size={15} strokeWidth={1.8} />
               {unread > 0 && (
-                <span style={{ position: 'absolute', top: '2px', right: '2px', width: '14px', height: '14px', background: 'var(--lgu-error)', color: '#fff', borderRadius: '9999px', fontSize: '0.5625rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ position: 'absolute', top: '2px', right: '2px', width: '14px', height: '14px', background: 'var(--error)', color: '#fff', borderRadius: '9999px', fontSize: '0.5625rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {unread > 9 ? '9+' : unread}
                 </span>
               )}
@@ -215,58 +220,58 @@ export default function Layout() {
             {/* User menu */}
             <div className="dropdown">
               <div tabIndex={0} role="button" className="avatar" style={{ cursor: 'pointer' }}>
-                <div style={{ background: 'var(--ink)', color: 'var(--on-ink)', width: '100%', height: '100%', display: 'grid', placeItems: 'center', borderRadius: '9999px' }}>
+                <div style={{ background: 'var(--text)', color: 'var(--surface)', width: '100%', height: '100%', display: 'grid', placeItems: 'center', borderRadius: '9999px' }}>
                   <span style={{ fontWeight: 700, fontSize: '0.75rem' }}>{user?.fullName?.charAt(0) || 'U'}</span>
                 </div>
               </div>
               <div className="dropdown-content" style={{ width: '14rem' }}>
-                <div style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--line)', marginBottom: '0.25rem' }}>
+                <div style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', marginBottom: '0.25rem' }}>
                   <div style={{ fontWeight: 600, fontSize: '0.8125rem' }}>{user?.fullName}</div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', letterSpacing: '0.06em', color: 'color-mix(in oklab, var(--ink) 50%, transparent)', marginTop: '0.125rem' }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', letterSpacing: '0.06em', color: 'color-mix(in oklab, var(--text) 50%, transparent)', marginTop: '0.125rem' }}>
                     @{user?.username} · {user?.role?.replace(/_/g, ' ').toLowerCase()}
                   </div>
                 </div>
-                <button onClick={() => setPwModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.4375rem 0.75rem', borderRadius: '6px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--ink)', transition: 'background 100ms' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+                <button onClick={() => setPwModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.4375rem 0.75rem', borderRadius: '6px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text)', transition: 'background 100ms' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-alt)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                  onFocus={e => e.currentTarget.style.background = 'var(--surface2)'}
+                  onFocus={e => e.currentTarget.style.background = 'var(--surface-alt)'}
                   onBlur={e => e.currentTarget.style.background = 'none'}
                 >
                   <KeyRound size={14} /> Change password
                 </button>
                 {canAudit && (
                   <>
-                    <NavLink to="/audit" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4375rem 0.75rem', borderRadius: '6px', fontSize: '0.8125rem', color: 'var(--ink)', textDecoration: 'none', transition: 'background 100ms' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+                    <NavLink to="/audit" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4375rem 0.75rem', borderRadius: '6px', fontSize: '0.8125rem', color: 'var(--text)', textDecoration: 'none', transition: 'background 100ms' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-alt)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                      onFocus={e => e.currentTarget.style.background = 'var(--surface2)'}
+                      onFocus={e => e.currentTarget.style.background = 'var(--surface-alt)'}
                       onBlur={e => e.currentTarget.style.background = 'none'}
                     >
                       <ShieldCheck size={14} /> Audit trail
                     </NavLink>
-                    <NavLink to="/coa-compliance" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4375rem 0.75rem', borderRadius: '6px', fontSize: '0.8125rem', color: 'var(--ink)', textDecoration: 'none', transition: 'background 100ms' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+                    <NavLink to="/coa-compliance" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4375rem 0.75rem', borderRadius: '6px', fontSize: '0.8125rem', color: 'var(--text)', textDecoration: 'none', transition: 'background 100ms' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-alt)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                      onFocus={e => e.currentTarget.style.background = 'var(--surface2)'}
+                      onFocus={e => e.currentTarget.style.background = 'var(--surface-alt)'}
                       onBlur={e => e.currentTarget.style.background = 'none'}
                     >
                       <ShieldCheck size={14} /> COA compliance
                     </NavLink>
                   </>
                 )}
-                <div style={{ borderTop: '1px solid var(--line)', marginTop: '0.25rem', paddingTop: '0.25rem' }}>
-                  <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.4375rem 0.75rem', borderRadius: '6px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--lgu-error)', transition: 'background 100ms' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'color-mix(in oklab, var(--lgu-error) 8%, transparent)'}
+                <div style={{ borderTop: '1px solid var(--border)', marginTop: '0.25rem', paddingTop: '0.25rem' }}>
+                  <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.4375rem 0.75rem', borderRadius: '6px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--error)', transition: 'background 100ms' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'color-mix(in oklab, var(--error) 8%, transparent)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                    onFocus={e => e.currentTarget.style.background = 'color-mix(in oklab, var(--lgu-error) 8%, transparent)'}
+                    onFocus={e => e.currentTarget.style.background = 'color-mix(in oklab, var(--error) 8%, transparent)'}
                     onBlur={e => e.currentTarget.style.background = 'none'}
                   >
                     <LogOut size={14} /> Sign out
                   </button>
-                  <button onClick={() => setLogoutOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.4375rem 0.75rem', borderRadius: '6px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--lgu-error)', transition: 'background 100ms' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'color-mix(in oklab, var(--lgu-error) 8%, transparent)'}
+                  <button onClick={() => setLogoutOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.4375rem 0.75rem', borderRadius: '6px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--error)', transition: 'background 100ms' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'color-mix(in oklab, var(--error) 8%, transparent)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                    onFocus={e => e.currentTarget.style.background = 'color-mix(in oklab, var(--lgu-error) 8%, transparent)'}
+                    onFocus={e => e.currentTarget.style.background = 'color-mix(in oklab, var(--error) 8%, transparent)'}
                     onBlur={e => e.currentTarget.style.background = 'none'}
                   >
                     <LogOut size={14} /> Sign out all sessions
@@ -283,7 +288,7 @@ export default function Layout() {
         </main>
 
         {/* Footer */}
-        <footer style={{ borderTop: '1px solid var(--line)', padding: '0.875rem 1.5rem', display: 'flex', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--ink) 35%, transparent)' }}>
+        <footer style={{ borderTop: '1px solid var(--border)', padding: '0.875rem 1.5rem', display: 'flex', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--text) 35%, transparent)' }}>
           LGU Inventory Management System · On-premise · v1.0
         </footer>
       </div>
@@ -292,19 +297,22 @@ export default function Layout() {
       {pwModalOpen && <ChangePasswordModal onClose={() => setPwModalOpen(false)} />}
 
       {logoutOpen && (
-        <dialog className="modal modal-open" aria-label="Sign out all sessions">
-          <div className="modal-box">
-            <h3 style={{ fontWeight: 600, fontSize: '1rem' }}>Sign out of all sessions?</h3>
-            <p style={{ marginTop: '0.5rem', color: 'color-mix(in oklab, var(--ink) 60%, transparent)', fontSize: '0.9375rem' }}>
-              You will be signed out from all devices.
-            </p>
-            <div className="modal-action">
-              <button className="btn" onClick={() => setLogoutOpen(false)}>Cancel</button>
-              <button className="btn btn-error" onClick={() => { setLogoutOpen(false); handleLogoutAll(); }}>Sign out all</button>
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setLogoutOpen(false); }}>
+            <div className="modal-box modal-sm">
+              <div className="modal-header">
+                <h3 className="modal-title">Sign out of all sessions?</h3>
+              </div>
+              <div className="modal-body">
+                <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', lineHeight: 1.6 }}>You will be signed out from all devices.</p>
+              </div>
+              <div className="modal-footer">
+                <button className="btn" onClick={() => setLogoutOpen(false)}>Cancel</button>
+                <button className="btn btn-error" onClick={() => { setLogoutOpen(false); handleLogoutAll(); }}>Sign out all</button>
+              </div>
             </div>
           </div>
-          <form method="dialog" className="modal-backdrop"><button aria-label="Close dialog" onClick={() => setLogoutOpen(false)}>close</button></form>
-        </dialog>
+        </Portal>
       )}
     </div>
   );
@@ -314,9 +322,6 @@ function ChangePasswordModal({ onClose }) {
   const toast = useToast();
   const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [busy, setBusy] = useState(false);
-  const dialogRef = useRef(null);
-
-  useEffect(() => { dialogRef.current?.showModal(); }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -334,31 +339,38 @@ function ChangePasswordModal({ onClose }) {
   };
 
   return (
-    <dialog ref={dialogRef} className="modal" aria-label="Change password" onClose={onClose}>
-      <div className="modal-box">
-        <h3 style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '1rem' }}>Change password</h3>
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div className="fieldset">
-            <span className="fieldset-legend">Current password</span>
-            <input type="password" required className="input" value={form.currentPassword} onChange={e => setForm({ ...form, currentPassword: e.target.value })} />
+    <Portal>
+      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="modal-box modal-sm">
+          <div className="modal-header">
+            <h3 className="modal-title">Change password</h3>
+            <button className="modal-close" onClick={onClose} aria-label="Close"><X size={15} /></button>
           </div>
-          <div className="fieldset">
-            <span className="fieldset-legend">New password (min. 8 chars)</span>
-            <input type="password" required className="input" value={form.newPassword} onChange={e => setForm({ ...form, newPassword: e.target.value })} />
-          </div>
-          <div className="fieldset">
-            <span className="fieldset-legend">Confirm new password</span>
-            <input type="password" required className="input" value={form.confirm} onChange={e => setForm({ ...form, confirm: e.target.value })} />
-          </div>
-          <div className="modal-action">
-            <button type="button" className="btn" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={busy}>
-              {busy && <span className="loading loading-spinner loading-xs" />}
-              Update
-            </button>
-          </div>
-        </form>
+          <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="modal-body">
+              <div className="fieldset">
+                <span className="fieldset-legend">Current password</span>
+                <input type="password" required className="input" value={form.currentPassword} onChange={e => setForm({ ...form, currentPassword: e.target.value })} />
+              </div>
+              <div className="fieldset">
+                <span className="fieldset-legend">New password (min. 8 chars)</span>
+                <input type="password" required className="input" value={form.newPassword} onChange={e => setForm({ ...form, newPassword: e.target.value })} />
+              </div>
+              <div className="fieldset">
+                <span className="fieldset-legend">Confirm new password</span>
+                <input type="password" required className="input" value={form.confirm} onChange={e => setForm({ ...form, confirm: e.target.value })} />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn" onClick={onClose}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={busy}>
+                {busy && <span className="loading loading-spinner loading-xs" />}
+                Update
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </dialog>
+    </Portal>
   );
 }

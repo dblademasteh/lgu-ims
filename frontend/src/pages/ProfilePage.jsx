@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import api from '../api/client';
 import useAuthStore from '../stores/authStore';
 import { useToast } from '../components/Toast';
 import PageHeader, { Spinner } from '../components/ui';
+
+function Portal({ children }) { return createPortal(children, document.body); }
 
 const ROLE_LABELS = {
   ADMIN: 'Administrator',
@@ -309,33 +313,37 @@ export default function ProfilePage() {
         </div>
       </div>
       {disable2FaOpen && (
-        <dialog className="modal modal-open">
-          <div className="modal-box max-w-sm">
-            <h3 className="font-bold text-lg">Disable two-factor authentication</h3>
-            <p className="text-sm text-base-content/60 mt-1">Enter the 6-digit code from your authenticator app to confirm.</p>
-            <form onSubmit={disable2FA} className="mt-4 flex flex-col gap-4">
-              <fieldset className="fieldset">
-                <legend className="fieldset-legend">Verification code</legend>
-                <input
-                  className="input font-mono text-center text-lg tracking-widest"
-                  required maxLength={6} inputMode="numeric"
-                  value={disableCode}
-                  onChange={(e) => setDisableCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                  placeholder="000000"
-                  autoFocus
-                />
-              </fieldset>
-              <div className="modal-action">
-                <button type="button" className="btn" onClick={() => { setDisable2FaOpen(false); setDisableCode(''); }}>Cancel</button>
-                <button type="submit" className="btn btn-error" disabled={twoFaBusy || disableCode.length < 6}>
-                  {twoFaBusy ? <span className="loading loading-spinner loading-xs" /> : null}
-                  Disable 2FA
-                </button>
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) { setDisable2FaOpen(false); setDisableCode(''); } }}>
+            <div className="modal-box modal-sm">
+              <div className="modal-header">
+                <h3 className="modal-title">Disable two-factor authentication</h3>
+                <button className="modal-close" onClick={() => { setDisable2FaOpen(false); setDisableCode(''); }}><X size={15} /></button>
               </div>
-            </form>
+              <p className="text-sm text-base-content/60 mt-1">Enter the 6-digit code from your authenticator app to confirm.</p>
+              <form onSubmit={disable2FA} className="mt-4 flex flex-col gap-4">
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Verification code</legend>
+                  <input
+                    className="input font-mono text-center text-lg tracking-widest"
+                    required maxLength={6} inputMode="numeric"
+                    value={disableCode}
+                    onChange={(e) => setDisableCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    autoFocus
+                  />
+                </fieldset>
+                <div className="modal-footer">
+                  <button type="button" className="btn" onClick={() => { setDisable2FaOpen(false); setDisableCode(''); }}>Cancel</button>
+                  <button type="submit" className="btn btn-error" disabled={twoFaBusy || disableCode.length < 6}>
+                    {twoFaBusy ? <span className="loading loading-spinner loading-xs" /> : null}
+                    Disable 2FA
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-          <form method="dialog" className="modal-backdrop"><button onClick={() => { setDisable2FaOpen(false); setDisableCode(''); }}>close</button></form>
-        </dialog>
+        </Portal>
       )}
     </div>
   );

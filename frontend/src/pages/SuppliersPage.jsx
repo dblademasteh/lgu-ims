@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import api from '../api/client';
 import useAuthStore, { useCan } from '../stores/authStore';
 import { useToast } from '../components/Toast';
 import PageHeader, { EmptyState, Spinner } from '../components/ui';
+
+function Portal({ children }) { return createPortal(children, document.body); }
 
 export default function SuppliersPage() {
   const toast = useToast();
@@ -103,64 +107,76 @@ export default function SuppliersPage() {
         </div>
       </div>
       {open && (
-        <dialog className="modal modal-open">
-          <div className="modal-box max-w-lg">
-            <h3 className="font-bold text-lg">{editing ? 'Edit supplier' : 'Add supplier'}</h3>
-            <form onSubmit={submit} className="grid grid-cols-1 gap-4 mt-4">
-              <fieldset className="fieldset">
-                <legend className="fieldset-legend">Name *</legend>
-                <input className="input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              </fieldset>
-              <fieldset className="fieldset">
-                <legend className="fieldset-legend">Contact person</legend>
-                <input className="input" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
-              </fieldset>
-              <div className="grid grid-cols-2 gap-4">
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) { setOpen(false); setEditing(null); } }}>
+            <div className="modal-box modal-md">
+              <div className="modal-header">
+                <h3 className="modal-title">{editing ? 'Edit supplier' : 'Add supplier'}</h3>
+                <button className="modal-close" onClick={() => { setOpen(false); setEditing(null); }}><X size={15} /></button>
+              </div>
+              <form onSubmit={submit} className="grid grid-cols-1 gap-4 mt-4">
                 <fieldset className="fieldset">
-                  <legend className="fieldset-legend">Phone</legend>
-                  <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                  <legend className="fieldset-legend">Name *</legend>
+                  <input className="input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
                 </fieldset>
                 <fieldset className="fieldset">
-                  <legend className="fieldset-legend">Email</legend>
-                  <input className="input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                  <legend className="fieldset-legend">Contact person</legend>
+                  <input className="input" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
                 </fieldset>
-              </div>
-              <fieldset className="fieldset">
-                <legend className="fieldset-legend">Address</legend>
-                <textarea className="textarea" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-              </fieldset>
-              <div className="modal-action">
-                <button type="button" className="btn" onClick={() => { setOpen(false); setEditing(null); }}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}{editing ? 'Save changes' : 'Create'}</button>
-              </div>
-            </form>
+                <div className="grid grid-cols-2 gap-4">
+                  <fieldset className="fieldset">
+                    <legend className="fieldset-legend">Phone</legend>
+                    <input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                  </fieldset>
+                  <fieldset className="fieldset">
+                    <legend className="fieldset-legend">Email</legend>
+                    <input className="input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                  </fieldset>
+                </div>
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Address</legend>
+                  <textarea className="textarea" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+                </fieldset>
+                <div className="modal-footer">
+                  <button type="button" className="btn" onClick={() => { setOpen(false); setEditing(null); }}>Cancel</button>
+                  <button type="submit" className="btn btn-primary" disabled={busy}>{busy && <span className="loading loading-spinner loading-xs" />}{editing ? 'Save changes' : 'Create'}</button>
+                </div>
+              </form>
+            </div>
           </div>
-          <form method="dialog" className="modal-backdrop"><button onClick={() => { setOpen(false); setEditing(null); }}>close</button></form>
-        </dialog>
+        </Portal>
       )}
       {importOpen && (
-        <dialog className="modal modal-open">
-          <div className="modal-box max-w-2xl">
-            <h3 className="font-bold text-lg">Import Suppliers from CSV</h3>
-            <p className="text-sm text-base-content/60 mt-1">Upload a CSV with columns: name, contact, phone, email, address, isActive. Existing suppliers (by name or email) will be updated.</p>
-            <ImportSuppliersForm onClose={() => setImportOpen(false)} onImported={load} />
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setImportOpen(false); }}>
+            <div className="modal-box modal-md">
+              <div className="modal-header">
+                <h3 className="modal-title">Import Suppliers from CSV</h3>
+                <button className="modal-close" onClick={() => setImportOpen(false)}><X size={15} /></button>
+              </div>
+              <p className="text-sm text-base-content/60 mt-1">Upload a CSV with columns: name, contact, phone, email, address, isActive. Existing suppliers (by name or email) will be updated.</p>
+              <ImportSuppliersForm onClose={() => setImportOpen(false)} onImported={load} />
+            </div>
           </div>
-          <form method="dialog" className="modal-backdrop"><button onClick={() => setImportOpen(false)}>close</button></form>
-        </dialog>
+        </Portal>
       )}
 
       {confirm && (
-        <dialog className="modal modal-open">
-          <div className="modal-box max-w-sm">
-            <h3 className="font-bold text-lg">Deactivate supplier</h3>
-            <p className="text-sm text-base-content/60 mt-2">Deactivate "{confirm.name}"? The supplier will no longer appear in lists but existing records are preserved.</p>
-            <div className="modal-action">
-              <button type="button" className="btn" onClick={() => setConfirm(null)}>Cancel</button>
-              <button type="button" className="btn btn-error" onClick={deactivate}>Deactivate</button>
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setConfirm(null); }}>
+            <div className="modal-box modal-sm">
+              <div className="modal-header">
+                <h3 className="modal-title">Deactivate supplier</h3>
+                <button className="modal-close" onClick={() => setConfirm(null)}><X size={15} /></button>
+              </div>
+              <p className="text-sm text-base-content/60 mt-2">Deactivate "{confirm.name}"? The supplier will no longer appear in lists but existing records are preserved.</p>
+              <div className="modal-footer">
+                <button type="button" className="btn" onClick={() => setConfirm(null)}>Cancel</button>
+                <button type="button" className="btn btn-error" onClick={deactivate}>Deactivate</button>
+              </div>
             </div>
           </div>
-          <form method="dialog" className="modal-backdrop"><button onClick={() => setConfirm(null)}>close</button></form>
-        </dialog>
+        </Portal>
       )}
     </div>
   );
@@ -195,7 +211,7 @@ function ImportSuppliersForm({ onClose, onImported }) {
         <legend className="fieldset-legend">CSV content</legend>
         <textarea className="textarea font-mono text-xs" rows={10} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={sampleCSV} />
       </fieldset>
-      <div className="modal-action">
+      <div className="modal-footer">
         <button type="button" className="btn" onClick={onClose}>Cancel</button>
         <button type="submit" className="btn btn-primary" disabled={busy}>
           {busy && <span className="loading loading-spinner loading-xs" />}

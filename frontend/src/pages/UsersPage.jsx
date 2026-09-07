@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import api from '../api/client';
 import { useToast } from '../components/Toast';
 import PageHeader, { EmptyState, Pagination, Spinner } from '../components/ui';
+
+function Portal({ children }) { return createPortal(children, document.body); }
 
 const ROLES = ['ADMIN', 'WAREHOUSE_STAFF', 'PROPERTY_CUSTODIAN', 'AUDITOR', 'DEPARTMENT_HEAD'];
 
@@ -179,68 +183,73 @@ function UserFormModal({ user, departments, roles, onClose, onSaved }) {
   };
 
   return (
-    <dialog className="modal modal-open">
-      <div className="modal-box max-w-xl">
-        <h3 className="font-bold text-lg">{editing ? `Edit user — ${form.username}` : 'New user'}</h3>
-        <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-          {!editing && (
-            <>
-              <fieldset className="fieldset">
-                <legend className="fieldset-legend">Username *</legend>
-                <input className="input" required value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })} placeholder="juan.dc" />
-              </fieldset>
-              <fieldset className="fieldset">
-                <legend className="fieldset-legend">Email *</legend>
-                <input className="input" required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="user@lgu.local" />
-              </fieldset>
-              <fieldset className="fieldset sm:col-span-2">
-                <legend className="fieldset-legend">Temporary password *</legend>
-                <input className="input" required type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Min. 8 characters" />
-              </fieldset>
-            </>
-          )}
-          <fieldset className="fieldset sm:col-span-2">
-            <legend className="fieldset-legend">Full name *</legend>
-            <input className="input" required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-          </fieldset>
-          <fieldset className="fieldset">
-            <legend className="fieldset-legend">Role *</legend>
-            <select className="select" required value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              {roles.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
-            </select>
-          </fieldset>
-          <fieldset className="fieldset">
-            <legend className="fieldset-legend">Department</legend>
-            <select className="select" value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
-              <option value="">None</option>
-              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-          </fieldset>
-          {editing && (
-            <fieldset className="fieldset sm:col-span-2">
-              <legend className="fieldset-legend">Reset password (optional)</legend>
-              <input className="input" type="password" value={passwordReset} onChange={(e) => setPasswordReset(e.target.value)} placeholder="Leave blank to keep current password" />
-            </fieldset>
-          )}
-          {editing && (
-            <fieldset className="fieldset sm:col-span-2">
-              <legend className="fieldset-legend">Account status</legend>
-              <label className="label cursor-pointer justify-start gap-3">
-                <input type="checkbox" className="toggle toggle-primary" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
-                <span>{form.isActive ? 'Active' : 'Inactive'}</span>
-              </label>
-            </fieldset>
-          )}
-          <div className="modal-action col-span-full">
-            <button type="button" className="btn" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={busy}>
-              {busy && <span className="loading loading-spinner loading-xs" />}
-              {editing ? 'Save changes' : 'Create user'}
-            </button>
+    <Portal>
+      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="modal-box modal-lg">
+          <div className="modal-header">
+            <h3 className="modal-title">{editing ? `Edit user — ${form.username}` : 'New user'}</h3>
+            <button className="modal-close" onClick={onClose}><X size={15} /></button>
           </div>
-        </form>
+          <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+            {!editing && (
+              <>
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Username *</legend>
+                  <input className="input" required value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })} placeholder="juan.dc" />
+                </fieldset>
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Email *</legend>
+                  <input className="input" required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="user@lgu.local" />
+                </fieldset>
+                <fieldset className="fieldset sm:col-span-2">
+                  <legend className="fieldset-legend">Temporary password *</legend>
+                  <input className="input" required type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Min. 8 characters" />
+                </fieldset>
+              </>
+            )}
+            <fieldset className="fieldset sm:col-span-2">
+              <legend className="fieldset-legend">Full name *</legend>
+              <input className="input" required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
+            </fieldset>
+            <fieldset className="fieldset">
+              <legend className="fieldset-legend">Role *</legend>
+              <select className="select" required value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                {roles.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
+              </select>
+            </fieldset>
+            <fieldset className="fieldset">
+              <legend className="fieldset-legend">Department</legend>
+              <select className="select" value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
+                <option value="">None</option>
+                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </fieldset>
+            {editing && (
+              <fieldset className="fieldset sm:col-span-2">
+                <legend className="fieldset-legend">Reset password (optional)</legend>
+                <input className="input" type="password" value={passwordReset} onChange={(e) => setPasswordReset(e.target.value)} placeholder="Leave blank to keep current password" />
+              </fieldset>
+            )}
+            {editing && (
+              <fieldset className="fieldset sm:col-span-2">
+                <legend className="fieldset-legend">Account status</legend>
+                <label className="label cursor-pointer justify-start gap-3">
+                  <input type="checkbox" className="toggle toggle-primary" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
+                  <span>{form.isActive ? 'Active' : 'Inactive'}</span>
+                </label>
+              </fieldset>
+            )}
+            <div className="modal-footer col-span-full">
+              <button type="button" className="btn" onClick={onClose}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={busy}>
+                {busy && <span className="loading loading-spinner loading-xs" />}
+                {editing ? 'Save changes' : 'Create user'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </dialog>
+    </Portal>
   );
 }
 
@@ -268,24 +277,29 @@ function ImportUsersModal({ onClose, onImported }) {
   const sampleCSV = 'username,email,fullname,role,department,isActive\njuan.delacruz,lgu.juan@lgu.local,Juan M. Dela Cruz,WAREHOUSE_STAFF,Engineering,true\nmaria.santos,lgu.maria@lgu.local,Maria F. Santos,PROPERTY_CUSTODIAN,Administration,true';
 
   return (
-    <dialog className="modal modal-open">
-      <div className="modal-box max-w-2xl">
-        <h3 className="font-bold text-lg">Import Users from CSV</h3>
-        <p className="text-sm text-base-content/60 mt-1">Upload a CSV with columns: username, email, fullname, role, department, isActive. Existing users (by username or email) will be updated. Default password for new users: <strong>LguIms2026!</strong></p>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4">
-          <fieldset className="fieldset">
-            <legend className="fieldset-legend">CSV content</legend>
-            <textarea className="textarea font-mono text-xs" rows={10} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={sampleCSV} />
-          </fieldset>
-          <div className="modal-action">
-            <button type="button" className="btn" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={busy}>
-              {busy && <span className="loading loading-spinner loading-xs" />}
-              Import
-            </button>
+    <Portal>
+      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="modal-box modal-md">
+          <div className="modal-header">
+            <h3 className="modal-title">Import Users from CSV</h3>
+            <button className="modal-close" onClick={onClose}><X size={15} /></button>
           </div>
-        </form>
+          <p className="text-sm text-base-content/60 mt-1">Upload a CSV with columns: username, email, fullname, role, department, isActive. Existing users (by username or email) will be updated. Default password for new users: <strong>LguIms2026!</strong></p>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4">
+            <fieldset className="fieldset">
+              <legend className="fieldset-legend">CSV content</legend>
+              <textarea className="textarea font-mono text-xs" rows={10} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={sampleCSV} />
+            </fieldset>
+            <div className="modal-footer">
+              <button type="button" className="btn" onClick={onClose}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={busy}>
+                {busy && <span className="loading loading-spinner loading-xs" />}
+                Import
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </dialog>
+    </Portal>
   );
 }

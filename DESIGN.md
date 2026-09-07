@@ -10,7 +10,7 @@ The continuing audit roll of the Property & Supply Office. The interface is the 
 
 ## Palette
 
-CSS variables defined in `frontend/src/index.css`. Semantic daisyUI-style class names are owned by this system (no library).
+CSS variables defined in `frontend/src/index.css`. Own UI component class system (no library).
 
 | Role | Paper (light) | Forest (light) | Printer Room (dark) | Steel (dark) |
 |---|---|---|---|---|

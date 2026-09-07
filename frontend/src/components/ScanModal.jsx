@@ -1,5 +1,11 @@
+import { createPortal } from 'react-dom';
 import { useEffect, useRef, useState } from 'react';
 import { BrowserQRCodeReader } from '@zxing/browser';
+import { Camera, X } from 'lucide-react';
+
+function Portal({ children }) {
+  return createPortal(children, document.body);
+}
 
 export default function ScanModal({ onScan, onClose }) {
   const videoRef = useRef(null);
@@ -45,33 +51,36 @@ export default function ScanModal({ onScan, onClose }) {
   }, []);
 
   return (
-    <dialog className="modal modal-open">
-      <div className="modal-box max-w-lg">
-        <div className="flex items-center justify-between">
-          <h3 className="font-bold text-lg">Scan barcode / QR code</h3>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
-        </div>
-        <p className="text-sm text-base-content/60">Point the camera at an item label. It will be looked up automatically.</p>
-
-        <div className="mt-4 rounded-box overflow-hidden bg-base-300 aspect-video">
-          <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
-        </div>
-
-        {error && (
-          <div role="alert" className="alert alert-error mt-4">
-            <span>{error}</span>
+    <Portal>
+      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="modal-box modal-md">
+          <div className="modal-header">
+            <h3 className="modal-title">Scan barcode / QR code</h3>
+            <button className="modal-close" onClick={onClose}><X size={15} /></button>
           </div>
-        )}
+          <div className="modal-body">
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', marginBottom: '0.75rem' }}>Point the camera at an item label. It will be looked up automatically.</p>
 
-        <div className="flex items-center justify-center gap-2 mt-4 text-sm text-base-content/60">
-          <span className="loading loading-spinner loading-sm" />
-          Waiting for a code...
-        </div>
+            <div className="modal-scan-viewport">
+              <video ref={videoRef} muted playsInline />
+            </div>
 
-        <div className="modal-action">
-          <button className="btn" onClick={onClose}>Close</button>
+            {error && (
+              <div className="modal-alert modal-alert--error" style={{ marginTop: '0.75rem' }}>
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="modal-loading">
+              <span className="loading loading-spinner loading-sm" />
+              Waiting for a code...
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button className="btn" onClick={onClose}>Close</button>
+          </div>
         </div>
       </div>
-    </dialog>
+    </Portal>
   );
 }

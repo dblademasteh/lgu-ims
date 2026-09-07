@@ -5,8 +5,8 @@ export function PageHeader({ title, subtitle, actions }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1.5rem' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ fontSize: 'var(--fs-xl)', fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1.2 }}>{title}</h1>
-          {subtitle && <p style={{ fontSize: 'var(--fs-base)', color: 'color-mix(in oklab, var(--ink) 50%, transparent)', marginTop: '0.2rem' }}>{subtitle}</p>}
+          <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1.2 }}>{title}</h1>
+          {subtitle && <p style={{ fontSize: 'var(--text-base)', color: 'color-mix(in oklab, var(--text) 50%, transparent)', marginTop: '0.2rem' }}>{subtitle}</p>}
         </div>
         {actions && <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>{actions}</div>}
       </div>
@@ -18,14 +18,14 @@ export function Spinner({ label }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', padding: '4rem 0' }}>
       <span className="spinner" />
-      <span style={{ color: 'color-mix(in oklab, var(--ink) 55%, transparent)', fontSize: '0.875rem' }}>{label || 'Loading...'}</span>
+      <span style={{ color: 'color-mix(in oklab, var(--text) 55%, transparent)', fontSize: '0.875rem' }}>{label || 'Loading...'}</span>
     </div>
   );
 }
 
 export function EmptyState({ message, icon }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', padding: '4rem 2rem', color: 'color-mix(in oklab, var(--ink) 40%, transparent)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', padding: '4rem 2rem', color: 'color-mix(in oklab, var(--text) 40%, transparent)' }}>
       {icon || <Package size={40} strokeWidth={1.4} />}
       <p style={{ fontSize: '0.875rem', textAlign: 'center' }}>{message || 'No records found.'}</p>
     </div>

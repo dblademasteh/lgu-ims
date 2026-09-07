@@ -10,6 +10,11 @@ import {
   Package, Search, Plus, Download, Upload, QrCode, Camera,
   ArrowUpDown, X, AlertTriangle, CheckCircle,
 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+
+function Portal({ children }) {
+  return createPortal(children, document.body);
+}
 
 function fmt(n) {
   return Number(n || 0).toLocaleString('en-US');
@@ -174,11 +179,11 @@ export default function ItemsPage() {
       {/* ── Filters ── */}
       <div style={{ display: 'flex', gap: '0.625rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
         <label className="input" style={{ flex: '1 1 14rem', gap: '0.5rem' }}>
-          <Search size={14} style={{ color: 'color-mix(in oklab, var(--ink) 40%, transparent)', flexShrink: 0 }} />
-          <input type="search" placeholder="Search name or SKU..." style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--ink)', minWidth: 0 }}
+          <Search size={14} style={{ color: 'color-mix(in oklab, var(--text) 40%, transparent)', flexShrink: 0 }} />
+          <input type="search" placeholder="Search name or SKU..." style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', minWidth: 0 }}
             value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
           {search && (
-            <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'color-mix(in oklab, var(--ink) 40%, transparent)', padding: '2px', display: 'grid', placeItems: 'center' }}>
+            <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'color-mix(in oklab, var(--text) 40%, transparent)', padding: '2px', display: 'grid', placeItems: 'center' }}>
               <X size={12} />
             </button>
           )}
@@ -187,7 +192,7 @@ export default function ItemsPage() {
           <option value="">All categories</option>
           {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', padding: '0 0.5rem', fontSize: '0.8125rem', color: lowStockOnly ? 'var(--ink)' : 'color-mix(in oklab, var(--ink) 55%, transparent)', fontWeight: lowStockOnly ? 600 : 400 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', padding: '0 0.5rem', fontSize: '0.8125rem', color: lowStockOnly ? 'var(--text)' : 'color-mix(in oklab, var(--text) 55%, transparent)', fontWeight: lowStockOnly ? 600 : 400 }}>
           <input type="checkbox" className="checkbox checkbox-sm" checked={lowStockOnly}
             onChange={e => { setLowStockOnly(e.target.checked); setPage(1); }} />
           Low stock
@@ -222,21 +227,21 @@ export default function ItemsPage() {
                       {i.imageUrl ? (
                         <img src={i.imageUrl} alt={i.name} style={{ width: '2rem', height: '2rem', objectFit: 'cover', borderRadius: '4px' }} />
                       ) : (
-                        <div style={{ width: '2rem', height: '2rem', borderRadius: '4px', background: 'var(--surface2)', display: 'grid', placeItems: 'center' }}>
-                          <Package size={14} style={{ color: 'color-mix(in oklab, var(--ink) 25%, transparent)' }} />
+                        <div style={{ width: '2rem', height: '2rem', borderRadius: '4px', background: 'var(--surface-alt)', display: 'grid', placeItems: 'center' }}>
+                          <Package size={14} style={{ color: 'color-mix(in oklab, var(--text) 25%, transparent)' }} />
                         </div>
                       )}
                     </td>
                     <td>
                       <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{i.name}</div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', color: 'color-mix(in oklab, var(--ink) 40%, transparent)', letterSpacing: '0.04em', marginTop: '0.125rem' }}>{i.sku}</div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', color: 'color-mix(in oklab, var(--text) 40%, transparent)', letterSpacing: '0.04em', marginTop: '0.125rem' }}>{i.sku}</div>
                     </td>
-                    <td style={{ fontSize: '0.8125rem', color: 'color-mix(in oklab, var(--ink) 70%, transparent)' }}>{i.category?.name || '—'}</td>
-                    <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: '0.875rem', color: i.lowStock ? 'var(--lgu-error)' : 'var(--ink)' }}>
+                    <td style={{ fontSize: '0.8125rem', color: 'color-mix(in oklab, var(--text) 70%, transparent)' }}>{i.category?.name || '—'}</td>
+                    <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, fontSize: '0.875rem', color: i.lowStock ? 'var(--error)' : 'var(--text)' }}>
                       {fmt(i.currentStock)}
-                      <span style={{ fontSize: '0.6875rem', color: 'color-mix(in oklab, var(--ink) 40%, transparent)', fontWeight: 400, marginLeft: '0.25rem' }}>{i.unit}</span>
+                      <span style={{ fontSize: '0.6875rem', color: 'color-mix(in oklab, var(--text) 40%, transparent)', fontWeight: 400, marginLeft: '0.25rem' }}>{i.unit}</span>
                     </td>
-                    <td style={{ textAlign: 'right', fontSize: '0.8125rem', color: 'color-mix(in oklab, var(--ink) 55%, transparent)', fontVariantNumeric: 'tabular-nums' }}>{fmt(i.reorderThreshold)}</td>
+                    <td style={{ textAlign: 'right', fontSize: '0.8125rem', color: 'color-mix(in oklab, var(--text) 55%, transparent)', fontVariantNumeric: 'tabular-nums' }}>{fmt(i.reorderThreshold)}</td>
                     <td style={{ textAlign: 'right', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }}><Money value={i.unitCost} /></td>
                     <td>
                       {i.lowStock
@@ -270,18 +275,24 @@ export default function ItemsPage() {
       {qrs && <QRModal qr={qrs} onClose={() => setQrs(null)} />}
 
       {imagePreview && (
-        <dialog className="modal modal-open">
-          <div className="modal-box">
-            <h3 style={{ fontWeight: 600 }}>Upload image</h3>
-            <p style={{ fontSize: '0.875rem', color: 'color-mix(in oklab, var(--ink) 55%, transparent)', marginTop: '0.25rem' }}>{selected?.name}</p>
-            <img src={imagePreview} alt="Preview" style={{ width: '100%', maxHeight: '16rem', objectFit: 'contain', marginTop: '0.75rem', borderRadius: '6px' }} />
-            <div className="modal-action">
-              <button className="btn" onClick={() => { setImagePreview(''); setImageFile(null); }}>Cancel</button>
-              <button className="btn btn-primary" onClick={uploadImage}>Upload</button>
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) { setImagePreview(''); setImageFile(null); } }}>
+            <div className="modal-box modal-md">
+              <div className="modal-header">
+                <h3 className="modal-title">Upload image</h3>
+                <button className="modal-close" onClick={() => { setImagePreview(''); setImageFile(null); }}><X size={15} /></button>
+              </div>
+              <div className="modal-body">
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', marginBottom: '0.75rem' }}>{selected?.name}</p>
+                <img src={imagePreview} alt="Preview" style={{ width: '100%', maxHeight: '16rem', objectFit: 'contain', borderRadius: '6px' }} />
+              </div>
+              <div className="modal-footer">
+                <button className="btn" onClick={() => { setImagePreview(''); setImageFile(null); }}>Cancel</button>
+                <button className="btn btn-primary" onClick={uploadImage}>Upload</button>
+              </div>
             </div>
           </div>
-          <form method="dialog" className="modal-backdrop"><button onClick={() => { setImagePreview(''); setImageFile(null); }}>close</button></form>
-        </dialog>
+        </Portal>
       )}
 
       {editOpen && (
@@ -349,26 +360,26 @@ function ItemDetailPanel({ item, onClose, onEdit, onAdjust, onQR, onImageUpload,
   };
 
   const stockPct = item.maxStock > 0 ? Math.min((item.currentStock / item.maxStock) * 100, 100) : null;
-  const stockColor = stockPct === null ? 'var(--lgu-success)' : stockPct <= 20 ? 'var(--lgu-error)' : stockPct <= 50 ? 'var(--lgu-warning)' : 'var(--lgu-success)';
+  const stockColor = stockPct === null ? 'var(--success)' : stockPct <= 20 ? 'var(--error)' : stockPct <= 50 ? 'var(--warning)' : 'var(--success)';
 
   return (
     <>
       <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'color-mix(in oklab, var(--ink) 30%, transparent)', backdropFilter: 'blur(2px)' }} onClick={onClose} />
-        <div style={{ position: 'relative', marginLeft: 'auto', width: '100%', maxWidth: '22rem', background: 'var(--surface)', borderLeft: '1px solid var(--line)', display: 'flex', flexDirection: 'column', height: '100dvh', boxShadow: 'var(--shadow-lg)', zIndex: 1 }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'color-mix(in oklab, var(--text) 30%, transparent)', backdropFilter: 'blur(2px)' }} onClick={onClose} />
+        <div style={{ position: 'relative', marginLeft: 'auto', width: '100%', maxWidth: '22rem', background: 'var(--surface)', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', height: '100dvh', boxShadow: 'var(--shadow-lg)', zIndex: 1 }}>
           {/* Panel header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', borderBottom: '1px solid var(--line)' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--ink) 50%, transparent)' }}>Item detail</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--text) 50%, transparent)' }}>Item detail</span>
             <button className="btn btn-ghost btn-sm btn-square" onClick={onClose} style={{ border: 'none' }}><X size={15} /></button>
           </div>
 
           {/* Image */}
-          <div style={{ height: '10rem', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
+          <div style={{ height: '10rem', background: 'var(--surface-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', flexShrink: 0 }}>
             {item.imageUrl
               ? <img src={item.imageUrl} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <Package size={40} style={{ color: 'color-mix(in oklab, var(--ink) 15%, transparent)' }} />}
+              : <Package size={40} style={{ color: 'color-mix(in oklab, var(--text) 15%, transparent)' }} />}
             {canManage && (
-              <button onClick={onImageUpload} style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem', width: '2rem', height: '2rem', borderRadius: '9999px', background: 'var(--surface)', border: '1px solid var(--line)', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }}>
+              <button onClick={onImageUpload} style={{ position: 'absolute', bottom: '0.5rem', right: '0.5rem', width: '2rem', height: '2rem', borderRadius: '9999px', background: 'var(--surface)', border: '1px solid var(--border)', display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }}>
                 <Camera size={13} />
               </button>
             )}
@@ -378,23 +389,23 @@ function ItemDetailPanel({ item, onClose, onEdit, onAdjust, onQR, onImageUpload,
           <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div>
               <h2 style={{ fontWeight: 700, fontSize: '1.0625rem', lineHeight: 1.2 }}>{item.name}</h2>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.625rem', letterSpacing: '0.08em', color: 'color-mix(in oklab, var(--ink) 45%, transparent)', marginTop: '0.25rem' }}>{item.sku}</p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.625rem', letterSpacing: '0.08em', color: 'color-mix(in oklab, var(--text) 45%, transparent)', marginTop: '0.25rem' }}>{item.sku}</p>
             </div>
 
             {/* Stock gauge */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--ink) 55%, transparent)' }}>On hand</span>
-                <span style={{ fontWeight: 800, fontSize: '1.5rem', lineHeight: 1, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', color: item.lowStock ? 'var(--lgu-error)' : 'var(--ink)' }}>
-                  {fmt(item.currentStock)} <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'color-mix(in oklab, var(--ink) 45%, transparent)' }}>{item.unit}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--text) 55%, transparent)' }}>On hand</span>
+                <span style={{ fontWeight: 800, fontSize: '1.5rem', lineHeight: 1, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', color: item.lowStock ? 'var(--error)' : 'var(--text)' }}>
+                  {fmt(item.currentStock)} <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'color-mix(in oklab, var(--text) 45%, transparent)' }}>{item.unit}</span>
                 </span>
               </div>
               {stockPct !== null && (
-                <div style={{ height: '5px', background: 'var(--line)', borderRadius: '9999px', overflow: 'hidden' }}>
+                <div style={{ height: '5px', background: 'var(--border)', borderRadius: '9999px', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${stockPct}%`, background: stockColor, borderRadius: '9999px', transition: 'width 400ms ease' }} />
                 </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', color: 'color-mix(in oklab, var(--ink) 40%, transparent)', letterSpacing: '0.04em' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', color: 'color-mix(in oklab, var(--text) 40%, transparent)', letterSpacing: '0.04em' }}>
                 <span>Reorder: {fmt(item.reorderThreshold)}</span>
                 {item.maxStock > 0 && <span>Max: {fmt(item.maxStock)}</span>}
               </div>
@@ -411,19 +422,19 @@ function ItemDetailPanel({ item, onClose, onEdit, onAdjust, onQR, onImageUpload,
                 ['PAR', item.isAccountable ? 'Yes' : 'No'],
               ].map(([label, value]) => (
                 <div key={label}>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-mini)', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--ink) 45%, transparent)', marginBottom: '0.2rem' }}>{label}</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--text) 45%, transparent)', marginBottom: '0.2rem' }}>{label}</div>
                   <div style={{ fontSize: '0.8125rem', fontWeight: 500 }}>{value}</div>
                 </div>
               ))}
               {item.expiryDate && (
                 <div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-mini)', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--ink) 45%, transparent)', marginBottom: '0.2rem' }}>Expires</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--text) 45%, transparent)', marginBottom: '0.2rem' }}>Expires</div>
                   <div style={{ fontSize: '0.8125rem' }}>{new Date(item.expiryDate).toLocaleDateString()}</div>
                 </div>
               )}
               {item.warrantyExpiry && (
                 <div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-mini)', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--ink) 45%, transparent)', marginBottom: '0.2rem' }}>Warranty</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--text) 45%, transparent)', marginBottom: '0.2rem' }}>Warranty</div>
                   <div style={{ fontSize: '0.8125rem' }}>{new Date(item.warrantyExpiry).toLocaleDateString()}</div>
                 </div>
               )}
@@ -431,7 +442,7 @@ function ItemDetailPanel({ item, onClose, onEdit, onAdjust, onQR, onImageUpload,
 
             {item.description && (
               <div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-mini)', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--ink) 45%, transparent)', marginBottom: '0.375rem' }}>Description</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--text) 45%, transparent)', marginBottom: '0.375rem' }}>Description</div>
                 <p style={{ fontSize: '0.875rem', lineHeight: 1.5 }}>{item.description}</p>
               </div>
             )}
@@ -439,35 +450,35 @@ function ItemDetailPanel({ item, onClose, onEdit, onAdjust, onQR, onImageUpload,
             {/* Ledger history */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-mini)', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--ink) 45%, transparent)' }}>Ledger activity</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--text) 45%, transparent)' }}>Ledger activity</span>
                 {ledgerLoading && <span className="loading loading-spinner loading-xs" />}
               </div>
               {ledger && ledger.entries.length > 0 ? (
-                <div style={{ border: '1px solid var(--line)', borderRadius: '6px', overflow: 'hidden' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: '6px', overflow: 'hidden' }}>
                   {ledger.entries.slice(0, 8).map((e, idx) => (
-                    <div key={e.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', padding: '0.5rem 0.75rem', borderTop: idx === 0 ? 'none' : '1px solid var(--line)' }}>
+                    <div key={e.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', padding: '0.5rem 0.75rem', borderTop: idx === 0 ? 'none' : '1px solid var(--border)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
                         <span style={{ fontSize: '0.6875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{TYPE_LABEL[e.referenceType] || e.referenceType}</span>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.625rem', color: 'color-mix(in oklab, var(--ink) 50%, transparent)' }}>{new Date(e.date).toLocaleDateString()}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.625rem', color: 'color-mix(in oklab, var(--text) 50%, transparent)' }}>{new Date(e.date).toLocaleDateString()}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: '0.6875rem', fontVariantNumeric: 'tabular-nums' }}>
-                        <span style={{ color: e.inflow > 0 ? 'var(--lgu-success)' : e.outflow > 0 ? 'var(--lgu-error)' : 'color-mix(in oklab, var(--ink) 45%, transparent)' }}>
+                        <span style={{ color: e.inflow > 0 ? 'var(--success)' : e.outflow > 0 ? 'var(--error)' : 'color-mix(in oklab, var(--text) 45%, transparent)' }}>
                           {e.inflow > 0 ? `+${fmt(e.inflow)}` : e.outflow > 0 ? `−${fmt(e.outflow)}` : '—'} {item.unit}
                         </span>
                         <span style={{ fontWeight: 600 }}>BL: {fmt(e.runningBalance)}</span>
                       </div>
-                      {e.remarks && <div style={{ fontSize: '0.6875rem', color: 'color-mix(in oklab, var(--ink) 45%, transparent)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.remarks}</div>}
+                      {e.remarks && <div style={{ fontSize: '0.6875rem', color: 'color-mix(in oklab, var(--text) 45%, transparent)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.remarks}</div>}
                     </div>
                   ))}
                 </div>
               ) : (
-                !ledgerLoading && <p style={{ fontSize: '0.75rem', color: 'color-mix(in oklab, var(--ink) 45%, transparent)' }}>No ledger activity yet.</p>
+                !ledgerLoading && <p style={{ fontSize: '0.75rem', color: 'color-mix(in oklab, var(--text) 45%, transparent)' }}>No ledger activity yet.</p>
               )}
             </div>
           </div>
 
           {/* Actions */}
-          <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--line)', display: 'flex', gap: '0.5rem' }}>
+          <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.5rem' }}>
             {canAdjust && (
               <button className="btn btn-sm" style={{ flex: 1, gap: '0.375rem' }} onClick={onAdjust}>
                 <ArrowUpDown size={13} /> Adjust
@@ -479,7 +490,7 @@ function ItemDetailPanel({ item, onClose, onEdit, onAdjust, onQR, onImageUpload,
             {canManage && (
               <>
                 <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={onEdit}>Edit</button>
-                <button className="btn btn-sm" style={{ color: 'var(--lgu-error)', borderColor: 'color-mix(in oklab, var(--lgu-error) 30%, transparent)' }} onClick={() => setArchiveOpen(true)}>Archive</button>
+                <button className="btn btn-sm" style={{ color: 'var(--error)', borderColor: 'color-mix(in oklab, var(--error) 30%, transparent)' }} onClick={() => setArchiveOpen(true)}>Archive</button>
               </>
             )}
           </div>
@@ -487,19 +498,28 @@ function ItemDetailPanel({ item, onClose, onEdit, onAdjust, onQR, onImageUpload,
       </div>
 
       {archiveOpen && (
-        <dialog className="modal modal-open">
-          <div className="modal-box">
-            <h3 style={{ fontWeight: 600 }}>Archive "{item.name}"?</h3>
-            <p style={{ color: 'color-mix(in oklab, var(--ink) 60%, transparent)', fontSize: '0.875rem', marginTop: '0.5rem' }}>This item will be archived. An administrator can restore it.</p>
-            <div className="modal-action">
-              <button className="btn" onClick={() => setArchiveOpen(false)}>Cancel</button>
-              <button className="btn btn-error" disabled={archiving} onClick={archive}>
-                {archiving && <span className="loading loading-spinner loading-xs" />}Archive
-              </button>
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setArchiveOpen(false); }}>
+            <div className="modal-box modal-sm">
+              <div className="modal-header">
+                <h3 className="modal-title">Archive "{item.name}"?</h3>
+                <button className="modal-close" onClick={() => setArchiveOpen(false)}><X size={15} /></button>
+              </div>
+              <div className="modal-body">
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                  <div className="modal-confirm-icon modal-confirm-icon--warn"><AlertTriangle size={18} /></div>
+                  <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', lineHeight: 1.6 }}>This item will be archived. An administrator can restore it.</p>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn" onClick={() => setArchiveOpen(false)}>Cancel</button>
+                <button className="btn btn-error" disabled={archiving} onClick={archive}>
+                  {archiving && <span className="loading loading-spinner loading-xs" />}Archive
+                </button>
+              </div>
             </div>
           </div>
-          <form method="dialog" className="modal-backdrop"><button onClick={() => setArchiveOpen(false)}>close</button></form>
-        </dialog>
+        </Portal>
       )}
     </>
   );
@@ -574,52 +594,94 @@ function ItemFormModal({ item, categories, onClose, onSaved }) {
   );
 
   return (
-    <dialog className="modal modal-open" onClose={onClose}>
-      <div className="modal-box" style={{ maxWidth: '36rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-          <h3 style={{ fontWeight: 600, fontSize: '1rem' }}>{editing ? 'Edit item' : 'New item'}</h3>
-          <button className="btn btn-ghost btn-sm btn-square" onClick={onClose} style={{ border: 'none' }}><X size={15} /></button>
+    <Portal>
+      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="modal-box modal-lg">
+          <div className="modal-header">
+            <h3 className="modal-title">{editing ? 'Edit item' : 'New item'}</h3>
+            <button className="modal-close" onClick={onClose}><X size={15} /></button>
+          </div>
+          <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="modal-form-grid">
+              <div className="fieldset">
+                <span className="fieldset-legend">SKU *</span>
+                <input className="input" required value={form.sku} disabled={editing} onChange={e => setForm({ ...form, sku: e.target.value.toUpperCase() })} />
+              </div>
+              <div className="fieldset">
+                <span className="fieldset-legend">Name *</span>
+                <input className="input" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+              </div>
+              <div className="fieldset form-full">
+                <span className="fieldset-legend">Description</span>
+                <textarea className="textarea" rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} style={{ resize: 'vertical' }} />
+              </div>
+              <div className="fieldset">
+                <span className="fieldset-legend">Category *</span>
+                <select className="select" required value={form.categoryId} onChange={e => setForm({ ...form, categoryId: e.target.value })}>
+                  <option value="">Select...</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className="fieldset">
+                <span className="fieldset-legend">Unit *</span>
+                <input className="input" required value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} placeholder="ream, piece, box..." />
+              </div>
+              <div className="fieldset">
+                <span className="fieldset-legend">Reorder threshold</span>
+                <input className="input" type="number" min="0" step="any" value={form.reorderThreshold} onChange={e => setForm({ ...form, reorderThreshold: e.target.value })} />
+              </div>
+              <div className="fieldset">
+                <span className="fieldset-legend">Max stock (0 = none)</span>
+                <input className="input" type="number" min="0" step="any" value={form.maxStock || ''} onChange={e => setForm({ ...form, maxStock: e.target.value })} />
+              </div>
+              <div className="fieldset">
+                <span className="fieldset-legend">Unit cost (₱)</span>
+                <input className="input" type="number" min="0" step="0.01" value={form.unitCost} onChange={e => setForm({ ...form, unitCost: e.target.value })} />
+              </div>
+              <div className="fieldset">
+                <span className="fieldset-legend">Stock No. (COA)</span>
+                <input className="input" value={form.stockNumber || ''} onChange={e => setForm({ ...form, stockNumber: e.target.value })} />
+              </div>
+              <div className="fieldset">
+                <span className="fieldset-legend">Fund Cluster</span>
+                <input className="input" value={form.fundCluster || ''} onChange={e => setForm({ ...form, fundCluster: e.target.value })} />
+              </div>
+              <div className="fieldset">
+                <span className="fieldset-legend">Condition</span>
+                <select className="select" value={form.condition} onChange={e => setForm({ ...form, condition: e.target.value })}>
+                  <option>SERVICEABLE</option><option>UNSERVICEABLE</option><option>CONDEMNED</option>
+                </select>
+              </div>
+              <div className="fieldset">
+                <span className="fieldset-legend">Expiry date</span>
+                <input type="date" className="input" value={form.expiryDate} onChange={e => setForm({ ...form, expiryDate: e.target.value })} />
+              </div>
+              <div className="fieldset">
+                <span className="fieldset-legend">Warranty expiry</span>
+                <input type="date" className="input" value={form.warrantyExpiry} onChange={e => setForm({ ...form, warrantyExpiry: e.target.value })} />
+              </div>
+              {!editing && (
+                <div className="fieldset">
+                  <span className="fieldset-legend">Opening stock</span>
+                  <input className="input" type="number" min="0" step="any" value={form.currentStock} onChange={e => setForm({ ...form, currentStock: e.target.value })} />
+                </div>
+              )}
+            </div>
+            <label className="form-checkbox-row">
+              <input type="checkbox" checked={form.isAccountable} onChange={e => setForm({ ...form, isAccountable: e.target.checked })} />
+              <span className="form-checkbox-label">Accountable item (PAR / PPE)</span>
+            </label>
+            <div className="modal-footer">
+              <button type="button" className="btn" onClick={onClose}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={busy}>
+                {busy && <span className="loading loading-spinner loading-xs" />}
+                {editing ? 'Save changes' : 'Create item'}
+              </button>
+            </div>
+          </form>
         </div>
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem' }}>
-            <Field label="SKU *"><input className="input" required value={form.sku} disabled={editing} onChange={e => setForm({ ...form, sku: e.target.value.toUpperCase() })} /></Field>
-            <Field label="Name *"><input className="input" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></Field>
-            <Field label="Description"><textarea className="textarea" rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} style={{ resize: 'vertical' }} /></Field>
-            <Field label="Category *">
-              <select className="select" required value={form.categoryId} onChange={e => setForm({ ...form, categoryId: e.target.value })}>
-                <option value="">Select...</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </Field>
-            <Field label="Unit *"><input className="input" required value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} placeholder="ream, piece, box..." /></Field>
-            <Field label="Reorder threshold"><input className="input" type="number" min="0" step="any" value={form.reorderThreshold} onChange={e => setForm({ ...form, reorderThreshold: e.target.value })} /></Field>
-            <Field label="Max stock (0 = none)"><input className="input" type="number" min="0" step="any" value={form.maxStock || ''} onChange={e => setForm({ ...form, maxStock: e.target.value })} /></Field>
-            <Field label="Unit cost (₱)"><input className="input" type="number" min="0" step="0.01" value={form.unitCost} onChange={e => setForm({ ...form, unitCost: e.target.value })} /></Field>
-            <Field label="Stock No. (COA)"><input className="input" value={form.stockNumber || ''} onChange={e => setForm({ ...form, stockNumber: e.target.value })} /></Field>
-            <Field label="Fund Cluster"><input className="input" value={form.fundCluster || ''} onChange={e => setForm({ ...form, fundCluster: e.target.value })} /></Field>
-            <Field label="Condition">
-              <select className="select" value={form.condition} onChange={e => setForm({ ...form, condition: e.target.value })}>
-                <option>SERVICEABLE</option><option>UNSERVICEABLE</option><option>CONDEMNED</option>
-              </select>
-            </Field>
-            <Field label="Expiry date"><input type="date" className="input" value={form.expiryDate} onChange={e => setForm({ ...form, expiryDate: e.target.value })} /></Field>
-            <Field label="Warranty expiry"><input type="date" className="input" value={form.warrantyExpiry} onChange={e => setForm({ ...form, warrantyExpiry: e.target.value })} /></Field>
-            {!editing && <Field label="Opening stock"><input className="input" type="number" min="0" step="any" value={form.currentStock} onChange={e => setForm({ ...form, currentStock: e.target.value })} /></Field>}
-          </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', cursor: 'pointer', padding: '0.625rem 0.875rem', border: '1px solid var(--line)', borderRadius: '6px', fontSize: '0.875rem' }}>
-            <input type="checkbox" className="checkbox checkbox-sm" checked={form.isAccountable} onChange={e => setForm({ ...form, isAccountable: e.target.checked })} />
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--ink) 60%, transparent)' }}>Accountable item (PAR / PPE)</span>
-          </label>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', paddingTop: '0.25rem', borderTop: '1px solid var(--line)' }}>
-            <button type="button" className="btn" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={busy}>
-              {busy && <span className="loading loading-spinner loading-xs" />}
-              {editing ? 'Save changes' : 'Create item'}
-            </button>
-          </div>
-        </form>
       </div>
-    </dialog>
+    </Portal>
   );
 }
 
@@ -652,77 +714,88 @@ function AdjustModal({ item, onClose, onSaved }) {
   };
 
   return (
-    <dialog className="modal modal-open" onClose={onClose}>
-      <div className="modal-box" style={{ maxWidth: '26rem' }}>
-        <h3 style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Adjust stock</h3>
-        <p style={{ fontSize: '0.8125rem', color: 'color-mix(in oklab, var(--ink) 55%, transparent)', marginBottom: '1.25rem' }}>
-          {item.name} · <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.625rem' }}>{item.sku}</span>
-        </p>
+    <Portal>
+      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="modal-box modal-md">
+          <div className="modal-header">
+            <h3 className="modal-title">Adjust stock</h3>
+            <button className="modal-close" onClick={onClose}><X size={15} /></button>
+          </div>
+          <div className="modal-body">
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', marginBottom: '1rem' }}>
+              {item.name} · <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)' }}>{item.sku}</span>
+            </p>
 
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-          <button type="button" className={`btn ${operation === 'IN' ? 'btn-primary' : ''}`} style={{ flex: 1, background: operation === 'IN' ? 'var(--ink)' : 'transparent', color: operation === 'IN' ? 'var(--on-ink)' : 'var(--ink)' }} onClick={() => { setOperation('IN'); setReferenceId(''); }}>Receive</button>
-          <button type="button" className={`btn ${operation === 'OUT' ? 'btn-error' : ''}`} style={{ flex: 1, background: operation === 'OUT' ? 'var(--lgu-error)' : 'transparent', color: operation === 'OUT' ? '#fff' : 'var(--ink)', border: operation === 'OUT' ? '1px solid var(--lgu-error)' : '' }} onClick={() => { setOperation('OUT'); setReferenceId(''); }}>Issue</button>
+            <div className="adjust-op-toggle">
+              <button type="button" className={`adjust-op-btn ${operation === 'IN' ? 'active-in' : ''}`} onClick={() => { setOperation('IN'); setReferenceId(''); }}>Receive</button>
+              <button type="button" className={`adjust-op-btn ${operation === 'OUT' ? 'active-out' : ''}`} onClick={() => { setOperation('OUT'); setReferenceId(''); }}>Issue</button>
+            </div>
+
+            <div className="adjust-stock-display">
+              <div className="adjust-stock-label">Current stock</div>
+              <div className="adjust-stock-value">{fmt(item.currentStock)} <span className="adjust-stock-unit">{item.unit}</span></div>
+            </div>
+
+            <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+              <div className="fieldset">
+                <span className="fieldset-legend">Reference ID / Document No. {operation === 'OUT' && '*'}</span>
+                <input className="input" value={referenceId} onChange={e => setReferenceId(e.target.value)} placeholder={operation === 'OUT' ? "Required for Issuance (e.g. RIS-001)" : "Optional for Receipt"} />
+              </div>
+              {operation === 'IN' && (
+                <select className="select" value={referenceType} onChange={e => setReferenceType(e.target.value)}>
+                  <option value="">Receipt (default)</option><option value="ADJUSTMENT_IN">Adjustment IN</option>
+                </select>
+              )}
+              {operation === 'OUT' && (
+                <select className="select" value={referenceType} onChange={e => setReferenceType(e.target.value)}>
+                  <option value="">Issue (default)</option><option value="RETURN">Return to stock</option>
+                </select>
+              )}
+              <div className="fieldset">
+                <span className="fieldset-legend">Quantity ({item.unit})</span>
+                <input className="input" type="number" min="0" step="any" required autoFocus value={quantity} onChange={e => setQuantity(e.target.value)} />
+              </div>
+              <div className="fieldset">
+                <span className="fieldset-legend">Reason *</span>
+                <textarea className="textarea" rows={2} required value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. PO-2026-001 delivery / Returned damaged unit" style={{ resize: 'vertical' }} />
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn" onClick={onClose}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={busy}>
+                  {busy && <span className="loading loading-spinner loading-xs" />}Save
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-
-        <div style={{ padding: '0.75rem', background: 'var(--surface2)', borderRadius: '6px', marginBottom: '1rem', textAlign: 'center' }}>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.5625rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'color-mix(in oklab, var(--ink) 50%, transparent)' }}>Current stock</div>
-          <div style={{ fontWeight: 800, fontSize: '1.375rem', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{fmt(item.currentStock)} <span style={{ fontSize: '0.875rem', fontWeight: 400 }}>{item.unit}</span></div>
-        </div>
-
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-          <div className="fieldset">
-            <span className="fieldset-legend">Reference ID / Document No. {operation === 'OUT' && '*'}</span>
-            <input className="input" value={referenceId} onChange={e => setReferenceId(e.target.value)} placeholder={operation === 'OUT' ? "Required for Issuance (e.g. RIS-001)" : "Optional for Receipt"} />
-          </div>
-          {operation === 'IN' && (
-            <select className="select" value={referenceType} onChange={e => setReferenceType(e.target.value)}>
-              <option value="">Receipt (default)</option><option value="ADJUSTMENT_IN">Adjustment IN</option>
-            </select>
-          )}
-          {operation === 'OUT' && (
-            <select className="select" value={referenceType} onChange={e => setReferenceType(e.target.value)}>
-              <option value="">Issue (default)</option><option value="RETURN">Return to stock</option>
-            </select>
-          )}
-          <div className="fieldset">
-            <span className="fieldset-legend">Quantity ({item.unit})</span>
-            <input className="input" type="number" min="0" step="any" required autoFocus value={quantity} onChange={e => setQuantity(e.target.value)} />
-          </div>
-          <div className="fieldset">
-            <span className="fieldset-legend">Reason *</span>
-            <textarea className="textarea" rows={2} required value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. PO-2026-001 delivery / Returned damaged unit" style={{ resize: 'vertical' }} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', paddingTop: '0.25rem', borderTop: '1px solid var(--line)' }}>
-            <button type="button" className="btn" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={busy}>
-              {busy && <span className="loading loading-spinner loading-xs" />}Save
-            </button>
-          </div>
-        </form>
       </div>
-    </dialog>
+    </Portal>
   );
 }
 
 /* ── QR Modal ─────────────────────────────────────────────────── */
 function QRModal({ qr, onClose }) {
   return (
-    <dialog className="modal modal-open">
-      <div className="modal-box" style={{ maxWidth: '20rem' }}>
-        <h3 style={{ fontWeight: 600, textAlign: 'center', marginBottom: '1rem' }}>QR code</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.875rem' }}>
-          <img src={qr.dataUrl} alt={qr.sku} style={{ width: '12rem', height: '12rem', background: '#fff', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--line)' }} />
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontWeight: 600 }}>{qr.name}</div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.625rem', letterSpacing: '0.06em', color: 'color-mix(in oklab, var(--ink) 50%, transparent)', marginTop: '0.2rem' }}>{qr.sku}</div>
+    <Portal>
+      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div className="modal-box modal-sm">
+          <div className="modal-header">
+            <h3 className="modal-title">QR code</h3>
+            <button className="modal-close" onClick={onClose}><X size={15} /></button>
+          </div>
+          <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.875rem' }}>
+            <img src={qr.dataUrl} alt={qr.sku} className="modal-qr-img" />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontWeight: 600 }}>{qr.name}</div>
+              <div className="item-panel-sku">{qr.sku}</div>
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button className="btn" onClick={() => window.print()}>Print label</button>
+            <button className="btn btn-primary" onClick={onClose}>Done</button>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginTop: '1.25rem' }}>
-          <button className="btn" onClick={() => window.print()}>Print label</button>
-          <button className="btn btn-primary" onClick={onClose}>Done</button>
-        </div>
       </div>
-      <form method="dialog" className="modal-backdrop"><button onClick={onClose}>close</button></form>
-    </dialog>
+    </Portal>
   );
 }

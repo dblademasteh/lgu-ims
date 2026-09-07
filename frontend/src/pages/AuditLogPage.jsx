@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
+import { X } from 'lucide-react';
 import api, { openReport } from '../api/client';
 import { useToast } from '../components/Toast';
 import PageHeader, { EmptyState, Pagination, Spinner } from '../components/ui';
+
+function Portal({ children }) { return createPortal(children, document.body); }
 
 const ACTION_STYLE = {
   CREATE: 'bg-success/15 text-success',
@@ -120,35 +124,37 @@ export default function AuditLogPage() {
       </div>
 
       {detail && (
-        <dialog className="modal modal-open">
-          <div className="modal-box max-w-2xl">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-lg">{detail.action} · {detail.entityType}</h3>
-              <button className="btn btn-ghost btn-sm" onClick={() => setDetail(null)}>✕</button>
-            </div>
-            <p className="text-sm text-base-content/60 mt-1">
-              {detail.user?.fullName || 'System'} · {new Date(detail.createdAt).toLocaleString()}
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-              {detail.before && (
-                <div>
-                  <div className="text-xs font-semibold opacity-60 mb-1">BEFORE</div>
-                  <pre className="bg-base-200 rounded-box p-3 overflow-auto text-xs max-h-64">{JSON.stringify(detail.before, null, 2)}</pre>
-                </div>
-              )}
-              {detail.after && (
-                <div>
-                  <div className="text-xs font-semibold opacity-60 mb-1">AFTER</div>
-                  <pre className="bg-base-200 rounded-box p-3 overflow-auto text-xs max-h-64">{JSON.stringify(detail.after, null, 2)}</pre>
-                </div>
-              )}
-              {!detail.before && !detail.after && <p className="text-sm opacity-60 col-span-full">No field-level payload recorded for this action.</p>}
-            </div>
-            <div className="modal-action">
-              <button className="btn" onClick={() => setDetail(null)}>Close</button>
+        <Portal>
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setDetail(null); }}>
+            <div className="modal-box modal-lg">
+              <div className="modal-header">
+                <h3 className="modal-title">{detail.action} · {detail.entityType}</h3>
+                <button className="modal-close" onClick={() => setDetail(null)}><X size={15} /></button>
+              </div>
+              <p className="text-sm text-base-content/60 mt-1">
+                {detail.user?.fullName || 'System'} · {new Date(detail.createdAt).toLocaleString()}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                {detail.before && (
+                  <div>
+                    <div className="text-xs font-semibold opacity-60 mb-1">BEFORE</div>
+                    <pre className="bg-base-200 rounded-box p-3 overflow-auto text-xs max-h-64">{JSON.stringify(detail.before, null, 2)}</pre>
+                  </div>
+                )}
+                {detail.after && (
+                  <div>
+                    <div className="text-xs font-semibold opacity-60 mb-1">AFTER</div>
+                    <pre className="bg-base-200 rounded-box p-3 overflow-auto text-xs max-h-64">{JSON.stringify(detail.after, null, 2)}</pre>
+                  </div>
+                )}
+                {!detail.before && !detail.after && <p className="text-sm opacity-60 col-span-full">No field-level payload recorded for this action.</p>}
+              </div>
+              <div className="modal-footer">
+                <button className="btn" onClick={() => setDetail(null)}>Close</button>
+              </div>
             </div>
           </div>
-        </dialog>
+        </Portal>
       )}
     </div>
   );
