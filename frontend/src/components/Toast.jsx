@@ -16,13 +16,13 @@ export function ToastProvider({ children }) {
   }, [dismiss]);
 
   const value = useCallback(
-    {
+    () => ({
       push,
       success: (m) => push(m, 'success'),
       error: (m) => push(m, 'error'),
       info: (m) => push(m, 'info'),
       warning: (m) => push(m, 'warning'),
-    },
+    }),
     [push]
   );
 

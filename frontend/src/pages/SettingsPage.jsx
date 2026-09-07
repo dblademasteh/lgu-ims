@@ -43,8 +43,8 @@ function Modal({ open, onClose, title, children }) {
         <h3 className="font-bold text-lg">{title}</h3>
         {children}
       </div>
-      <form method="dialog" className="modal-backdrop">
-        <button onClick={onClose}>close</button>
+      <form method="dialog" className="modal-backdrop" onClick={onClose}>
+        <button type="button">close</button>
       </form>
     </dialog>
   );
