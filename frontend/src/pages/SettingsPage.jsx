@@ -546,7 +546,7 @@ function SecurityTab() {
           <button
             className={`btn ${twoFaEnabled ? 'btn-error' : 'btn-primary'}`}
             disabled={busy}
-            onClick={() => setDisable2FaOpen(true)}
+            onClick={() => twoFaEnabled ? setDisable2FaOpen(true) : startSetup()}
           >
             {twoFaEnabled ? (<><ShieldOff size={14} /> Disable 2FA</>) : (<><ShieldCheck size={14} /> Enable 2FA</>)}
           </button>
@@ -893,6 +893,7 @@ function FlagsTab() {
                 <div className="sp-flag-info">
                   <span className="sp-flag-key">{f.key}</span>
                   <span className="sp-flag-meta">Default: {String(f.defaultValue)} {f.overridden ? '· Runtime override' : ''}</span>
+                  {f.description && <div className="sp-flag-desc subtext">{f.description}</div>}
                 </div>
                 <button
                   className={`sp-toggle ${f.currentValue ? 'on' : ''}`}
