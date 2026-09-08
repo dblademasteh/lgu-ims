@@ -106,7 +106,7 @@ function LoginForm() {
 
   const prefill = (u) => {
     setUsername(u);
-    setPassword('LguIms2026!');
+    setPassword('');
     setError('');
   };
 
@@ -462,7 +462,7 @@ function ForgotPasswordModal({
 
                 <div className="gov-modal-actions">
                   <button type="button" className="gov-btn gov-btn-ghost" onClick={onClose}>
-                    Cancel
+                    <X size={14} /> Cancel
                   </button>
                   <button type="submit" className="gov-btn gov-btn-primary" disabled={busy}>
                     {busy ? (

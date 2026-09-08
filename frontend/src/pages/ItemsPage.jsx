@@ -11,7 +11,7 @@ import {
   ArrowUpDown, X, AlertTriangle, CheckCircle, UploadCloud, Save, SquarePen, Archive, ArrowDownToLine, ArrowUpFromLine,
   ChevronUp, ChevronDown, ChevronsUpDown,
   Landmark, ArrowRight, FileText, Hash, NotebookPen,
-  Barcode, FolderTree, Ruler, Coins, CalendarClock, CalendarDays,
+  Barcode, FolderTree, Ruler, Coins, CalendarClock, CalendarDays, Printer, Check,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
@@ -49,8 +49,8 @@ export default function ItemsPage() {
   const canManage = useCan('ADMIN', 'WAREHOUSE_STAFF');
   const canAdjust = useCan('ADMIN', 'WAREHOUSE_STAFF', 'PROPERTY_CUSTODIAN');
 
-  const [search, setSearch] = useState('');
-  const [query, setQuery] = useState('');
+  const [search, setSearch] = useState(params.get('search') || '');
+  const [query, setQuery] = useState(params.get('search') || '');
   const [categoryId, setCategoryId] = useState('');
   const [lowStockOnly, setLowStockOnly] = useState(params.get('lowStock') === '1');
   const [page, setPage] = useState(1);
@@ -141,6 +141,18 @@ const loadCategories = () => api.get('/categories').then(r => setCategories(r.da
     URL.revokeObjectURL(url);
   }).catch(e => toast.error(e.response?.data?.message || 'Unable to export.'));
 
+  const itemsImportTemplate = 'sku,name,category,unit,description,reorderThreshold,maxStock,currentStock,unitCost,stockNumber,fundCluster\nITM-001,Office Chair,Furniture,pcs,Emergency chair,5,20,12,2500.00,SN-001,101\nITM-002,Printer Ink Toner,Supplies,box,HP Toner,2,10,3,1800.00,SN-002,101';
+
+  const downloadItemsTemplate = () => {
+    const blob = new Blob([itemsImportTemplate], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'items_import_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const importItems = async (file) => {
     const text = await file.text();
     setBusyCsv(true);
@@ -201,10 +213,15 @@ const loadCategories = () => api.get('/categories').then(r => setCategories(r.da
           <>
             <button className="btn btn-sm" onClick={() => setScanOpen(true)} style={{ gap: '0.375rem' }}><QrCode size={13} /> Scan</button>
             {canManage && (
-              <button className="btn btn-sm" disabled={busyCsv} onClick={() => fileRef.current?.click()} style={{ gap: '0.375rem' }}>
-                {busyCsv && <span className="loading loading-spinner loading-xs" />}
-                <Upload size={13} /> Import
-              </button>
+              <>
+                <button className="btn btn-sm" onClick={downloadItemsTemplate} style={{ gap: '0.375rem' }}>
+                  <Download size={13} /> Template
+                </button>
+                <button className="btn btn-sm" disabled={busyCsv} onClick={() => fileRef.current?.click()} style={{ gap: '0.375rem' }}>
+                  {busyCsv && <span className="loading loading-spinner loading-xs" />}
+                  <Upload size={13} /> Import
+                </button>
+              </>
             )}
             <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) importItems(f); e.target.value = ''; }} />
@@ -967,8 +984,12 @@ function QRModal({ qr, onClose }) {
             </div>
           </div>
           <div className="modal-footer">
-            <button className="btn" onClick={() => window.print()}>Print label</button>
-            <button className="btn btn-primary" onClick={onClose}>Done</button>
+            <button className="btn" onClick={() => window.print()}>
+              <Printer size={14} /> Print label
+            </button>
+            <button className="btn btn-primary" onClick={onClose}>
+              <Check size={14} /> Done
+            </button>
           </div>
         </div>
       </div>

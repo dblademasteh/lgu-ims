@@ -45,6 +45,9 @@ function startProcessor() {
   if (!digestIntervalId) {
     digestIntervalId = setInterval(() => {
       processDigests().catch((err) => console.error('[queue] digest error:', err.message));
+      // In-app expiry/warranty sweep runs on the same hourly tick; it does
+      // not depend on email being configured (digest covers the email leg).
+      require('./notificationService').notifyExpiringItems().catch((err) => console.error('[queue] expiry sweep error:', err.message));
     }, 60 * 60 * 1000);
     digestIntervalId.unref();
     console.log('[queue] Digest scheduler started (runs every hour)');

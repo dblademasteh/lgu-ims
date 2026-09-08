@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/client';
 import { useToast } from '../components/Toast';
 import PageHeader, { EmptyState, Pagination, Spinner } from '../components/ui';
-import { CheckCheck, Save, Trash2 } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CheckCheck, ClipboardList, Info, Save, ShieldCheck, Trash2 } from 'lucide-react';
 
-const TYPE_ICON = {
-  LOW_STOCK: 'M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z',
-  RIS: 'M9 12h6m-6 4h6M5 21h14a1 1 0 001-1V4a1 1 0 00-1-1H5a1 1 0 00-1 1v16a1 1 0 001 1z',
-  SYSTEM: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+const TYPE_META = {
+  LOW_STOCK: { label: 'Low stock alerts', Icon: AlertTriangle, tone: 'var(--warning)' },
+  RIS: { label: 'Requisition (RIS) updates', Icon: ClipboardList, tone: 'var(--accent)' },
+  SYSTEM: { label: 'System notifications', Icon: Info, tone: 'var(--muted)' },
+  EXPIRY: { label: 'Item expiry alerts', Icon: CalendarClock, tone: 'var(--error)' },
+  WARRANTY: { label: 'Warranty expiry alerts', Icon: ShieldCheck, tone: 'var(--warning)' },
 };
 
 export default function NotificationsPage() {
@@ -17,6 +20,7 @@ export default function NotificationsPage() {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [prefs, setPrefs] = useState([]);
   const [prefsBusy, setPrefsBusy] = useState(false);
+  const [markAllBusy, setMarkAllBusy] = useState(false);
 
   const loadPrefs = () => {
     api.get('/notification-preferences').then((r) => setPrefs(r.data.data || [])).catch(() => {});
@@ -34,19 +38,45 @@ export default function NotificationsPage() {
 
   const markRead = async (n) => {
     if (n.isRead) return;
-    await api.patch(`/notifications/${n.id}/read`).catch(() => {});
+    try {
+      await api.patch(`/notifications/${n.id}/read`);
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Unable to mark notification as read.');
+    }
     load();
   };
 
   const markAll = async () => {
-    await api.patch('/notifications/read-all').catch(() => {});
-    toast.success('All notifications marked as read.');
-    load();
+    if (markAllBusy) return;
+    setMarkAllBusy(true);
+    try {
+      await api.patch('/notifications/read-all');
+      toast.success('All notifications marked as read.');
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Unable to mark all as read.');
+    } finally {
+      setMarkAllBusy(false);
+      load();
+    }
   };
 
   const deleteNotification = async (n) => {
-    await api.delete(`/notifications/${n.id}`).catch(() => {});
-    toast.success('Notification deleted.');
+    try {
+      await api.delete(`/notifications/${n.id}`);
+      toast.success('Notification deleted.');
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Unable to delete notification.');
+    }
+    load();
+  };
+
+  const cleanup = async () => {
+    try {
+      const r = await api.post('/notifications/cleanup');
+      toast.success(r.data?.message || 'Old notifications cleaned up.');
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Unable to clean up notifications.');
+    }
     load();
   };
 
@@ -70,6 +100,8 @@ export default function NotificationsPage() {
     LOW_STOCK: 'Low stock alerts',
     RIS: 'Requisition (RIS) updates',
     SYSTEM: 'System notifications',
+    EXPIRY: 'Item expiry alerts',
+    WARRANTY: 'Warranty expiry alerts',
   };
 
   return (
@@ -78,9 +110,11 @@ export default function NotificationsPage() {
         title="Notifications"
         subtitle="Low-stock alerts and requisition updates."
         actions={
-          <button className="btn btn-outline btn-sm" onClick={markAll} disabled={!data || ((data.unreadCount ?? data.data.filter((n) => !n.isRead).length) === 0)}>
-            <CheckCheck size={14} /> Mark all as read
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button className="btn btn-outline btn-sm" onClick={cleanup}>
+              <Trash2 size={14} /> Clean up read (90d+)
+            </button>
+          </div>
         }
       />
 
@@ -89,7 +123,7 @@ export default function NotificationsPage() {
           <div className="flex items-center justify-between mb-2">
             <div>
               <h3 className="font-semibold">Preferences</h3>
-              <p className="text-sm text-base-content/60">Choose which channels receive each notification type.</p>
+              <p className="text-sm" style={{ color: 'var(--muted)' }}>Choose which channels receive each notification type.</p>
             </div>
             <button className="btn btn-primary btn-sm" disabled={prefsBusy} onClick={savePrefs}>
               {prefsBusy && <span className="loading loading-spinner loading-xs" />}
@@ -106,10 +140,19 @@ export default function NotificationsPage() {
                   { key: 'inApp', label: 'In-app alerts', hint: 'Show in the notification bell' },
                   { key: 'email', label: 'Email notifications', hint: 'Send to your inbox' },
                 ].map((opt) => (
-                  <label key={opt.key} className="flex items-center gap-3 cursor-pointer py-1">
-                    <input type="checkbox" className="toggle toggle-primary toggle-sm" checked={Boolean(p[opt.key])} onChange={(e) => togglePref(p.type, opt.key, e.target.checked)} />
-                    <span className="text-sm">{opt.label}</span>
-                  </label>
+                  <div key={opt.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.25rem 0' }}>
+                    <span className="text-sm" title={opt.hint}>{opt.label}</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={Boolean(p[opt.key])}
+                      aria-label={`${TYPE_LABEL[p.type] || p.type} — ${opt.label}`}
+                      className={`sp-toggle ${p[opt.key] ? 'on' : ''}`}
+                      onClick={() => togglePref(p.type, opt.key, !p[opt.key])}
+                    >
+                      <span className="sp-toggle-thumb" />
+                    </button>
+                  </div>
                 ))}
               </div>
             ))}
@@ -120,7 +163,7 @@ export default function NotificationsPage() {
       <div className="card bg-surface shadow-sm border border-border">
         <div className="card-body">
           <label className="flex items-center gap-2 cursor-pointer px-2 mb-3 w-fit">
-            <input type="checkbox" className="checkbox checkbox-sm" checked={unreadOnly} onChange={(e) => { setUnreadOnly(e.target.checked); setPage(1); }} />
+            <input type="checkbox" className="checkbox" checked={unreadOnly} onChange={(e) => { setUnreadOnly(e.target.checked); setPage(1); }} />
             <span className="text-sm">Unread only</span>
           </label>
 
@@ -131,32 +174,50 @@ export default function NotificationsPage() {
           ) : (
             <>
               <ul className="flex flex-col gap-2">
-                {data.data.map((n) => (
+                {data.data.map((n) => {
+                  const meta = TYPE_META[n.type] || TYPE_META.SYSTEM;
+                  const TypeIcon = meta.Icon;
+                  return (
                   <li key={n.id}>
                     <div
                       role="button"
                       tabIndex={0}
-                      className={`w-full text-left card card-body !p-4 ${n.isRead ? 'bg-base-200/60 opacity-70' : 'bg-base-200'}`}
+                      className="card card-body"
+                      style={{ padding: '1rem', background: 'var(--surface-alt)', opacity: n.isRead ? 0.7 : 1, cursor: 'pointer' }}
                       onClick={() => markRead(n)}
                       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); markRead(n); } }}
                     >
                       <div className="flex items-start gap-3">
-                        <div className={`rounded-lg p-2 ${n.type === 'LOW_STOCK' ? 'bg-warning/15 text-warning' : n.type === 'RIS' ? 'bg-info/15 text-info' : 'bg-neutral/10'}`}>
-                          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d={TYPE_ICON[n.type] || TYPE_ICON.SYSTEM} /></svg>
+                        <div className="rounded-lg p-2" style={{ background: `color-mix(in oklab, ${meta.tone} 15%, transparent)`, color: meta.tone }}>
+                          <TypeIcon size={20} strokeWidth={1.8} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-semibold">{n.title}</span>
-                            {!n.isRead && <span className="badge badge-primary badge-xs">new</span>}
+                            {!n.isRead && <span className="badge badge-primary">new</span>}
                           </div>
-                          <p className="text-sm text-base-content/70 mt-0.5">{n.message}</p>
-                          <div className="text-xs opacity-50 mt-1">{new Date(n.createdAt).toLocaleString()}</div>
+                          <p className="text-sm mt-0.5" style={{ color: 'var(--muted)' }}>{n.message}</p>
+                          <div className="text-xs mt-1" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--faint)' }}>
+                            <span>{new Date(n.createdAt).toLocaleString()}</span>
+                            <span className="badge badge-ghost">{meta.label}</span>
+                            {(n.itemId || n.item) && (
+                              <Link
+                                to={`/items?search=${encodeURIComponent(n.item?.sku || '')}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="badge badge-info"
+                                style={{ cursor: 'pointer', textDecoration: 'none' }}
+                              >
+                                View item{n.item?.sku ? ` · ${n.item.sku}` : ''}
+                              </Link>
+                            )}
+                          </div>
                         </div>
                         <button className="btn btn-ghost btn-xs text-error" onClick={(e) => { e.stopPropagation(); deleteNotification(n); }}><Trash2 size={12} /> Delete</button>
                       </div>
                     </div>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
               <Pagination meta={data.meta} onPage={setPage} />
             </>

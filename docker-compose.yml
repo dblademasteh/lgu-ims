@@ -7,8 +7,9 @@ services:
       POSTGRES_USER: lguims
       POSTGRES_PASSWORD: lguims
       POSTGRES_DB: lgu_ims
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - lguims_pgdata:/var/lib/postgresql/data
       - lguims_backups:/backups

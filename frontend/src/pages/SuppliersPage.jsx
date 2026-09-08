@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, UploadCloud, UserPlus, SquarePen, Ban, Save, Building2, User, Phone, Mail, MapPin, Search } from 'lucide-react';
+import { X, UploadCloud, UserPlus, SquarePen, Ban, Save, Building2, User, Phone, Mail, MapPin, Search, Download } from 'lucide-react';
 import api from '../api/client';
 import useAuthStore, { useCan } from '../stores/authStore';
 import { useToast } from '../components/Toast';
@@ -25,6 +25,7 @@ export default function SuppliersPage() {
   const [csv, setCsv] = useState('');
   const [importBusy, setImportBusy] = useState(false);
   const [confirm, setConfirm] = useState(null);
+  const importFileRef = useRef(null);
 
   const load = () => {
     setLoading(true);
@@ -228,10 +229,34 @@ export default function SuppliersPage() {
             size="modal-md"
             onClose={() => setImportOpen(false)}
           >
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <form onSubmit={handleSubmit} className="flex flex-col min-h-0">
               <div className="modal-body">
                 <p className="text-sm text-muted mb-3">Upload a CSV with columns: name, contact, phone, email, address, isActive. Existing suppliers (by name or email) will be updated.</p>
-                <fieldset className="fieldset">
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <button type="button" className="btn btn-outline btn-sm gap-2" onClick={() => {
+                    const blob = new Blob([sampleCSV], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'suppliers_import_template.csv';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}>
+                    <Download size={14} /> Download template
+                  </button>
+                  <button type="button" className="btn btn-outline btn-sm gap-2" onClick={() => importFileRef.current?.click()}>
+                    <UploadCloud size={14} /> Choose file
+                  </button>
+                  <input ref={importFileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    const text = await f.text();
+                    setCsv(text);
+                    e.target.value = '';
+                  }} />
+                  <span className="text-xs text-muted">or paste CSV below</span>
+                </div>
+                <fieldset className="fieldset mt-1">
                   <legend className="fieldset-legend">CSV content</legend>
                   <textarea className="textarea font-mono text-xs" rows={10} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={sampleCSV} required />
                 </fieldset>

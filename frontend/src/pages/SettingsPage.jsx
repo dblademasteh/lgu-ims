@@ -8,9 +8,12 @@ import {
   FolderOpen, Building2, ShieldCheck, Download, Flag,
   Plus, Pencil, Trash2, Search, Users,
   KeyRound, Server, X, ChevronRight, Save, ShieldOff,
+  Palette, Sun, Moon, Type, RotateCcw,
 } from 'lucide-react';
+import { useThemeStore, ACCENT_PRESETS, FONT_OPTIONS, SCALE_MIN, SCALE_MAX, SCALE_DEFAULT } from '../stores/themeStore';
 
 const TABS = [
+  { key: 'appearance', label: 'Appearance', icon: Palette, desc: 'Theme, text size, fonts, and accent color.' },
   { key: 'categories', label: 'Categories', icon: FolderOpen, desc: 'Item categories for grouping and reporting.' },
   { key: 'departments', label: 'Departments', icon: Building2, desc: 'Offices and departments that file requisitions.' },
   { key: 'tenants', label: 'Tenants', icon: Server, desc: 'Multi-tenant management (super-admin only).' },
@@ -41,10 +44,12 @@ function ConfirmDialog({ open, onClose, onConfirm, title, message, busy }) {
     <Modal open={open} onClose={onClose} title={title} size="modal-sm">
       <p className="modal-message">{message}</p>
       <div className="modal-footer">
-        <button className="btn" onClick={onClose} disabled={busy}>Cancel</button>
+        <button className="btn" onClick={onClose} disabled={busy}>
+          <X size={14} /> Cancel
+        </button>
         <button className="btn btn-error" onClick={onConfirm} disabled={busy}>
           {busy && <span className="loading loading-spinner loading-xs" />}
-          {busy ? 'Deleting...' : 'Delete'}
+          <Trash2 size={14} /> {busy ? 'Deleting...' : 'Delete'}
         </button>
       </div>
     </Modal>
@@ -685,6 +690,174 @@ function BackupTab() {
   );
 }
 
+function AppearanceTab() {
+  const theme = useThemeStore((s) => s.theme);
+  const setTheme = useThemeStore((s) => s.setTheme);
+  const uiScale = useThemeStore((s) => s.uiScale);
+  const setUiScale = useThemeStore((s) => s.setUiScale);
+  const font = useThemeStore((s) => s.font);
+  const setFont = useThemeStore((s) => s.setFont);
+  const accent = useThemeStore((s) => s.accent);
+  const setAccent = useThemeStore((s) => s.setAccent);
+  const resetAppearance = useThemeStore((s) => s.resetAppearance);
+
+  const isCustomAccent = typeof accent === 'string' && accent.startsWith('#');
+  const scalePct = Math.round((uiScale / 16) * 100);
+
+  return (
+    <div className="sp-animate-in">
+      <div className="sp-card">
+        <div className="sp-card-head">
+          <div>
+            <div className="sp-card-title">Theme mode</div>
+            <div className="sp-card-sub">Light slate or deep-navy dark. Follows your OS on first visit.</div>
+          </div>
+          <div className="sp-seg" role="radiogroup" aria-label="Theme mode">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={theme === 'light'}
+              className={`sp-seg-btn ${theme === 'light' ? 'active' : ''}`}
+              onClick={() => setTheme('light')}
+            >
+              <Sun size={14} /> Light
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={theme === 'dark'}
+              className={`sp-seg-btn ${theme === 'dark' ? 'active' : ''}`}
+              onClick={() => setTheme('dark')}
+            >
+              <Moon size={14} /> Dark
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="sp-card">
+        <div className="sp-card-head">
+          <div>
+            <div className="sp-card-title">Interface scale</div>
+            <div className="sp-card-sub">Scales text and spacing across the whole app. Applies instantly.</div>
+          </div>
+          <span className="sp-badge font-mono">{uiScale}px · {scalePct}%</span>
+        </div>
+        <div className="sp-card-body">
+          <input
+            type="range"
+            className="sp-range"
+            aria-label="Interface scale"
+            min={SCALE_MIN}
+            max={SCALE_MAX}
+            step={0.5}
+            value={uiScale}
+            onChange={(e) => setUiScale(Number(e.target.value))}
+          />
+          <div className="sp-range-labels">
+            <span>Compact</span>
+            <span>Default ({SCALE_DEFAULT}px)</span>
+            <span>Comfortable</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="sp-card">
+        <div className="sp-card-head">
+          <div>
+            <div className="sp-card-title">Font</div>
+            <div className="sp-card-sub">Interface typeface. Uses fonts already bundled with the app.</div>
+          </div>
+          <Type size={16} style={{ color: 'var(--faint)' }} />
+        </div>
+        <div className="sp-card-body">
+          <div className="sp-font-grid" role="radiogroup" aria-label="Interface font">
+            {FONT_OPTIONS.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                role="radio"
+                aria-checked={font === f.key}
+                className={`sp-font-option ${font === f.key ? 'active' : ''}`}
+                onClick={() => setFont(f.key)}
+              >
+                <span className="sp-font-preview" style={f.body ? { fontFamily: f.body } : undefined}>Ag</span>
+                <span className="sp-font-name">{f.label}</span>
+                <span className="sp-font-desc">{f.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="sp-card">
+        <div className="sp-card-head">
+          <div>
+            <div className="sp-card-title">Accent color</div>
+            <div className="sp-card-sub">Primary actions, links, and highlights. Applies instantly.</div>
+          </div>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={resetAppearance} title="Reset scale, font, and accent to defaults">
+            <RotateCcw size={13} /> Reset all
+          </button>
+        </div>
+        <div className="sp-card-body">
+          <div className="sp-swatch-grid" role="radiogroup" aria-label="Accent color">
+            {ACCENT_PRESETS.map((a) => (
+              <button
+                key={a.key}
+                type="button"
+                role="radio"
+                aria-checked={accent === a.key}
+                title={a.label}
+                aria-label={`Accent: ${a.label}`}
+                className={`sp-swatch ${accent === a.key ? 'active' : ''}`}
+                onClick={() => setAccent(a.key)}
+              >
+                <span className="sp-swatch-dot" style={{ background: a.swatch }} />
+                <span className="sp-swatch-label">{a.label}</span>
+              </button>
+            ))}
+            <label className={`sp-swatch ${isCustomAccent ? 'active' : ''}`} title="Custom color">
+              <input
+                type="color"
+                className="sp-color"
+                aria-label="Custom accent color"
+                value={isCustomAccent ? accent : '#1d4ed8'}
+                onChange={(e) => setAccent(e.target.value)}
+              />
+              <span className="sp-swatch-label">{isCustomAccent ? accent.toUpperCase() : 'Custom…'}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div className="sp-card">
+        <div className="sp-card-head">
+          <div>
+            <div className="sp-card-title">Preview</div>
+            <div className="sp-card-sub">Live preview of your appearance settings.</div>
+          </div>
+        </div>
+        <div className="sp-card-body">
+          <div className="sp-preview">
+            <h3 className="sp-preview-title">Requisition and Issue Slip</h3>
+            <p className="sp-preview-text">
+              The quick brown fox jumps over the lazy dog — 0123456789. Accent <a href="#preview" onClick={(e) => e.preventDefault()}>links</a> and
+              money <span className="mono">₱12,500.00</span> follow your settings.
+            </p>
+            <div className="sp-preview-row">
+              <button type="button" className="btn btn-primary btn-sm">Primary action</button>
+              <button type="button" className="btn btn-outline btn-sm">Outline</button>
+              <span className="badge badge-success">PASS</span>
+              <span className="badge badge-warning">WARN</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FlagsTab() {
   const toast = useToast();
   const [flags, setFlags] = useState([]);
@@ -747,8 +920,8 @@ export default function SettingsPage() {
   return (
     <div className="sp-page">
       <div className="sp-page-header">
-        <h1 className="sp-page-title">Reference Data</h1>
-        <p className="sp-page-sub">Manage categories, departments, tenants, and system settings.</p>
+        <h1 className="sp-page-title">Settings</h1>
+        <p className="sp-page-sub">Manage appearance, categories, departments, tenants, and system settings.</p>
       </div>
 
       <div className="sp-tab-bar">
@@ -770,6 +943,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="sp-content">
+        {tab === 'appearance' && <AppearanceTab />}
         {tab === 'categories' && <CategoryTab />}
         {tab === 'departments' && <DepartmentTab />}
         {tab === 'tenants' && <TenantTab />}

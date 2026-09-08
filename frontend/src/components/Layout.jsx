@@ -4,7 +4,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Package, Landmark, ClipboardList, BookOpen, BarChart3,
   Bell, ShieldCheck, Users, Settings, LogOut, Menu, KeyRound, FileText, UserRound,
-  ChevronRight, Moon, Sun, PanelLeftClose, PanelLeftOpen, Wallet, X, Save,
+  ChevronRight, Moon, Sun, PanelLeftClose, PanelLeftOpen, Wallet, X, Save, Check, CheckCheck, Trash2, ArrowRight,
 } from 'lucide-react';
 import useAuthStore from '../stores/authStore';
 import { useThemeStore } from '../stores/themeStore';
@@ -29,7 +29,7 @@ const MENU = [
   { to: '/notifications', label: 'Notifications', icon: Bell, group: 'oversight' },
   { to: '/audit', label: 'Audit Trail', icon: ShieldCheck, group: 'oversight' },
   { to: '/users', label: 'User Accounts', icon: Users, group: 'admin' },
-  { to: '/settings', label: 'Reference Data', icon: Settings, group: 'admin' },
+  { to: '/settings', label: 'Settings', icon: Settings, group: 'admin' },
 ];
 
 const NAV_GROUPS = [
@@ -63,17 +63,74 @@ export default function Layout() {
 
   const [pwModalOpen, setPwModalOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [bellNotes, setBellNotes] = useState(null);
+  const [bellLoading, setBellLoading] = useState(false);
+
+  const refreshUnread = () => {
+    api.get('/notifications/unread-count').then(r => setUnread(r.data.unreadCount)).catch(() => {});
+  };
+
+  const fetchBell = () => {
+    setBellLoading(true);
+    api.get('/notifications?page=1&limit=8')
+      .then(r => setBellNotes(r.data.data || []))
+      .catch(() => {})
+      .finally(() => setBellLoading(false));
+  };
+
+  const bellMarkRead = async (n) => {
+    if (n.isRead) return;
+    try {
+      await api.patch(`/notifications/${n.id}/read`);
+      setBellNotes((prev) => (prev || []).map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
+      refreshUnread();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Unable to mark notification as read.');
+    }
+  };
+
+  const bellMarkAll = async () => {
+    try {
+      await api.patch('/notifications/read-all');
+      setBellNotes((prev) => (prev || []).map((x) => ({ ...x, isRead: true })));
+      refreshUnread();
+      toast.success('All notifications marked as read.');
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Unable to mark all as read.');
+    }
+  };
+
+  const bellDelete = async (n) => {
+    try {
+      await api.delete(`/notifications/${n.id}`);
+      setBellNotes((prev) => (prev || []).filter((x) => x.id !== n.id));
+      refreshUnread();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Unable to delete notification.');
+    }
+  };
 
   const menu = user ? buildMenu(user.role) : [];
   const canAudit = user?.role === 'ADMIN' || user?.role === 'AUDITOR';
   const current = menu.find(m => location.pathname.startsWith(m.to));
 
   useEffect(() => {
-    api.get('/notifications/unread-count').then(r => setUnread(r.data.unreadCount)).catch(() => {});
-    const id = setInterval(() => {
-      api.get('/notifications/unread-count').then(r => setUnread(r.data.unreadCount)).catch(() => {});
-    }, 60000);
-    return () => clearInterval(id);
+    let cancelled = false;
+    const fetchUnread = () => {
+      api.get('/notifications/unread-count').then(r => { if (!cancelled) setUnread(r.data.unreadCount); }).catch(() => {});
+    };
+    fetchUnread();
+    const id = setInterval(fetchUnread, 30000);
+    const onFocus = () => fetchUnread();
+    const onVisibility = () => { if (!document.hidden) fetchUnread(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [location.pathname]);
 
   const closeDrawer = () => setDrawerOpen(false);
@@ -163,7 +220,7 @@ export default function Layout() {
         </aside>
 
       {/* ── Main ── */}
-      <div className="drawer-content" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--surface-alt)' }}>
+      <div className="drawer-content" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--surface-alt)' }}>
         {/* Topbar */}
         <header className="topbar">
           {/* Mobile hamburger */}
@@ -208,14 +265,67 @@ export default function Layout() {
             </button>
 
             {/* Notifications */}
-            <NavLink to="/notifications" className="btn btn-ghost btn-sm btn-square" title="Notifications" style={{ border: 'none', position: 'relative' }}>
-              <Bell size={15} strokeWidth={1.8} />
-              {unread > 0 && (
-                <span style={{ position: 'absolute', top: '2px', right: '2px', width: '14px', height: '14px', background: 'var(--error)', color: '#fff', borderRadius: '9999px', fontSize: '0.5625rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {unread > 9 ? '9+' : unread}
-                </span>
-              )}
-            </NavLink>
+            <div className="dropdown">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm btn-square"
+                title="Notifications"
+                aria-label="Open notifications"
+                aria-haspopup="true"
+                style={{ border: 'none', position: 'relative' }}
+                onClick={fetchBell}
+              >
+                <Bell size={15} strokeWidth={1.8} />
+                {unread > 0 && (
+                  <span style={{ position: 'absolute', top: '2px', right: '2px', minWidth: '14px', height: '14px', padding: '0 3px', background: 'var(--error)', color: '#fff', borderRadius: '9999px', fontSize: '0.5625rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {unread > 9 ? '9+' : unread}
+                  </span>
+                )}
+              </button>
+              <div className="dropdown-content" role="dialog" aria-label="Notifications" style={{ width: '22rem', maxWidth: 'calc(100vw - 2rem)', padding: 0, overflow: 'hidden', zIndex: 1001 }} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: '0.75rem 0.875rem', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.875rem' }}>
+                    Notifications{unread > 0 && <span style={{ color: 'var(--muted)', fontWeight: 500 }}> · {unread} unread</span>}
+                  </div>
+                </div>
+                <div style={{ maxHeight: '22rem', overflowY: 'auto' }}>
+                  {bellLoading && bellNotes === null ? (
+                    <div style={{ padding: '1.5rem', textAlign: 'center', fontSize: '0.8125rem', color: 'var(--muted)' }}>Loading…</div>
+                  ) : !bellNotes || bellNotes.length === 0 ? (
+                    <div style={{ padding: '1.5rem', textAlign: 'center', fontSize: '0.8125rem', color: 'var(--muted)' }}>No notifications.</div>
+                  ) : (
+                    bellNotes.map((n) => (
+                      <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.625rem', padding: '0.625rem 0.875rem', borderBottom: '1px solid var(--border)', background: n.isRead ? 'transparent' : 'color-mix(in oklab, var(--accent) 5%, transparent)' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                            <span style={{ fontWeight: 600, fontSize: '0.8125rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.title}</span>
+                            {!n.isRead && <span className="badge badge-primary">new</span>}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{n.message}</div>
+                          <div style={{ fontSize: '0.6875rem', color: 'var(--faint)', marginTop: '0.125rem' }}>{new Date(n.createdAt).toLocaleString()}</div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flexShrink: 0 }}>
+                          {!n.isRead && (
+                            <button type="button" className="btn btn-ghost btn-xs" onClick={() => bellMarkRead(n)} title="Mark as read" aria-label={`Mark "${n.title}" as read`}>
+                              <Check size={13} />
+                            </button>
+                          )}
+                          <button type="button" className="btn btn-ghost btn-xs text-error" onClick={() => bellDelete(n)} title="Delete" aria-label={`Delete "${n.title}"`}>
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <NavLink
+                  to="/notifications"
+                  style={{ display: 'block', textAlign: 'center', padding: '0.625rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--accent)', textDecoration: 'none', borderTop: '1px solid var(--border)' }}
+                >
+                  <ArrowRight size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '0.25rem' }} /> View all notifications
+                </NavLink>
+              </div>
+            </div>
 
             {/* User menu */}
             <div className="dropdown">

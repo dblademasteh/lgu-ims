@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, X, UploadCloud, UserPlus, SquarePen, Save, UserRound, Mail, KeyRound } from 'lucide-react';
+import { Search, X, UploadCloud, UserPlus, SquarePen, Save, UserRound, Mail, KeyRound, Download } from 'lucide-react';
 import api from '../api/client';
 import { useToast } from '../components/Toast';
 import PageHeader, { EmptyState, FormModal, Pagination, Spinner } from '../components/ui';
@@ -275,6 +275,7 @@ function ImportUsersModal({ onClose, onImported }) {
   const toast = useToast();
   const [csv, setCsv] = useState('');
   const [busy, setBusy] = useState(false);
+  const fileRef = useRef(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -294,6 +295,16 @@ function ImportUsersModal({ onClose, onImported }) {
 
   const sampleCSV = 'username,email,fullname,role,department,isActive\njuan.delacruz,lgu.juan@lgu.local,Juan M. Dela Cruz,WAREHOUSE_STAFF,Engineering,true\nmaria.santos,lgu.maria@lgu.local,Maria F. Santos,PROPERTY_CUSTODIAN,Administration,true';
 
+  const downloadTemplate = () => {
+    const blob = new Blob([sampleCSV], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'users_import_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Portal>
       <FormModal
@@ -304,23 +315,42 @@ function ImportUsersModal({ onClose, onImported }) {
         size="modal-md"
         onClose={onClose}
       >
-        <p className="text-sm text-muted mt-1">Upload a CSV with columns: username, email, fullname, role, department, isActive. Existing users (by username or email) will be updated. Default password for new users: <strong>LguIms2026!</strong></p>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4">
-          <fieldset className="fieldset">
-            <legend className="fieldset-legend">CSV content</legend>
-            <textarea className="textarea font-mono text-xs" rows={10} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={sampleCSV} />
-          </fieldset>
-          <div className="modal-footer">
-            <button type="button" className="btn" onClick={onClose}>
-              <X size={14} /> Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={busy}>
+        <div className="modal-body">
+          <p className="text-sm text-muted">Upload a CSV with columns: username, email, fullname, role, department, isActive. Existing users (by username or email) will be updated. Default password for new users: <strong>LguIms2026!</strong></p>
+          <form id="import-users-form" onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <button type="button" className="btn btn-outline btn-sm gap-2" onClick={downloadTemplate}>
+                <Download size={14} /> Download template
+              </button>
+              <button type="button" className="btn btn-outline btn-sm gap-2" onClick={() => fileRef.current?.click()}>
+                <UploadCloud size={14} /> Choose file
+              </button>
+              <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                const text = await f.text();
+                setCsv(text);
+                e.target.value = '';
+              }} />
+              <span className="text-xs text-muted">or paste CSV below</span>
+            </div>
+            <fieldset className="fieldset mt-2">
+              <legend className="fieldset-legend">CSV content</legend>
+              <textarea className="textarea font-mono text-xs" rows={10} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={sampleCSV} />
+            </fieldset>
+          </form>
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose}>
+            <X size={14} /> Cancel
+          </button>
+          <button type="submit" form="import-users-form" className="btn btn-primary" disabled={busy}>
+
               {busy && <span className="loading loading-spinner loading-xs" />}
               <UploadCloud size={14} /> Import
             </button>
           </div>
-        </form>
-      </FormModal>
+        </FormModal>
     </Portal>
   );
 }

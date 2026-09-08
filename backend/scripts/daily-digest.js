@@ -1,5 +1,5 @@
-const prisma = require('../prisma');
-const { sendNotificationDigest } = require('./mailer');
+const prisma = require('../src/prisma');
+const { sendNotificationDigest } = require('../src/services/mailer');
 
 async function sendDailyDigest() {
   const yesterday = new Date();

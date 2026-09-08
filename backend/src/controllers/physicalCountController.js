@@ -32,16 +32,72 @@ async function listPhysicalCounts(req, res) {
   if (req.query.departmentId) where.departmentId = req.query.departmentId;
   if (req.query.status) where.status = req.query.status;
 
-  const [total, data] = await Promise.all([
-    prisma.physicalCount.count({ where }),
-    prisma.physicalCount.findMany({
+  const ALLOWED_SORT = ['countDate', 'department', 'status', 'lines', 'variance'];
+  const sortBy = ALLOWED_SORT.includes(req.query.sortBy) ? req.query.sortBy : 'countDate';
+  const sortDir = req.query.sortDir === 'asc' ? 'asc' : 'desc';
+
+  const summarize = (rows) => rows.map((c) => {
+    const variances = (c.items || []).map((it) => Number(it.variance) || 0);
+    const varianceCount = variances.filter((v) => v !== 0).length;
+    const netVariance = variances.reduce((sum, v) => sum + v, 0);
+    const { items: _dropped, ...rest } = c;
+    return { ...rest, itemCount: c._count?.items ?? variances.length, varianceCount, netVariance };
+  });
+
+  const include = {
+    department: true,
+    createdBy: { select: { id: true, fullName: true, username: true } },
+    _count: { select: { items: true } },
+    items: { select: { variance: true } },
+  };
+
+  const total = await prisma.physicalCount.count({ where });
+
+  // Variance is a computed aggregate (non-zero line count), so it sorts in
+  // memory over the filtered set. Guarded to bounded volumes — worksheets are
+  // inherently low-volume; huge tenants fall back to date ordering.
+  if (sortBy === 'variance' && total <= 2000) {
+    const cands = await prisma.physicalCount.findMany({
       where,
-      include: { department: true, createdBy: { select: { id: true, fullName: true, username: true } } },
-      orderBy: { countDate: 'desc' },
-      skip: offset,
-      take: limit,
-    }),
-  ]);
+      select: { id: true, items: { select: { variance: true } } },
+    });
+    const score = (c) => {
+      const vs = (c.items || []).map((it) => Number(it.variance) || 0);
+      return { id: c.id, varianceCount: vs.filter((v) => v !== 0).length, netAbs: Math.abs(vs.reduce((s, v) => s + v, 0)) };
+    };
+    const scored = cands.map(score).sort((a, b) => {
+      const d = (a.varianceCount - b.varianceCount) || (a.netAbs - b.netAbs);
+      return sortDir === 'asc' ? d : -d;
+    });
+    const pageIds = scored.slice(offset, offset + limit).map((s) => s.id);
+    const rows = pageIds.length
+      ? await prisma.physicalCount.findMany({ where: { id: { in: pageIds } }, include })
+      : [];
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const data = summarize(pageIds.map((id) => byId.get(id)).filter(Boolean));
+    res.json({ data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+    return;
+  }
+
+  const orderBy =
+    sortBy === 'department'
+      ? [{ department: { name: sortDir } }, { countDate: 'desc' }]
+      : sortBy === 'status'
+        ? [{ status: sortDir }, { countDate: 'desc' }]
+        : sortBy === 'lines'
+          ? [{ items: { _count: sortDir } }, { countDate: 'desc' }]
+          : [{ countDate: sortDir }];
+
+  const rows = await prisma.physicalCount.findMany({
+    where,
+    include,
+    orderBy,
+    skip: offset,
+    take: limit,
+  });
+
+  // Per-row worksheet summary so the list can signal lines/variance without N+1 detail fetches.
+  const data = summarize(rows);
 
   res.json({ data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } });
 }

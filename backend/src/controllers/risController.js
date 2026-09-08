@@ -167,9 +167,9 @@ async function createRis(req, res) {
     where: { isActive: true, role: { in: ['ADMIN', 'PROPERTY_CUSTODIAN'] } },
   });
   if (approvers.length > 0) {
-    await prisma.notification.createMany({
-      data: approvers.map((u) => ({ ...notification, userId: u.id })),
-    });
+    for (const u of approvers) {
+      await notifyInApp({ userId: u.id, type: 'RIS', ...notification });
+    }
     const appUrl = (config.appUrl || '').replace(/\/$/, '');
     const url = `${appUrl}/ris`;
     const tpl = risCreated(risNumber, department.name, purpose, url);
@@ -249,9 +249,9 @@ async function bulkCreateRis(req, res) {
       where: { isActive: true, role: { in: ['ADMIN', 'PROPERTY_CUSTODIAN'] } },
     });
     if (approvers.length > 0) {
-      await prisma.notification.createMany({
-        data: approvers.map((u) => ({ ...notification, userId: u.id })),
-      });
+      for (const u of approvers) {
+        await notifyInApp({ userId: u.id, type: 'RIS', ...notification });
+      }
       const appUrl = (config.appUrl || '').replace(/\/$/, '');
       const url = `${appUrl}/ris`;
       const tpl = risCreated(

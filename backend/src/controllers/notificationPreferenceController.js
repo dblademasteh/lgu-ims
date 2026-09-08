@@ -19,6 +19,8 @@ async function getPreferences(req, res) {
     { type: 'LOW_STOCK', email: true, inApp: true },
     { type: 'RIS', email: true, inApp: true },
     { type: 'SYSTEM', email: true, inApp: true },
+    { type: 'EXPIRY', email: true, inApp: true },
+    { type: 'WARRANTY', email: true, inApp: true },
   ];
   const merged = defaults.map((d) => {
     const existing = prefs.find((p) => p.type === d.type);

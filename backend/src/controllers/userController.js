@@ -356,7 +356,10 @@ async function importUsers(req, res) {
   let created = 0;
   let updated = 0;
   const errors = [];
-  const defaultPassword = process.env.SEED_DEFAULT_PASSWORD || 'LguIms2026!';
+  const defaultPassword = process.env.SEED_DEFAULT_PASSWORD;
+  if (!defaultPassword) {
+    throw new ApiError(500, 'SEED_DEFAULT_PASSWORD is not configured.');
+  }
   const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
   await prisma.$transaction(async (tx) => {

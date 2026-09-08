@@ -4,7 +4,8 @@ import { BrowserRouter } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import App from './App';
 import { ToastProvider } from './components/Toast';
-import { useThemeStore, applyTheme } from './stores/themeStore';
+import { useThemeStore, applyAppearance } from './stores/themeStore';
+import { loadGoogleFont } from './utils/fonts';
 import './index.css';
 
 if (import.meta.env.VITE_SENTRY_DSN) {
@@ -17,8 +18,9 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   });
 }
 
-applyTheme(useThemeStore.getState().theme);
-useThemeStore.subscribe((s) => applyTheme(s.theme));
+applyAppearance(useThemeStore.getState());
+loadGoogleFont(useThemeStore.getState().font);
+useThemeStore.subscribe((s) => { applyAppearance(s); loadGoogleFont(s.font); });
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

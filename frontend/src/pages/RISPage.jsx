@@ -178,6 +178,7 @@ export default function RISPage() {
             setApproveOpen(true);
           }}
           onReject={() => setConfirm({ id: detail.id, action: 'reject', label: 'rejected', kind: 'rem' })}
+          onCertify={() => act(detail.id, 'certify', {}, 'certified')}
           onIssue={() => setIssueOpen(true)}
           onCancel={() => setConfirm({ id: detail.id, action: 'cancel', label: 'cancelled', kind: 'rem' })}
           onReturn={() => setReturnOpen(true)}
@@ -292,189 +293,204 @@ export default function RISPage() {
   );
 }
 
-function RisDetail({ ris, user, canManage, canIssue, canCancel, canReturn, onClose, onApprove, onReject, onIssue, onCancel, onReturn }) {
-  const canAct = canManage || canIssue || canCancel;
+function RisDetail({ ris, user, canManage, canIssue, canCancel, canReturn, onClose, onApprove, onReject, onCertify, onIssue, onCancel, onReturn }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+
+  const tone = ['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status)
+    ? 'success'
+    : ['REJECTED', 'CANCELLED'].includes(ris.status)
+      ? 'danger'
+      : 'info';
 
   return (
     <Portal>
-      <div className="modal-backdrop">
-        <div className="modal-box modal-xl">
-          <div className="flex items-start justify-between no-print">
-            <h3 className="font-bold text-lg">
-              <span className="font-mono">{ris.risNumber}</span>
-              <span className="ml-2"><Badge status={ris.status}>{ris.status.replace(/_/g, ' ')}</Badge></span>
-            </h3>
-            <button className="modal-close" onClick={onClose}><X size={15} /></button>
-          </div>
-
-          <div className="modal-action no-print mt-0 mb-2">
-            <button className="btn btn-outline btn-sm" onClick={() => window.print()}>
-              <Printer size={14} />
-              Print RIS
-            </button>
-            {['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status) && (
-              <button className="btn btn-outline btn-sm" onClick={() => openReport(`/reports/acknowledgment/${ris.id}`)}>
-                <FileText size={14} />
-                Acknowledgment Slip
+      <FormModal
+        title={`Requisition and Issue Slip · ${ris.risNumber}`}
+          formNo="Form No. LGU-IMS-RIS-01"
+          icon={FileText}
+          tone={tone}
+          badge={<Badge status={ris.status}>{ris.status.replace(/_/g, ' ')}</Badge>}
+          size="modal-xl"
+          onClose={onClose}
+        >
+          <div className="modal-body">
+            <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+              <button className="btn btn-outline btn-sm" onClick={() => window.print()}>
+                <Printer size={14} />
+                Print RIS
               </button>
-            )}
-            {['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status) && ris.items.some((it) => it.item.isAccountable) && (
-              <button className="btn btn-outline btn-sm" onClick={() => openReport(`/reports/par/${ris.id}`)}>
-                <FileText size={14} />
-                Generate PAR
-              </button>
-            )}
-            {canOperate(ris, user.role, 'approve') && <button className="btn btn-success btn-sm" onClick={onApprove}><CheckCircle2 size={14} /> Approve</button>}
-            {canOperate(ris, user.role, 'reject') && <button className="btn btn-error btn-sm btn-outline" onClick={onReject}><XCircle size={14} /> Reject</button>}
-            {canOperate(ris, user.role, 'certify') && <button className="btn btn-info btn-sm" onClick={() => act(ris.id, 'certify', {}, 'certified')}><BadgeCheck size={14} /> Certify</button>}
-            {canOperate(ris, user.role, 'issue') && <button className="btn btn-primary btn-sm" onClick={onIssue}><PackageCheck size={14} /> Issue items</button>}
-            {canReturn && ['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status) && (
-              <button className="btn btn-outline btn-sm" onClick={onReturn}><Undo2 size={14} /> Return items</button>
-            )}
-            {canOperate(ris, user.role, 'cancel') && <button className="btn btn-ghost btn-sm" onClick={onCancel}><XCircle size={14} /> Cancel RIS</button>}
+              {['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status) && (
+                <button className="btn btn-outline btn-sm" onClick={() => openReport(`/reports/acknowledgment/${ris.id}`)}>
+                  <FileText size={14} />
+                  Acknowledgment Slip
+                </button>
+              )}
+              {['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status) && ris.items.some((it) => it.item.isAccountable) && (
+                <button className="btn btn-outline btn-sm" onClick={() => openReport(`/reports/par/${ris.id}`)}>
+                  <FileText size={14} />
+                  Generate PAR
+                </button>
+              )}
+              {canOperate(ris, user.role, 'approve') && <button className="btn btn-success btn-sm" onClick={onApprove}><CheckCircle2 size={14} /> Approve</button>}
+              {canOperate(ris, user.role, 'reject') && <button className="btn btn-error btn-sm btn-outline" onClick={onReject}><XCircle size={14} /> Reject</button>}
+              {canOperate(ris, user.role, 'certify') && <button className="btn btn-info btn-sm" onClick={onCertify}><BadgeCheck size={14} /> Certify</button>}
+              {canOperate(ris, user.role, 'issue') && <button className="btn btn-primary btn-sm" onClick={onIssue}><PackageCheck size={14} /> Issue items</button>}
+              {canReturn && ['ISSUED', 'PARTIALLY_ISSUED'].includes(ris.status) && (
+                <button className="btn btn-outline btn-sm" onClick={onReturn}><Undo2 size={14} /> Return items</button>
+              )}
+              {canOperate(ris, user.role, 'cancel') && <button className="btn btn-ghost btn-sm" onClick={onCancel}><XCircle size={14} /> Cancel RIS</button>}
+            </div>
+
+            <div className="print-area">
+              <div className="text-center mb-3">
+                <div className="text-lg font-bold uppercase tracking-wide">Requisition and Issue Slip (RIS)</div>
+                <div className="text-sm">{ris.risNumber}</div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm mb-4">
+                <div><div className="lbl">Department</div><div className="font-medium">{ris.department?.name}</div></div>
+                <div><div className="lbl">Date requested</div><div>{fmtDate(ris.createdAt)}</div></div>
+                <div>
+                  <div className="lbl">Requested by</div>
+                  <div>{ris.requestedBy?.fullName}</div>
+                </div>
+                <div>
+                  <div className="lbl">Status</div>
+                  <div className="font-semibold">{ris.status.replace(/_/g, ' ')}</div>
+                </div>
+                <div className="col-span-2">
+                  <div className="lbl">Purpose</div>
+                  <div className="font-medium">{ris.purpose}</div>
+                </div>
+                <div>
+                  <div className="lbl">Approved by</div>
+                  <div>{ris.approvedBy?.fullName || '—'} {ris.approvedAt ? `(${fmtDate(ris.approvedAt)})` : ''}</div>
+                </div>
+                <div>
+                  <div className="lbl">Issued by</div>
+                  <div>{ris.issuedBy?.fullName || '—'} {ris.issuedAt ? `(${fmtDate(ris.issuedAt)})` : ''}</div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="table table-sm" aria-label="RIS items">
+                  <thead>
+                    <tr>
+                      <th>Stock No.</th>
+                      <th>Fund</th>
+                      <th>Item</th>
+                      <th>Unit</th>
+                      <th className="text-right">Requested</th>
+                      <th className="text-right">Approved</th>
+                      <th className="text-right">Issued</th>
+                      <th className="text-center">Stock<br />Avail?</th>
+                      <th className="text-right">Unit Cost (₱)</th>
+                      <th className="text-right">Amount (₱)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ris.items.map((it) => {
+                      const available = it.availableStock ?? it.item.currentStock ?? 0;
+                      const hasStock = available >= (it.quantityApproved ?? it.quantityRequested ?? 0);
+                      return (
+                        <tr key={it.id}>
+                          <td className="font-mono text-xs">{it.item.stockNumber || '—'}</td>
+                          <td className="font-mono text-xs">{it.item.fundCluster || '—'}</td>
+                          <td>
+                            <div className="font-medium">{it.item.name}</div>
+                            <div className="text-xs font-mono" style={{ color: 'var(--muted)' }}>{it.item.sku}</div>
+                            {it.item.currentStock <= it.item.reorderThreshold && <div className="text-xs text-error">Low stock: {available} {it.item.unit}</div>}
+                          </td>
+                          <td>{it.item.unit}</td>
+                          <td className="text-right">{it.quantityRequested}</td>
+                          <td className="text-right">{it.quantityApproved || '—'}</td>
+                          <td className="text-right">{it.quantityIssued || '—'}</td>
+                          <td className="text-center">{hasStock ? 'Yes' : 'No'}</td>
+                          <td className="text-right"><Money value={it.unitCost} /></td>
+                          <td className="text-right font-medium"><Money value={it.lineCost} /></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={4} className="text-right font-semibold">Total</td>
+                      <td className="text-right font-semibold">{ris.totalRequested}</td>
+                      <td />
+                      <td />
+                      <td />
+                      <td />
+                      <td className="text-right font-semibold"><Money value={ris.totalCost} /></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {ris.remarks && (
+                <div className="mt-3 text-sm">
+                  <span style={{ color: 'var(--muted)' }}>Remarks: </span>{ris.remarks}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mt-8">
+                <div className="text-center">
+                  <div style={{ borderTop: '1px solid var(--border-strong)', paddingTop: '0.25rem' }}>
+                    <div className="font-semibold">{ris.requestedBy?.fullName || 'Requested by'}</div>
+                    <div className="text-xs" style={{ color: 'var(--muted)' }}>Requested By</div>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div style={{ borderTop: '1px solid var(--border-strong)', paddingTop: '0.25rem' }}>
+                    <div className="font-semibold">{ris.approvedBy?.fullName || '—'}</div>
+                    <div className="text-xs" style={{ color: 'var(--muted)' }}>Approved By</div>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div style={{ borderTop: '1px solid var(--border-strong)', paddingTop: '0.25rem' }}>
+                    <div className="font-semibold">{ris.issuedBy?.fullName || '—'}</div>
+                    <div className="text-xs" style={{ color: 'var(--muted)' }}>Issued By</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mt-8">
+                <div className="text-center">
+                  <div style={{ borderTop: '1px solid var(--border-strong)', paddingTop: '0.25rem' }}>
+                    <div className="font-semibold">Received By</div>
+                    <div className="text-xs" style={{ color: 'var(--muted)' }}>Name / Signature over printed name</div>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div style={{ borderTop: '1px solid var(--border-strong)', paddingTop: '0.25rem' }}>
+                    <div className="font-semibold">Checked by</div>
+                    <div className="text-xs" style={{ color: 'var(--muted)' }}>Property Custodian</div>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div style={{ borderTop: '1px solid var(--border-strong)', paddingTop: '0.25rem' }}>
+                    <div className="font-semibold">Date / Time</div>
+                    <div className="text-xs" style={{ color: 'var(--muted)' }}>{fmtDate(ris.issuedAt) || ''}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="print-area">
-            <div className="text-center mb-3">
-              <div className="text-lg font-bold uppercase tracking-wide">Requisition and Issue Slip (RIS)</div>
-              <div className="text-sm">{ris.risNumber}</div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm mb-4">
-              <div><div className="text-xs opacity-60">Department</div><div className="font-medium">{ris.department?.name}</div></div>
-              <div><div className="text-xs opacity-60">Date requested</div><div>{fmtDate(ris.createdAt)}</div></div>
-              <div>
-                <div className="text-xs opacity-60">Requested by</div>
-                <div>{ris.requestedBy?.fullName}</div>
-              </div>
-              <div>
-                <div className="text-xs opacity-60">Status</div>
-                <div className="font-semibold">{ris.status.replace(/_/g, ' ')}</div>
-              </div>
-              <div className="col-span-2">
-                <div className="text-xs opacity-60">Purpose</div>
-                <div className="font-medium">{ris.purpose}</div>
-              </div>
-              <div>
-                <div className="text-xs opacity-60">Approved by</div>
-                <div>{ris.approvedBy?.fullName || '—'} {ris.approvedAt ? `(${fmtDate(ris.approvedAt)})` : ''}</div>
-              </div>
-              <div>
-                <div className="text-xs opacity-60">Issued by</div>
-                <div>{ris.issuedBy?.fullName || '—'} {ris.issuedAt ? `(${fmtDate(ris.issuedAt)})` : ''}</div>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="table table-sm" aria-label="RIS list table">
-                <thead>
-                  <tr>
-                    <th>Stock No.</th>
-                    <th>Fund</th>
-                    <th>Item</th>
-                    <th>Unit</th>
-                    <th className="text-right">Requested</th>
-                    <th className="text-right">Approved</th>
-                    <th className="text-right">Issued</th>
-                    <th className="text-center">Stock<br/>Avail?</th>
-                    <th className="text-right">Unit Cost (₱)</th>
-                    <th className="text-right">Amount (₱)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ris.items.map((it) => {
-                    const available = it.availableStock ?? it.item.currentStock ?? 0;
-                    const hasStock = available >= (it.quantityApproved ?? it.quantityRequested ?? 0);
-                    return (
-                      <tr key={it.id}>
-                        <td className="font-mono text-xs">{it.item.stockNumber || '—'}</td>
-                        <td className="font-mono text-xs">{it.item.fundCluster || '—'}</td>
-                        <td>
-                          <div className="font-medium">{it.item.name}</div>
-                          <div className="text-xs opacity-60 font-mono">{it.item.sku}</div>
-                          {it.item.currentStock <= it.item.reorderThreshold && <div className="text-xs text-error">Low stock: {available} {it.item.unit}</div>}
-                        </td>
-                        <td>{it.item.unit}</td>
-                        <td className="text-right">{it.quantityRequested}</td>
-                        <td className="text-right">{it.quantityApproved || '—'}</td>
-                        <td className="text-right">{it.quantityIssued || '—'}</td>
-                        <td className="text-center">{hasStock ? 'Yes' : 'No'}</td>
-                        <td className="text-right"><Money value={it.unitCost} /></td>
-                        <td className="text-right font-medium"><Money value={it.lineCost} /></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <th colSpan="4" className="text-right">Total</th>
-                    <th className="text-right">{ris.totalRequested}</th>
-                    <th />
-                    <th />
-                    <th />
-                    <th />
-                    <th className="text-right"><Money value={ris.totalCost} /></th>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            {ris.remarks && (
-              <div className="mt-3 text-sm">
-                <span className="opacity-60">Remarks: </span>{ris.remarks}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mt-8">
-              <div className="text-center">
-                <div className="border-t border-black pt-1">
-                  <div className="font-semibold">{ris.requestedBy?.fullName || 'Requested by'}</div>
-                  <div className="text-xs opacity-60">Requested By</div>
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="border-t border-black pt-1">
-                  <div className="font-semibold">{ris.approvedBy?.fullName || '—'}</div>
-                  <div className="text-xs opacity-60">Approved By</div>
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="border-t border-black pt-1">
-                  <div className="font-semibold">{ris.issuedBy?.fullName || '—'}</div>
-                  <div className="text-xs opacity-60">Issued By</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mt-8">
-              <div className="text-center">
-                <div className="border-t border-black pt-1">
-                  <div className="font-semibold">Received By</div>
-                  <div className="text-xs opacity-60">Name / Signature over printed name</div>
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="border-t border-black pt-1">
-                  <div className="font-semibold">Checked by</div>
-                  <div className="text-xs opacity-60">Property Custodian</div>
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="border-t border-black pt-1">
-                  <div className="font-semibold">Date / Time</div>
-                  <div className="text-xs opacity-60">{fmtDate(ris.issuedAt) || ''}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="no-print flex justify-end">
+          <div className="modal-footer no-print">
             <button className="btn" onClick={onClose}>
               <X size={14} /> Close
             </button>
           </div>
-        </div>
-      </div>
+      </FormModal>
     </Portal>
   );
 }

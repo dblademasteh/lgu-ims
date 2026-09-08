@@ -303,7 +303,7 @@ async function coaCompliance(req, res) {
     (compliance.procurement.checks.filter(c => c.status === 'PASS').length / compliance.procurement.checks.length * 15) +
     (compliance.inventoryHealth.checks.filter(c => c.status === 'PASS').length / compliance.inventoryHealth.checks.length * 5) +
     (compliance.workflow.checks.filter(c => c.status === 'PASS').length / compliance.workflow.checks.length * 5)
-  ) / 10;
+  );
 
   compliance.overallScore = overallScore;
 

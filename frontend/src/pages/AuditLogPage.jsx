@@ -38,6 +38,18 @@ export default function AuditLogPage() {
 
   useEffect(load, [page, action, search]);
 
+  useEffect(() => {
+    if (!detail) return;
+    const onKey = (e) => { if (e.key === 'Escape') setDetail(null); };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [detail]);
+
   return (
     <div>
       <PageHeader
@@ -128,32 +140,46 @@ export default function AuditLogPage() {
 
       {detail && (
         <Portal>
-          <div className="modal-backdrop">
-            <div className="modal-box modal-lg">
+          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setDetail(null); }}>
+            <div className="modal-box modal-xl" role="dialog" aria-modal="true" aria-label={`Diff: ${detail.action} ${detail.entityType}`}>
               <div className="modal-header">
-                <h3 className="modal-title">{detail.action} · {detail.entityType}</h3>
-                <button className="modal-close" onClick={() => setDetail(null)}><X size={15} /></button>
+                <div>
+                  <h3 className="modal-title">{detail.action} · {detail.entityType}</h3>
+                  <p className="modal-subtitle">
+                    {detail.user?.fullName || 'System'} · {new Date(detail.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <button className="modal-close" onClick={() => setDetail(null)} aria-label="Close"><X size={15} /></button>
               </div>
-              <p className="text-sm text-base-content/60 mt-1">
-                {detail.user?.fullName || 'System'} · {new Date(detail.createdAt).toLocaleString()}
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                {detail.before && (
-                  <div>
-                    <div className="text-xs font-semibold opacity-60 mb-1">BEFORE</div>
-                    <pre className="bg-base-200 rounded-box p-3 overflow-auto text-xs max-h-64">{JSON.stringify(detail.before, null, 2)}</pre>
-                  </div>
-                )}
-                {detail.after && (
-                  <div>
-                    <div className="text-xs font-semibold opacity-60 mb-1">AFTER</div>
-                    <pre className="bg-base-200 rounded-box p-3 overflow-auto text-xs max-h-64">{JSON.stringify(detail.after, null, 2)}</pre>
-                  </div>
-                )}
-                {!detail.before && !detail.after && <p className="text-sm opacity-60 col-span-full">No field-level payload recorded for this action.</p>}
+              <div className="modal-body">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {detail.before && (
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="badge badge-error badge-sm">BEFORE</span>
+                        <span className="text-xs opacity-60">Previous state</span>
+                      </div>
+                      <pre className="bg-base-200/60 rounded-box p-4 overflow-auto text-xs leading-relaxed border border-error/20 flex-1 max-h-[60vh]">{JSON.stringify(detail.before, null, 2)}</pre>
+                    </div>
+                  )}
+                  {detail.after && (
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="badge badge-success badge-sm">AFTER</span>
+                        <span className="text-xs opacity-60">Current state</span>
+                      </div>
+                      <pre className="bg-base-200/60 rounded-box p-4 overflow-auto text-xs leading-relaxed border border-success/20 flex-1 max-h-[60vh]">{JSON.stringify(detail.after, null, 2)}</pre>
+                    </div>
+                  )}
+                  {!detail.before && !detail.after && (
+                    <div className="col-span-full text-center py-8 opacity-60 text-sm">
+                      No field-level payload recorded for this action.
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="modal-footer">
-                <button className="btn" onClick={() => setDetail(null)}>
+                <button className="btn btn-ghost btn-sm" onClick={() => setDetail(null)}>
                   <X size={14} /> Close
                 </button>
               </div>
