@@ -11,6 +11,7 @@ import {
   ArrowUpDown, X, AlertTriangle, CheckCircle, UploadCloud, Save, SquarePen, Archive, ArrowDownToLine, ArrowUpFromLine,
   ChevronUp, ChevronDown, ChevronsUpDown,
   Landmark, ArrowRight, FileText, Hash, NotebookPen,
+  Barcode, FolderTree, Ruler, Coins, CalendarClock, CalendarDays,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
@@ -219,17 +220,14 @@ const loadCategories = () => api.get('/categories').then(r => setCategories(r.da
 
       {/* ── Filters ── */}
       <div className="sp-toolbar" style={{ marginBottom: '1rem' }}>
-        <label className="input" style={{ flex: '1 1 14rem', gap: '0.5rem' }}>
-          <Search size={14} style={{ color: 'color-mix(in oklab, var(--text) 40%, transparent)', flexShrink: 0 }} />
-          <input type="search" placeholder="Search name or SKU..." style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text)', minWidth: 0 }}
-            value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+        <div className="relative flex-1 md:max-w-md">
+          <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--faint)' }} />
+          <input type="search" className="input input-sm w-full pl-9" aria-label="Search items" placeholder="Search name or SKU…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
           {search && (
-            <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'color-mix(in oklab, var(--text) 40%, transparent)', padding: '2px', display: 'grid', placeItems: 'center' }}>
-              <X size={12} />
-            </button>
+            <button type="button" className="btn btn-ghost btn-xs btn-square" style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)' }} onClick={() => setSearch('')} aria-label="Clear search"><X size={12} /></button>
           )}
-        </label>
-        <select className="select" style={{ width: '12rem' }} value={categoryId} onChange={e => { setCategoryId(e.target.value); setPage(1); }}>
+        </div>
+        <select className="select select-sm" style={{ width: '12rem' }} value={categoryId} onChange={e => { setCategoryId(e.target.value); setPage(1); }}>
           <option value="">All categories</option>
           {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
@@ -325,7 +323,7 @@ const loadCategories = () => api.get('/categories').then(r => setCategories(r.da
 
       {imagePreview && (
         <Portal>
-          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) { setImagePreview(''); setImageFile(null); } }}>
+          <div className="modal-backdrop">
             <div className="modal-box modal-md">
               <div className="modal-header">
                 <h3 className="modal-title">Upload image</h3>
@@ -418,7 +416,7 @@ function ItemDetailPanel({ item, onClose, onEdit, onAdjust, onQR, onImageUpload,
   return (
     <>
       <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'color-mix(in oklab, var(--text) 30%, transparent)' }} onClick={onClose} />
+        <div style={{ position: 'absolute', inset: 0, background: 'color-mix(in oklab, var(--text) 30%, transparent)' }} />
         <div style={{ position: 'relative', width: '100%', maxWidth: '42rem', maxHeight: '85vh', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '0.75rem', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-lg)', zIndex: 1 }}>
           {/* Panel header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
@@ -552,7 +550,7 @@ function ItemDetailPanel({ item, onClose, onEdit, onAdjust, onQR, onImageUpload,
 
       {archiveOpen && (
         <Portal>
-          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setArchiveOpen(false); }}>
+          <div className="modal-backdrop">
             <div className="modal-box modal-sm">
               <div className="modal-header">
                 <h3 className="modal-title">Archive "{item.name}"?</h3>
@@ -641,11 +639,21 @@ function ItemFormModal({ item, categories, onClose, onSaved }) {
     }
   };
 
-  const Field = ({ label, children }) => (
-    <div className="fieldset">
-      <span className="fieldset-legend">{label}</span>
+  const categoryName = categories.find(c => c.id === form.categoryId)?.name || '';
+
+  const Field = ({ label, hint, required, full, children }) => (
+    <div className={`fieldset${full ? ' form-full' : ''}`}>
+      <span className="fieldset-legend">{label}{required && <span className="adj-req"> *</span>}</span>
       {children}
+      {hint && <span className="sp-hint">{hint}</span>}
     </div>
+  );
+
+  const IconInput = ({ icon: Icon, ...props }) => (
+    <label className="input">
+      {Icon && <Icon size={16} style={{ color: 'var(--faint)', flexShrink: 0 }} />}
+      <input {...props} />
+    </label>
   );
 
   return (
@@ -658,85 +666,126 @@ function ItemFormModal({ item, categories, onClose, onSaved }) {
         size="modal-lg"
         onClose={onClose}
       >
-        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div className="modal-body">
+            {/* Identification */}
+            <div className="divider">Identification</div>
             <div className="modal-form-grid">
-              <div className="fieldset">
-                <span className="fieldset-legend">SKU *</span>
-                <input className="input" required value={form.sku} disabled={editing} onChange={e => setForm({ ...form, sku: e.target.value.toUpperCase() })} />
-              </div>
-              <div className="fieldset">
-                <span className="fieldset-legend">Name *</span>
-                <input className="input" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-              </div>
-              <div className="fieldset form-full">
-                <span className="fieldset-legend">Description</span>
+              <Field label="SKU" required>
+                <IconInput icon={Barcode} required value={form.sku} disabled={editing} onChange={e => setForm({ ...form, sku: e.target.value.toUpperCase() })} placeholder="e.g. ITM-0001" />
+              </Field>
+              <Field label="Name" required>
+                <IconInput icon={Package} required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Item name" />
+              </Field>
+              <Field label="Description" full>
                 <textarea className="textarea" rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} style={{ resize: 'vertical' }} />
-              </div>
-              <div className="fieldset">
-                <span className="fieldset-legend">Category *</span>
+              </Field>
+            </div>
+
+            {/* Classification */}
+            <div className="divider">Classification</div>
+            <div className="modal-form-grid">
+              <Field label="Category" required>
                 <select className="select" required value={form.categoryId} onChange={e => setForm({ ...form, categoryId: e.target.value })}>
                   <option value="">Select...</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-              </div>
-              <div className="fieldset">
-                <span className="fieldset-legend">Unit *</span>
-                <input className="input" required value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} placeholder="ream, piece, box..." />
-              </div>
-              <div className="fieldset">
-                <span className="fieldset-legend">Reorder threshold</span>
-                <input className="input" type="number" min="0" step="any" value={form.reorderThreshold} onChange={e => setForm({ ...form, reorderThreshold: e.target.value })} />
-              </div>
-              <div className="fieldset">
-                <span className="fieldset-legend">Max stock (0 = none)</span>
-                <input className="input" type="number" min="0" step="any" value={form.maxStock || ''} onChange={e => setForm({ ...form, maxStock: e.target.value })} />
-              </div>
-              <div className="fieldset">
-                <span className="fieldset-legend">Unit cost (₱)</span>
-                <input className="input" type="number" min="0" step="0.01" value={form.unitCost} onChange={e => setForm({ ...form, unitCost: e.target.value })} />
-              </div>
-              <div className="fieldset">
-                <span className="fieldset-legend">Stock No. (COA)</span>
-                <input className="input" value={form.stockNumber || ''} onChange={e => setForm({ ...form, stockNumber: e.target.value })} />
-              </div>
-              <div className="fieldset">
-                <span className="fieldset-legend">Fund Cluster</span>
-                <input className="input" value={form.fundCluster || ''} onChange={e => setForm({ ...form, fundCluster: e.target.value })} />
-              </div>
-              <div className="fieldset">
-                <span className="fieldset-legend">Condition</span>
+              </Field>
+              <Field label="Unit" required>
+                <IconInput icon={Ruler} required value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} placeholder="ream, piece, box..." />
+              </Field>
+              <Field label="Condition">
                 <select className="select" value={form.condition} onChange={e => setForm({ ...form, condition: e.target.value })}>
                   <option>SERVICEABLE</option><option>UNSERVICEABLE</option><option>CONDEMNED</option>
                 </select>
-              </div>
-              <div className="fieldset">
-                <span className="fieldset-legend">Expiry date</span>
-                <input type="date" className="input" value={form.expiryDate} onChange={e => setForm({ ...form, expiryDate: e.target.value })} />
-              </div>
-              <div className="fieldset">
-                <span className="fieldset-legend">Warranty expiry</span>
-                <input type="date" className="input" value={form.warrantyExpiry} onChange={e => setForm({ ...form, warrantyExpiry: e.target.value })} />
-              </div>
+              </Field>
+              <Field label="Stock No. (COA)">
+                <IconInput icon={Hash} value={form.stockNumber || ''} onChange={e => setForm({ ...form, stockNumber: e.target.value })} placeholder="COA stock number" />
+              </Field>
+              <Field label="Fund Cluster">
+                <IconInput icon={Landmark} value={form.fundCluster || ''} onChange={e => setForm({ ...form, fundCluster: e.target.value })} placeholder="e.g. GF, SEF" />
+              </Field>
+            </div>
+
+            {/* Stock & Valuation */}
+            <div className="divider">Stock &amp; Valuation</div>
+            <div className="modal-form-grid">
+              <Field label="Reorder threshold" hint="Low-stock alert level">
+                <input className="input" type="number" min="0" step="any" value={form.reorderThreshold} onChange={e => setForm({ ...form, reorderThreshold: e.target.value })} />
+              </Field>
+              <Field label="Max stock" hint="0 = no ceiling">
+                <input className="input" type="number" min="0" step="any" value={form.maxStock || ''} onChange={e => setForm({ ...form, maxStock: e.target.value })} />
+              </Field>
+              <Field label="Unit cost (₱)">
+                <IconInput icon={Coins} type="number" min="0" step="0.01" value={form.unitCost} onChange={e => setForm({ ...form, unitCost: e.target.value })} />
+              </Field>
               {!editing && (
-                <div className="fieldset">
-                  <span className="fieldset-legend">Opening stock</span>
+                <Field label="Opening stock" hint="Initial quantity on hand">
                   <input className="input" type="number" min="0" step="any" value={form.currentStock} onChange={e => setForm({ ...form, currentStock: e.target.value })} />
-                </div>
+                </Field>
               )}
             </div>
+
+            {/* Warranty & Expiry */}
+            <div className="divider">Warranty &amp; Expiry</div>
+            <div className="modal-form-grid">
+              <Field label="Expiry date">
+                <IconInput icon={CalendarClock} type="date" value={form.expiryDate} onChange={e => setForm({ ...form, expiryDate: e.target.value })} />
+              </Field>
+              <Field label="Warranty expiry">
+                <IconInput icon={CalendarDays} type="date" value={form.warrantyExpiry} onChange={e => setForm({ ...form, warrantyExpiry: e.target.value })} />
+              </Field>
+            </div>
+
+            {/* Accountability */}
+            <div className="divider">Accountability</div>
             <label className="form-checkbox-row">
               <input type="checkbox" checked={form.isAccountable} onChange={e => setForm({ ...form, isAccountable: e.target.checked })} />
               <span className="form-checkbox-label">Accountable item (PAR / PPE)</span>
             </label>
-            <div className="modal-footer">
-              <button type="button" className="btn" onClick={onClose}>
-                <X size={14} /> Cancel
-              </button>
-              <button type="submit" className="btn btn-primary" disabled={busy}>
-                {busy && <span className="loading loading-spinner loading-xs" />}
-                <Save size={14} /> {editing ? 'Save changes' : 'Create item'}
-              </button>
+
+            {/* Record summary */}
+            <div className="adj-item-block" style={{ marginTop: '0.875rem' }}>
+              <div className="adj-section-label">Record summary</div>
+              <div className="adj-item-name">{form.name || 'Untitled item'}</div>
+              <div className="adj-item-grid">
+                <div className="adj-item-cell">
+                  <span className="adj-cell-label">SKU</span>
+                  <span className="adj-cell-value adj-cell-mono">{form.sku || '—'}</span>
+                </div>
+                <div className="adj-item-cell">
+                  <span className="adj-cell-label">Category</span>
+                  <span className="adj-cell-value">{categoryName || '—'}</span>
+                </div>
+                <div className="adj-item-cell">
+                  <span className="adj-cell-label">Unit</span>
+                  <span className="adj-cell-value">{form.unit || '—'}</span>
+                </div>
+                <div className="adj-item-cell">
+                  <span className="adj-cell-label">Unit cost</span>
+                  <span className="adj-cell-value adj-cell-mono">{form.unitCost ? `₱${Number(form.unitCost).toLocaleString('en-US')}` : '—'}</span>
+                </div>
+                <div className="adj-item-cell">
+                  <span className="adj-cell-label">Condition</span>
+                  <span className="adj-cell-value">{form.condition || '—'}</span>
+                </div>
+                <div className="adj-item-cell">
+                  <span className="adj-cell-label">Accountable</span>
+                  <span className="adj-cell-value">{form.isAccountable ? 'Yes (PAR / PPE)' : 'No'}</span>
+                </div>
+              </div>
             </div>
+          </div>
+
+          <div className="modal-footer">
+            <button type="button" className="btn" onClick={onClose}>
+              <X size={14} /> Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>
+              {busy && <span className="loading loading-spinner loading-xs" />}
+              <Save size={14} /> {editing ? 'Save changes' : 'Create item'}
+            </button>
+          </div>
         </form>
       </FormModal>
     </Portal>
@@ -777,7 +826,7 @@ function AdjustModal({ item, onClose, onSaved }) {
 
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-backdrop">
         <div className="modal-box modal-lg adj-modal">
           {/* Operation accent bar */}
           <div className={`adj-accent ${isIn ? 'adj-accent--in' : 'adj-accent--out'}`} />
@@ -904,7 +953,7 @@ function AdjustModal({ item, onClose, onSaved }) {
 function QRModal({ qr, onClose }) {
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-backdrop">
         <div className="modal-box modal-sm">
           <div className="modal-header">
             <h3 className="modal-title">QR code</h3>

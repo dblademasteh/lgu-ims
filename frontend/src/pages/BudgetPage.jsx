@@ -91,7 +91,7 @@ export default function BudgetPage() {
         subtitle="Department budget allocations for RIS affordability checks."
         actions={isAdmin && <button className="btn btn-primary" onClick={() => { setEditTarget(null); resetForm(); setOpen(true); }}><Plus size={15} /> New Budget</button>}
       />
-      <div className="card bg-base-100 shadow-sm">
+      <div className="card bg-surface shadow-sm">
         <div className="card-body">
           {!budgets ? <Spinner label="Loading budgets..." /> : budgets.length === 0 ? <EmptyState message="No budgets configured. Set annual allocations so APPROVED requisitions are enforced against them." /> : (
             <div className="overflow-x-auto">
@@ -181,7 +181,7 @@ export default function BudgetPage() {
 
       {deleteTarget && (
         <Portal>
-          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setDeleteTarget(null); }}>
+          <div className="modal-backdrop">
             <div className="modal-box modal-sm">
               <div className="modal-header">
                 <h3 className="modal-title">Delete budget</h3>

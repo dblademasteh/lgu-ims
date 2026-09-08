@@ -74,10 +74,10 @@ export default function LedgerPage() {
         }
       />
 
-      <div className="card bg-base-100 shadow-sm">
+      <div className="card bg-surface shadow-sm">
         <div className="card-body">
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
-            <select className="select sm:max-w-lg flex-1" value={itemId} onChange={(e) => onSelect(e.target.value)}>
+            <select className="select flex-1" style={{ minWidth: '12rem', maxWidth: '22rem' }} value={itemId} onChange={(e) => onSelect(e.target.value)}>
               <option value="">Select an item...</option>
               {items.map((i) => (
                 <option key={i.id} value={i.id}>{i.name} · {i.sku}</option>

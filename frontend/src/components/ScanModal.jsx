@@ -52,7 +52,7 @@ export default function ScanModal({ onScan, onClose }) {
 
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-backdrop">
         <div className="modal-box modal-md">
           <div className="modal-header">
             <h3 className="modal-title">Scan barcode / QR code</h3>

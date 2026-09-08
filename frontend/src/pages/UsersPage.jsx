@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, UploadCloud, UserPlus, SquarePen, Save, UserRound } from 'lucide-react';
+import { Search, X, UploadCloud, UserPlus, SquarePen, Save, UserRound, Mail, KeyRound } from 'lucide-react';
 import api from '../api/client';
 import { useToast } from '../components/Toast';
 import PageHeader, { EmptyState, FormModal, Pagination, Spinner } from '../components/ui';
@@ -69,18 +69,21 @@ export default function UsersPage() {
         }
       />
 
-      <div className="card bg-base-100 shadow-sm">
+      <div className="card bg-surface shadow-sm border border-border">
         <div className="card-body">
           <div className="flex flex-col md:flex-row gap-3 mb-4">
-            <label className="input flex-1 md:max-w-xs">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-              <input type="search" className="flex-1" placeholder="Search users..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
-            </label>
-            <select className="select md:w-48" value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}>
+            <div className="relative flex-1 md:max-w-md">
+              <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--faint)' }} />
+              <input type="search" className="input input-sm w-full pl-9" aria-label="Search users" placeholder="Search users…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+              {search && (
+                <button type="button" className="btn btn-ghost btn-xs btn-square" style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)' }} onClick={() => { setSearch(''); setPage(1); }} aria-label="Clear search"><X size={12} /></button>
+              )}
+            </div>
+            <select className="select select-sm" style={{ width: '10rem' }} value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}>
               <option value="">All roles</option>
               {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
             </select>
-            <select className="select md:w-40" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
+            <select className="select select-sm" style={{ width: '10rem' }} value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
               <option value="">All statuses</option>
               <option value="true">Active</option>
               <option value="false">Inactive</option>
@@ -182,6 +185,21 @@ function UserFormModal({ user, departments, roles, onClose, onSaved }) {
     }
   };
 
+  const Field = ({ label, hint, required, full, children }) => (
+    <div className={`fieldset${full ? ' form-full' : ''}`}>
+      <span className="fieldset-legend">{label}{required && <span className="adj-req"> *</span>}</span>
+      {children}
+      {hint && <span className="sp-hint">{hint}</span>}
+    </div>
+  );
+
+  const IconInput = ({ icon: Icon, ...props }) => (
+    <label className="input">
+      {Icon && <Icon size={16} style={{ color: 'var(--faint)', flexShrink: 0 }} />}
+      <input {...props} />
+    </label>
+  );
+
   return (
     <Portal>
       <FormModal
@@ -192,65 +210,62 @@ function UserFormModal({ user, departments, roles, onClose, onSaved }) {
         size="modal-lg"
         onClose={onClose}
       >
-        <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-            {!editing && (
-              <>
-                <fieldset className="fieldset">
-                  <legend className="fieldset-legend">Username *</legend>
-                  <input className="input" required value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })} placeholder="juan.dc" />
-                </fieldset>
-                <fieldset className="fieldset">
-                  <legend className="fieldset-legend">Email *</legend>
-                  <input className="input" required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="user@lgu.local" />
-                </fieldset>
-                <fieldset className="fieldset sm:col-span-2">
-                  <legend className="fieldset-legend">Temporary password *</legend>
-                  <input className="input" required type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Min. 8 characters" />
-                </fieldset>
-              </>
-            )}
-            <fieldset className="fieldset sm:col-span-2">
-              <legend className="fieldset-legend">Full name *</legend>
-              <input className="input" required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-            </fieldset>
-            <fieldset className="fieldset">
-              <legend className="fieldset-legend">Role *</legend>
-              <select className="select" required value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                {roles.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
-              </select>
-            </fieldset>
-            <fieldset className="fieldset">
-              <legend className="fieldset-legend">Department</legend>
-              <select className="select" value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
-                <option value="">None</option>
-                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
-            </fieldset>
-            {editing && (
-              <fieldset className="fieldset sm:col-span-2">
-                <legend className="fieldset-legend">Reset password (optional)</legend>
-                <input className="input" type="password" value={passwordReset} onChange={(e) => setPasswordReset(e.target.value)} placeholder="Leave blank to keep current password" />
-              </fieldset>
-            )}
-            {editing && (
-              <fieldset className="fieldset sm:col-span-2">
-                <legend className="fieldset-legend">Account status</legend>
-                <label className="label cursor-pointer justify-start gap-3">
-                  <input type="checkbox" className="toggle toggle-primary" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
-                  <span>{form.isActive ? 'Active' : 'Inactive'}</span>
-                </label>
-              </fieldset>
-            )}
-            <div className="modal-footer col-span-full">
-              <button type="button" className="btn" onClick={onClose}>
-                <X size={14} /> Cancel
-              </button>
-              <button type="submit" className="btn btn-primary" disabled={busy}>
-                {busy && <span className="loading loading-spinner loading-xs" />}
-                <Save size={14} /> {editing ? 'Save changes' : 'Create user'}
-              </button>
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div className="modal-body">
+            <div className="divider">Account</div>
+            <div className="modal-form-grid">
+              {!editing && (
+                <>
+                  <Field label="Username" required hint="Login ID, lowercase">
+                    <IconInput icon={UserRound} required value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })} placeholder="juan.dc" />
+                  </Field>
+                  <Field label="Email" required>
+                    <IconInput icon={Mail} required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="user@lgu.local" />
+                  </Field>
+                  <Field label="Temporary password" required full hint="Min. 8 characters">
+                    <IconInput icon={KeyRound} required type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Min. 8 characters" />
+                  </Field>
+                </>
+              )}
+              <Field label="Full name" required full>
+                <IconInput icon={UserRound} required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder="Juan M. Dela Cruz" />
+              </Field>
+              <Field label="Role" required>
+                <select className="select select-sm" required value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                  {roles.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
+                </select>
+              </Field>
+              <Field label="Department" hint="Cost center / office">
+                <select className="select select-sm" value={form.departmentId} onChange={(e) => setForm({ ...form, departmentId: e.target.value })}>
+                  <option value="">None</option>
+                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </Field>
+              {editing && (
+                <Field label="Reset password" full hint="Leave blank to keep current password">
+                  <IconInput icon={KeyRound} type="password" value={passwordReset} onChange={(e) => setPasswordReset(e.target.value)} placeholder="Leave blank to keep current password" />
+                </Field>
+              )}
+              {editing && (
+                <Field label="Account status" full>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" className="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} />
+                    <span className="text-sm">{form.isActive ? 'Active' : 'Inactive'}</span>
+                  </label>
+                </Field>
+              )}
             </div>
-          </form>
+          </div>
+          <div className="modal-footer">
+            <button type="button" className="btn" onClick={onClose}>
+              <X size={14} /> Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>
+              {busy && <span className="loading loading-spinner loading-xs" />}
+              <Save size={14} /> {editing ? 'Save changes' : 'Create user'}
+            </button>
+          </div>
+        </form>
       </FormModal>
     </Portal>
   );
@@ -281,30 +296,31 @@ function ImportUsersModal({ onClose, onImported }) {
 
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-        <div className="modal-box modal-md">
-          <div className="modal-header">
-            <h3 className="modal-title">Import Users from CSV</h3>
-            <button className="modal-close" onClick={onClose}><X size={15} /></button>
+      <FormModal
+        title="Import Users from CSV"
+        formNo="Form No. LGU-IMS-USR-02"
+        icon={UploadCloud}
+        tone="info"
+        size="modal-md"
+        onClose={onClose}
+      >
+        <p className="text-sm text-muted mt-1">Upload a CSV with columns: username, email, fullname, role, department, isActive. Existing users (by username or email) will be updated. Default password for new users: <strong>LguIms2026!</strong></p>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4">
+          <fieldset className="fieldset">
+            <legend className="fieldset-legend">CSV content</legend>
+            <textarea className="textarea font-mono text-xs" rows={10} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={sampleCSV} />
+          </fieldset>
+          <div className="modal-footer">
+            <button type="button" className="btn" onClick={onClose}>
+              <X size={14} /> Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={busy}>
+              {busy && <span className="loading loading-spinner loading-xs" />}
+              <UploadCloud size={14} /> Import
+            </button>
           </div>
-          <p className="text-sm text-base-content/60 mt-1">Upload a CSV with columns: username, email, fullname, role, department, isActive. Existing users (by username or email) will be updated. Default password for new users: <strong>LguIms2026!</strong></p>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4">
-            <fieldset className="fieldset">
-              <legend className="fieldset-legend">CSV content</legend>
-              <textarea className="textarea font-mono text-xs" rows={10} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={sampleCSV} />
-            </fieldset>
-            <div className="modal-footer">
-              <button type="button" className="btn" onClick={onClose}>
-                <X size={14} /> Cancel
-              </button>
-              <button type="submit" className="btn btn-primary" disabled={busy}>
-                {busy && <span className="loading loading-spinner loading-xs" />}
-                <UploadCloud size={14} /> Import
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+        </form>
+      </FormModal>
     </Portal>
   );
 }

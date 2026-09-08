@@ -35,7 +35,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-base-200 px-4 py-10">
-      <div className="form-block w-full max-w-md overflow-hidden rounded-3xl border border-base-300 bg-base-100 shadow-2xl">
+      <div className="form-block w-full max-w-md overflow-hidden rounded-3xl border border-border bg-surface shadow-2xl">
         <div className="box-header no-print px-8 pt-6">
           <strong>Official Block</strong>
           <span>Password Reset</span>

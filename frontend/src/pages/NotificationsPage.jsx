@@ -84,7 +84,7 @@ export default function NotificationsPage() {
         }
       />
 
-      <div className="card bg-base-100 shadow-sm mb-4">
+      <div className="card bg-surface shadow-sm mb-4">
         <div className="card-body">
           <div className="flex items-center justify-between mb-2">
             <div>
@@ -98,7 +98,7 @@ export default function NotificationsPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {prefs.map((p) => (
-              <div key={p.type} className="rounded-lg border border-base-300 p-3">
+              <div key={p.type} className="rounded-lg border border-border p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-medium text-sm">{TYPE_LABEL[p.type] || p.type.replace(/_/g, ' ')}</span>
                 </div>
@@ -117,7 +117,7 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      <div className="card bg-base-100 shadow-sm">
+      <div className="card bg-surface shadow-sm border border-border">
         <div className="card-body">
           <label className="flex items-center gap-2 cursor-pointer px-2 mb-3 w-fit">
             <input type="checkbox" className="checkbox checkbox-sm" checked={unreadOnly} onChange={(e) => { setUnreadOnly(e.target.checked); setPage(1); }} />

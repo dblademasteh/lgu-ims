@@ -96,7 +96,7 @@ export default function COACompliancePage() {
         {domains.map(([key, domain]) => {
           const status = domainStatus(domain.checks);
           return (
-            <div key={key} className="card bg-base-100 shadow-sm">
+            <div key={key} className="card bg-surface shadow-sm">
               <div className="card-body">
                 <div className="flex items-center justify-between">
                   <h2 className="card-title">{DOMAIN_LABELS[key] ?? key}</h2>

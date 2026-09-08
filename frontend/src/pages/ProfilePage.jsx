@@ -154,7 +154,7 @@ export default function ProfilePage() {
 
       <div className="flex gap-6">
         <div className="w-56 shrink-0">
-          <div className="card bg-base-100 shadow-sm">
+            <div className="card bg-surface shadow-sm">
             <div className="card-body p-4 items-center text-center">
               <div className="avatar placeholder">
                 <div className="bg-primary text-primary-content rounded-full w-16">
@@ -192,7 +192,7 @@ export default function ProfilePage() {
           </div>
 
           {tab === 'profile' && (
-            <div className="card bg-base-100 shadow-sm">
+            <div className="card bg-surface shadow-sm">
               <div className="card-body">
                 <h3 className="font-semibold mb-4">Profile Information</h3>
                 <form onSubmit={saveProfile} className="space-y-4 max-w-lg">
@@ -231,7 +231,7 @@ export default function ProfilePage() {
 
           {tab === 'security' && (
             <div className="space-y-4">
-              <div className="card bg-base-100 shadow-sm">
+              <div className="card bg-surface shadow-sm">
                 <div className="card-body">
                   <h3 className="font-semibold mb-4">Change Password</h3>
                   <form onSubmit={changePassword} className="space-y-4 max-w-md">
@@ -256,7 +256,7 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="card bg-base-100 shadow-sm">
+              <div className="card bg-surface shadow-sm">
                 <div className="card-body">
                   <div className="flex items-center justify-between">
                     <div>
@@ -314,7 +314,7 @@ export default function ProfilePage() {
       </div>
       {disable2FaOpen && (
         <Portal>
-          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) { setDisable2FaOpen(false); setDisableCode(''); } }}>
+          <div className="modal-backdrop">
             <div className="modal-box modal-sm">
               <div className="modal-header">
                 <h3 className="modal-title">Disable two-factor authentication</h3>

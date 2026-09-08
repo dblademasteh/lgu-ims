@@ -298,7 +298,7 @@ export default function Layout() {
 
       {logoutOpen && (
         <Portal>
-          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setLogoutOpen(false); }}>
+          <div className="modal-backdrop">
             <div className="modal-box modal-sm">
               <div className="modal-header">
                 <h3 className="modal-title">Sign out of all sessions?</h3>
@@ -344,7 +344,7 @@ function ChangePasswordModal({ onClose }) {
 
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-backdrop">
         <div className="modal-box modal-sm">
           <div className="modal-header">
             <h3 className="modal-title">Change password</h3>

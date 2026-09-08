@@ -414,9 +414,6 @@ function ForgotPasswordModal({
         role="dialog"
         aria-modal="true"
         aria-label="Reset password"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) onClose();
-        }}
       >
         <div className="gov-modal">
           <button className="gov-modal-close" onClick={onClose} aria-label="Close">

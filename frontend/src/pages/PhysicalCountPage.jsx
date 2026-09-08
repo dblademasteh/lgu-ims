@@ -124,10 +124,10 @@ export default function PhysicalCountsPage() {
         subtitle="COA inventory-taking worksheet with variance detection."
         actions={canManage && <button className="btn btn-primary" onClick={() => { setEditCount(null); resetForm(); setOpen(true); }}><Plus size={15} /> New Count</button>}
       />
-      <div className="card bg-base-100 shadow-sm">
+      <div className="card bg-surface shadow-sm">
         <div className="card-body">
           <div className="flex flex-col md:flex-row gap-3 mb-4">
-            <select className="select md:w-40" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+            <select className="select select-sm" style={{ width: '10rem' }} value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
               <option value="">All statuses</option>
               {COUNT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -222,7 +222,7 @@ export default function PhysicalCountsPage() {
 
       {detail && (
         <Portal>
-          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setDetail(null); }}>
+          <div className="modal-backdrop">
             <div className="modal-box modal-xl">
               <div className="modal-header">
                 <h3 className="modal-title">Physical Count Detail</h3>

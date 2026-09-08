@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, CopyPlus, Plus, Eye, Printer, FileText, CheckCircle2, XCircle, BadgeCheck, PackageCheck, Undo2, Send, Trash2, Save } from 'lucide-react';
+import { Search, X, CopyPlus, Plus, Eye, Printer, FileText, CheckCircle2, XCircle, BadgeCheck, PackageCheck, Undo2, Send, Trash2, Save } from 'lucide-react';
 import api, { openReport } from '../api/client';
 import useAuthStore, { useCan } from '../stores/authStore';
 import { useToast } from '../components/Toast';
@@ -103,15 +103,17 @@ export default function RISPage() {
         )}
       />
 
-      <div className="card bg-base-100 shadow-sm">
+      <div className="card bg-surface shadow-sm border border-border">
         <div className="card-body">
           <div className="flex flex-col md:flex-row gap-3 mb-4">
-            <label className="input flex-1 md:max-w-xs">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-              <input type="search" className="flex-1" placeholder="Search RIS number..." value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
-            </label>
-            <select className="select md:w-52" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+            <div className="relative flex-1 md:max-w-md">
+              <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--faint)' }} />
+              <input type="search" className="input input-sm w-full pl-9" aria-label="Search RIS numbers" placeholder="Search RIS number…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+              {search && (
+                <button type="button" className="btn btn-ghost btn-xs btn-square" style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)' }} onClick={() => { setSearch(''); setPage(1); }} aria-label="Clear search"><X size={12} /></button>
+              )}
+            </div>
+            <select className="select select-sm" style={{ width: '10rem' }} value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
               <option value="">All statuses</option>
               {STATUS_FLOW.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
             </select>
@@ -230,7 +232,7 @@ export default function RISPage() {
 
       {approveOpen && detail && (
         <Portal>
-          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setApproveOpen(false); }}>
+          <div className="modal-backdrop">
             <div className="modal-box modal-xl">
               <div className="modal-header">
                 <h3 className="modal-title">Approve Requisition</h3>
@@ -295,7 +297,7 @@ function RisDetail({ ris, user, canManage, canIssue, canCancel, canReturn, onClo
 
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-backdrop">
         <div className="modal-box modal-xl">
           <div className="flex items-start justify-between no-print">
             <h3 className="font-bold text-lg">
@@ -725,7 +727,7 @@ function BulkCreateModal({ onClose, onSaved }) {
 
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-backdrop">
         <div className="modal-box modal-2xl max-h-[90vh] overflow-y-auto">
           <div className="modal-header">
             <h3 className="modal-title mb-4">Bulk Create Requisitions</h3>
@@ -734,7 +736,7 @@ function BulkCreateModal({ onClose, onSaved }) {
           <div className="modal-body">
             <form id="bulk-create-form" onSubmit={submit} className="flex flex-col gap-6">
               {risList.map((ris, risIdx) => (
-                <div key={risIdx} className="border border-base-300 rounded-lg p-4 relative">
+                <div key={risIdx} className="border border-border rounded-lg p-4 relative">
                   <div className="absolute top-2 right-2">
                     {risList.length > 1 && (
                       <button type="button" className="btn btn-ghost btn-xs text-error" onClick={() => removeRis(risIdx)}><Trash2 size={12} /> Remove</button>
@@ -820,7 +822,7 @@ function ConfirmModal({ message, placeholder, onClose, onConfirm }) {
 
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-backdrop">
         <div className="modal-box modal-sm">
           <div className="modal-header">
             <h3 className="modal-title">Confirm action</h3>
@@ -894,7 +896,7 @@ function IssueModal({ ris, onClose, onIssue }) {
 
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-backdrop">
         <div className="modal-box modal-xl">
           <div className="modal-header">
             <h3 className="modal-title">Issue items</h3>
@@ -998,7 +1000,7 @@ function ReturnModal({ ris, onClose, onReturn }) {
 
   return (
     <Portal>
-      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-backdrop">
         <div className="modal-box modal-xl">
           <div className="modal-header">
             <h3 className="modal-title">Return items to stock</h3>

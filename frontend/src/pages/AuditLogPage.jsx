@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { X, ShieldCheck, FileText, FileSpreadsheet, GitCompareArrows } from 'lucide-react';
+import { Search, X, ShieldCheck, FileText, FileSpreadsheet, GitCompareArrows } from 'lucide-react';
 import api, { openReport } from '../api/client';
 import { useToast } from '../components/Toast';
 import PageHeader, { EmptyState, Pagination, Spinner } from '../components/ui';
@@ -62,17 +62,20 @@ export default function AuditLogPage() {
         }
       />
 
-      <div className="card bg-base-100 shadow-sm">
+      <div className="card bg-surface shadow-sm border border-border">
         <div className="card-body">
           <div className="flex flex-col md:flex-row gap-3 mb-4">
-            <select className="select md:w-52" value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }}>
+            <select className="select select-sm" style={{ width: '10rem' }} value={action} onChange={(e) => { setAction(e.target.value); setPage(1); }}>
               <option value="">All actions</option>
               {['CREATE', 'UPDATE', 'DELETE', 'ADJUST', 'APPROVE', 'REJECT', 'ISSUE', 'CANCEL', 'LOGIN', 'PASSWORD_CHANGE'].map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
-            <label className="input flex-1 md:max-w-xs">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="10" cy="10" r="6" strokeWidth="2"/><path strokeLinecap="round" strokeWidth="2" d="M21 21l-4.35-4.35"/></svg>
-              <input type="search" className="flex-1" placeholder="Entity type (Item, Ris, User...)" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
-            </label>
+            <div className="relative flex-1 md:max-w-md">
+              <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--faint)' }} />
+              <input type="search" className="input input-sm w-full pl-9" aria-label="Search entity type" placeholder="Entity type (Item, RIS, User)…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+              {search && (
+                <button type="button" className="btn btn-ghost btn-xs btn-square" style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)' }} onClick={() => { setSearch(''); setPage(1); }} aria-label="Clear search"><X size={12} /></button>
+              )}
+            </div>
           </div>
 
           {!data ? (
@@ -125,7 +128,7 @@ export default function AuditLogPage() {
 
       {detail && (
         <Portal>
-          <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setDetail(null); }}>
+          <div className="modal-backdrop">
             <div className="modal-box modal-lg">
               <div className="modal-header">
                 <h3 className="modal-title">{detail.action} · {detail.entityType}</h3>

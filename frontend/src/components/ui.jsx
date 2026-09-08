@@ -11,7 +11,7 @@ import { Package, ChevronLeft, ChevronRight, X } from 'lucide-react';
  */
 export function FormModal({ title, formNo, icon: Icon, tone = 'neutral', badge, size = 'modal-md', onClose, children }) {
   return (
-    <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="modal-backdrop">
       <div className={`modal-box ${size} fm-modal`}>
         <div className={`fm-accent fm-accent--${tone}`} />
         <div className="modal-header fm-header">

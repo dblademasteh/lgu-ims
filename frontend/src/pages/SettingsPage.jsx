@@ -112,9 +112,12 @@ function CategoryTab() {
         </div>
 
         <div className="sp-toolbar">
-          <div className="sp-search">
-            <Search size={14} className="sp-search-icon" />
-            <input className="sp-search-input" placeholder="Search categories..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="relative flex-1 md:max-w-md">
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--faint)' }} />
+            <input type="search" className="input input-sm w-full pl-9" aria-label="Search categories" placeholder="Search categories…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            {search && (
+              <button type="button" className="btn btn-ghost btn-xs btn-square" style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)' }} onClick={() => setSearch('')} aria-label="Clear search"><X size={12} /></button>
+            )}
           </div>
         </div>
 
@@ -238,9 +241,12 @@ function DepartmentTab() {
         </div>
 
         <div className="sp-toolbar">
-          <div className="sp-search">
-            <Search size={14} className="sp-search-icon" />
-            <input className="sp-search-input" placeholder="Search departments..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="relative flex-1 md:max-w-md">
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--faint)' }} />
+            <input type="search" className="input input-sm w-full pl-9" aria-label="Search departments" placeholder="Search departments…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            {search && (
+              <button type="button" className="btn btn-ghost btn-xs btn-square" style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)' }} onClick={() => setSearch('')} aria-label="Clear search"><X size={12} /></button>
+            )}
           </div>
           <div className="sp-view-toggle">
             <button className={`btn btn-sm ${view === 'tree' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setView('tree')}><FolderOpen size={13} /> Tree</button>
