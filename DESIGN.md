@@ -2,6 +2,8 @@
 
 <!-- impeccable:design-schema 1 -->
 
+> **Template note:** This file is a reusable design system template for government productivity web apps. Replace project-specific names, tokens, and examples while keeping the structure, rules, and checklists.
+
 Recorded from the built world (frontend, React 19 + Vite + Tailwind 4). Own UI; no component library. Two themes via `data-theme` on `<html>` — `light` (cool professional slate, default) and `dark` (deep navy) — switchable from the topbar theme picker and persisted in `localStorage['lgu-theme']`; the initial value follows the OS `prefers-color-scheme`. Every component must render correctly in **both** themes — theme compatibility is a hard requirement, not a nicety.
 
 ## Visual world
@@ -116,7 +118,57 @@ Every component must render correctly in **both** themes — this is a hard requ
 
 60–200ms state transitions only (hover 80–180ms, drawer 200ms, modal, panel gauge 400ms). No page-load sequences, no decoration-only animation. Reduced-motion respected globally.
 
-## Accessibility
+## Best Practices — Do & Don’t
+
+### General UI/UX
+- **Do** design for both light and dark themes simultaneously. Verify every component in both modes.
+- **Do** use semantic CSS variables (`--surface`, `--text`, `--accent`, …) only — never hard-code hex in components.
+- **Do** keep touch targets ≥44px / buttons ≥2.75rem.
+- **Do** use `lucide-react` icons only, sized 14–16px per context, inheriting `currentColor`.
+- **Do** keep motion 60–200ms, subtle transitions only. Respect `prefers-reduced-motion`.
+- **Do** use mono uppercase labels for machine data, tabular numerals for numbers.
+- **Don’t** use emojis as structural icons. Use SVG vector icons.
+- **Don’t** use decorative shadows or 3D effects. Flat, hairline borders, color-mix tints.
+- **Don’t** rely on Tailwind responsive utilities for critical widths; use inline styles for filter selects.
+- **Don’t** dismiss modals on backdrop click. Modals persist until explicit close/cancel/submit.
+
+### Input & Icon Alignment
+- **Do** standardize leading-icon inputs: absolute icon at `left:12px`, input `pl-9`, right gutter `pr-2.75rem` for clear button.
+- **Do** keep `input.input-sm.pl-9` padding-left `2.3rem` and padding-right `2.75rem` via author CSS.
+- **Do** use `.adj-input-wrap { padding:0; }` for Stock Adjustment modal to avoid wrapper padding shifting icon baseline.
+- **Don’t** mix flex `label.input` wrapper with absolute icon search pattern in the same page without token parity.
+
+### Components
+- **Do** place modal size class on the same element as `.modal-box` (`className="modal-box modal-lg"`); descendant selector will not match.
+- **Do** use `FormModal` for official forms: 4px accent bar, seal tile, title + Form No., status badge.
+- **Do** wrap CSV import content in `.modal-body` for standard `padding:1.25rem 1.5rem`.
+- **Don’t** use `bg-base-100` — always use theme tokens `bg-surface border-border`.
+
+### Search / Filter Bar
+- **Do** use `type="search"`, `aria-label="Search <entity>"`, `className="input input-sm w-full pl-9"`.
+- **Do** position Search icon `left:12px top:50% translateY(-50%) color:var(--faint)`.
+- **Do** position clear X at `right:6px top:50% translateY(-50%)`.
+- **Do** set filter `<select>` width inline `style={{width:'10rem'}}` and `select select-sm`.
+- **Don’t** use `md:w-*` utilities for filter widths — they are ineffective in Tailwind v4 layer.
+
+### Accessibility
+- **Do** ensure focus-visible outline 2px accent offset 2px.
+- **Do** provide `aria-label` on every icon button.
+- **Do** keep contrast ≥7:1 ink on surface light, ≥12:1 dark.
+- **Don’t** rely on color alone for state. Use icon + text + tint.
+
+### Pre-Delivery Checklist
+- [ ] No emojis as icons; all icons from lucide-react
+- [ ] cursor-pointer on clickable elements
+- [ ] Hover states 150-300ms
+- [ ] Light mode text contrast 4.5:1 minimum
+- [ ] Focus states visible for keyboard nav
+- [ ] prefers-reduced-motion respected
+- [ ] Responsive: 375px, 768px, 1024px, 1440px
+- [ ] Dark mode contrast verified independently
+- [ ] All modals persist, close only via X / Cancel / submit
+- [ ] Search inputs have right gutter for clear button
+- [ ] Design tokens used, no hard-coded hex
 
 Contrast: ink on surface ≥ 7:1 light / ≥ 12:1 dark; muted tints ≥ 4.5:1 foreground on ground. Visible `:focus-visible` = 2px accent outline offset 2px; accent caret and selection. Touch targets ≥ 2.75rem buttons, controls ≥ 44px on touch. Keyboard: drawer via button, dropdown via focus-within, modals focusable with backdrop/Esc close. Every icon button carries `aria-label`.
 
